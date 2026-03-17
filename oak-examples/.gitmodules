@@ -1,0 +1,3 @@
+[submodule "cpp/uvc/uvc-gadget"]
+	path = cpp/uvc/uvc-gadget
+	url = https://github.com/luxonis/uvc-gadget.git

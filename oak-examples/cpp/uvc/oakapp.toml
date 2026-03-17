@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Luxonis, Inc.
+# 
+# Contact: <support@luxonis.com>
+
+# Application metadata
+identifier = "com.example.streaming.uvc"
+app_version = "3.0.0"
+
+# Command to run when the container starts
+entrypoint = ["bash", "-c", "/app/uvc-start.sh start"]
+
+# Here is the place where you can install all the dependencies that are needed at run-time
+prepare_container = [
+    { type = "COPY", source = "uvc-start.sh", target = "/app/uvc-start.sh" },
+    { type = "RUN", command = "chmod +x /app/uvc-start.sh" },
+    { type = "RUN", command = "apt-get update" },
+    { type = "RUN", command = "apt-get install -y libusb-1.0-0" },
+]
+
+# Here is the place where you can install all the dependencies that are needed at build-time
+prepare_build_container = [
+]
+
+# Commands to execute after all files (including this TOML) are in /app
+build_steps = [
+    "cmake -S /app -B /app/build -DDEPTHAI_ENABLE_CURL=OFF -DDEPTHAI_ENABLE_REMOTE_CONNECTION=OFF -DDEPTHAI_ENABLE_EVENTS_MANAGER=OFF -DDEPTHAI_ENABLE_PROTOBUF=OFF -DDEPTHAI_OPENCV_SUPPORT=OFF -DDEPTHAI_BUILD_EXAMPLES=ON",
+    "cmake --build /app/build --parallel 4",
+    "cp /app/build/uvc_example /app/uvc_example",
+    "cp /app/build/uvc-gadget/lib/libuvcgadget.so /usr/lib",
+    "cp /app/build/uvc-gadget/lib/libuvcgadget.so.0.4.0 /usr/lib",
+    "bash -c 'chmod +x /app/uvc-start.sh'",
+]
+
+allowed_devices = [{ allow = true, access = "rwm" }]
+
+additional_mounts = [
+    { source = "/dev", target = "/dev", type = "devtmpfs", options = [
+        "mode=777",
+    ] },
+    { source = "/sys/kernel/config", target = "/sys/kernel/config", type = "configfs", options = [                
+                "nosuid",      
+                "noexec",          
+                "nodev",       
+                "rw"           
+    ] },
+]
+
+[base_image]
+api_url = "https://registry-1.docker.io"
+service = "registry.docker.io"
+oauth_url = "https://auth.docker.io/token"
+auth_type = "repository"
+auth_name = "luxonis/oakapp-base"
+image_name = "luxonis/oakapp-base"
+image_tag = "1.2.6-cpp"

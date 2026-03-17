@@ -1,0 +1,2 @@
+model: yolo-world-l:640x480-host-decoding:2ea4786
+platform: RVC4

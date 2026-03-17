@@ -1,0 +1,22 @@
+video:
+  width: 640
+  height: 640
+  fps: 10
+
+nn:
+  name: "yoloe"
+  precision: "fp16"
+  backend:
+    type: "snpe"
+    runtime: "dsp"
+    performance_profile: "default"
+    inference_threads: 1
+  confidence_thr: 0.1
+
+
+tracker:
+  track_per_class: true
+  birth_threshold: 3
+  max_lifespan: 90
+  occlusion_ratio_threshold: 0.5
+  tracker_threshold: 0.25
