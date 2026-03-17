@@ -1,3 +1,0 @@
-# Keep the models folder but ignore its contents
-models/*
-!models/.gitkeep

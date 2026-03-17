@@ -1,2 +1,0 @@
-model: luxonis/box-instance-segmentation:512x320
-platform: RVC4

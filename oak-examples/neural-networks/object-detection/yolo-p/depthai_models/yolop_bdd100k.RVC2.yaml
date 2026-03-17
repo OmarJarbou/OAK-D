@@ -1,2 +1,0 @@
-model: luxonis/yolo-p:bdd100k-320x320
-platform: RVC2
