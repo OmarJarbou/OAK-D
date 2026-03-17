@@ -1,5 +1,7 @@
 import time
 
+ZONE_PRIORITY = {"GREEN": 0, "YELLOW": 1, "RED": 2}
+
 class ObstacleAlert:
     """
     Controls alert frequency per zone.
@@ -8,26 +10,26 @@ class ObstacleAlert:
     GREEN never fires (no action needed).
     """
     def __init__(self, red_cooldown: float = 1.0, yellow_cooldown: float = 3.0,
-                 debounce_frames: int = 6):
-        self.cooldowns       = {"RED": red_cooldown, "YELLOW": yellow_cooldown}
-        self.last_alert      = {"RED": 0.0, "YELLOW": 0.0}
-        self.active          = {"RED": False, "YELLOW": False}
-        self._candidate      = "GREEN"
+                 debounce_frames: int = 3):
+        self.cooldowns        = {"RED": red_cooldown, "YELLOW": yellow_cooldown}
+        self.last_alert       = {"RED": 0.0, "YELLOW": 0.0}
+        self.active           = {"RED": False, "YELLOW": False}
+        self._candidate       = "GREEN"
         self._candidate_count = 0
-        self._committed      = "GREEN"   # the stable zone main.py sees
-        self.debounce_frames = debounce_frames
+        self._committed       = "GREEN"
+        self.debounce_frames  = debounce_frames
 
     def should_alert(self, zone: str, distance_m: float) -> bool:
-        # --- Debounce: only commit zone after N consecutive frames ---
         if zone == self._candidate:
             self._candidate_count += 1
         else:
             self._candidate       = zone
             self._candidate_count = 1
 
-        if self._candidate_count >= self.debounce_frames:
+        # Commit immediately if zone is MORE dangerous than current — no debounce wait
+        escalating = ZONE_PRIORITY[zone] > ZONE_PRIORITY[self._committed]
+        if escalating or self._candidate_count >= self.debounce_frames:
             self._committed = zone
-        # else: keep previous committed zone — ignore the flicker
 
         committed = self._committed
         now = time.time()

@@ -235,6 +235,21 @@ try:
                         closest_distance = distance_m
                         closest_label    = label_name
 
+                # Proximity fallback: if center of frame is very close,
+                # treat as RED even if YOLO missed the detection
+                center_x1 = depth_w // 4
+                center_x2 = 3 * depth_w // 4
+                center_y1 = depth_h // 4
+                center_y2 = 3 * depth_h // 4
+                center_roi = depth_frame[center_y1:center_y2, center_x1:center_x2]
+                center_valid = center_roi[(center_roi > 100) & (center_roi < 10000)]
+                if center_valid.size > 50:
+                    center_dist = float(np.median(center_valid)) / 1000.0
+                    # If something is very close in center, override YOLO result
+                    if center_dist < 0.4 and (closest_label is None or center_dist < closest_distance):
+                        closest_distance = center_dist
+                        closest_label    = "obstacle"
+
                 # Determine zone for closest obstacle
                 if closest_label is not None:
                     zone = classify_zone(closest_distance)
