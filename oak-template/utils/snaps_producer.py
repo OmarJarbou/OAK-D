@@ -61,13 +61,18 @@ class SnapsProducer(dai.node.HostNode):
                         "detection_confidence": str(det.confidence),
                     }
                     self.em.sendSnap(
-                        "rgb",
-                        rgb,
-                        [],
-                        ["demo"],
-                        extra_data,
+                        "rgb",        # name
+                        "rgb",        # fileTag (string tag for the image)
+                        rgb,          # imgFrame (the ImgFrame object)
+                        None,         # imgDetections (optional, can pass None)
+                        ["demo"],     # tags
+                        extra_data,   # extras
                     )
                     print(f"Event sent: {extra_data}")
                     break  # one snap per interval is enough
         except Exception as e:
             print(f"[SnapsProducer] process error (skipping frame): {e}")
+    
+    def __del__(self):
+        if self.em is not None:
+            self.em.waitForPendingUploads()

@@ -11,6 +11,7 @@ import numpy as np
 # 0. Environment and model setup
 load_dotenv()
 api_key = os.getenv("OAK_API_KEY")
+depthai_hub_api_key = os.getenv("DEPTHAI_HUB_API_KEY")
 model = "luxonis/yolov6-nano:r2-coco-512x288"
 
 # 1. Visualizer & Device
