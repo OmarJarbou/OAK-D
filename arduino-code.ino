@@ -75,6 +75,11 @@ NoteProfile notes[] = {
 const int NUM_NOTES = sizeof(notes) / sizeof(notes[0]);
 const float MATCH_THRESHOLD = 0.085;
 
+// ================= Pi Serial Commands =================
+String piCommand = "";
+String currentZone = "GREEN";
+bool piCommandReady = false;
+
 // ================= Functions =================
 bool checkUID(byte *readUID, byte *validUID, byte size) {
   for (byte i = 0; i < size; i++) {
@@ -382,6 +387,58 @@ void handleBanknoteDetection() {
   }
 }
 
+void handlePiCommand() {
+  // Read incoming serial from Pi
+  while (Serial.available()) {
+    char c = Serial.read();
+    if (c == '\n') {
+      piCommandReady = true;
+      break;
+    }
+    piCommand += c;
+  }
+
+  if (!piCommandReady) return;
+  piCommandReady = false;
+
+  piCommand.trim();
+
+  // Only act if system is authorized and auth sequence is done
+  if (!authorized || authSequenceActive) {
+    piCommand = "";
+    return;
+  }
+
+  if (piCommand == "GREEN") {
+    currentZone = "GREEN";
+    brakeRelease();
+    digitalWrite(motorPin, LOW);
+    Serial.println("[Pi] Zone: GREEN - path clear");
+  }
+  else if (piCommand.startsWith("YELLOW:")) {
+    currentZone = "YELLOW";
+    float dist = piCommand.substring(7).toFloat();
+    // Gentle vibration only
+    digitalWrite(motorPin, HIGH);
+    brakeRelease();
+    Serial.print("[Pi] Zone: YELLOW - ");
+    Serial.print(dist);
+    Serial.println("m");
+  }
+  else if (piCommand.startsWith("RED:")) {
+    currentZone = "RED";
+    float dist = piCommand.substring(4).toFloat();
+    // Strong vibration + brake
+    digitalWrite(motorPin, HIGH);
+    brakePush();
+    Serial.print("[Pi] Zone: RED - ");
+    Serial.print(dist);
+    Serial.println("m");
+  }
+
+  piCommand = "";
+}
+
 void setup() {
   Serial.begin(9600);
   delay(200);
@@ -444,6 +501,7 @@ void setup() {
 }
 
 void loop() {
+  handlePiCommand();
   handleRFID();             // always listen for card
   handleAuthSequence();     // non-blocking motor + servo sequence
   handleBanknoteDetection();// works after authorization, even during sequence
