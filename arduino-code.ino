@@ -409,31 +409,25 @@ void handlePiCommand() {
     return;
   }
 
-  if (piCommand == "GREEN") {
-    currentZone = "GREEN";
-    brakeRelease();
-    digitalWrite(motorPin, LOW);
-    Serial.println("[Pi] Zone: GREEN - path clear");
-  }
-  else if (piCommand.startsWith("YELLOW:")) {
-    currentZone = "YELLOW";
-    float dist = piCommand.substring(7).toFloat();
-    // Gentle vibration only
-    digitalWrite(motorPin, HIGH);
-    brakeRelease();
-    Serial.print("[Pi] Zone: YELLOW - ");
-    Serial.print(dist);
-    Serial.println("m");
-  }
-  else if (piCommand.startsWith("RED:")) {
-    currentZone = "RED";
-    float dist = piCommand.substring(4).toFloat();
-    // Strong vibration + brake
-    digitalWrite(motorPin, HIGH);
-    brakePush();
-    Serial.print("[Pi] Zone: RED - ");
-    Serial.print(dist);
-    Serial.println("m");
+  if (piCommand.startsWith("CMD:")) {
+    String cmd = piCommand.substring(4);
+    cmd.trim();
+    Serial.print("[Pi] CMD: ");
+    Serial.println(cmd);
+
+    if (cmd == "STOP") {
+      // Emergency: brake + vibration
+      digitalWrite(motorPin, HIGH);
+      brakePush();
+    } else {
+      // Clear path (FORWARD, LEFT, RIGHT): release brake, no vibration
+      digitalWrite(motorPin, LOW);
+      brakeRelease();
+      
+      // Future: add physical steering indicators here
+      // if (cmd == "LEFT") { ... }
+      // if (cmd == "RIGHT") { ... }
+    }
   }
 
   piCommand = "";

@@ -1,3 +1,4 @@
+# main.py
 import os
 import time
 import threading
@@ -106,52 +107,11 @@ except Exception:
                 self.em.waitForPendingUploads()
 
 
-try:
-    from utils.obstacle_alert import ObstacleAlert
-except Exception:
-    ZONE_PRIORITY = {"GREEN": 0, "YELLOW": 1, "RED": 2}
+# ============================================================
+# Safe direction engine (navigation)
+# ============================================================
+from utils.safe_direction import SafeDirectionEngine, YoloObstacle
 
-    class ObstacleAlert:
-        def __init__(self, red_cooldown: float = 1.0, yellow_cooldown: float = 3.0, debounce_frames: int = 3):
-            self.cooldowns = {"RED": red_cooldown, "YELLOW": yellow_cooldown}
-            self.last_alert = {"RED": 0.0, "YELLOW": 0.0}
-            self.active = {"RED": False, "YELLOW": False}
-            self._candidate = "GREEN"
-            self._candidate_count = 0
-            self._committed = "GREEN"
-            self.debounce_frames = debounce_frames
-
-        def should_alert(self, zone: str, distance_m: float) -> bool:
-            if zone == self._candidate:
-                self._candidate_count += 1
-            else:
-                self._candidate = zone
-                self._candidate_count = 1
-
-            escalating = ZONE_PRIORITY[zone] > ZONE_PRIORITY[self._committed]
-            if escalating or self._candidate_count >= self.debounce_frames:
-                self._committed = zone
-
-            committed = self._committed
-            now = time.time()
-
-            for z in ("RED", "YELLOW"):
-                if z != committed and self.active[z]:
-                    self.active[z] = False
-                    self.last_alert[z] = 0.0
-
-            if committed == "GREEN":
-                return False
-
-            self.active[committed] = True
-            if now - self.last_alert[committed] >= self.cooldowns[committed]:
-                self.last_alert[committed] = now
-                return True
-            return False
-
-        @property
-        def committed_zone(self):
-            return self._committed
 
 
 # ============================================================
@@ -173,16 +133,7 @@ OBSTACLE_LABELS = {
     "dog", "cat", "backpack", "suitcase"
 }
 
-ZONE_RED = 0.5
-ZONE_YELLOW = 1.5
 
-
-def classify_zone(distance_m: float) -> str:
-    if distance_m < ZONE_RED:
-        return "RED"
-    elif distance_m < ZONE_YELLOW:
-        return "YELLOW"
-    return "GREEN"
 
 
 # ============================================================
@@ -217,11 +168,13 @@ def serial_writer(port: str, baud: int):
         print(f"[Serial] Could not open {port}: {e}")
 
 
-def send_to_arduino(zone: str, distance_m: float):
-    if zone == "GREEN":
-        serial_queue.put("GREEN")
-    else:
-        serial_queue.put(f"{zone}:{distance_m:.2f}")
+def send_command(command: str):
+    """Send a CMD:<command> message to the Arduino."""
+    serial_queue.put(f"CMD:{command}")
+
+
+# Navigation TTS cooldown (seconds)
+NAV_TTS_COOLDOWN = 3.0
 
 
 # ============================================================
@@ -239,28 +192,42 @@ def tts_worker():
                 break
         return
 
-    try:
-        engine = pyttsx3.init()
-        engine.setProperty("rate", 170)
-        print("[TTS] Engine initialized")
-    except Exception as e:
-        print(f"[TTS] init failed: {e}")
-        while True:
-            text = tts_queue.get()
-            if text is None:
-                break
-            print(f"[TTS fallback] {text}")
-        return
-
+    # try:
+    #     engine = pyttsx3.init()
+    #     engine.setProperty("rate", 170)
+    #     print("[TTS] Engine initialized")
+    # except Exception as e:
+    #     print(f"[TTS] init failed: {e}")
+    #     while True:
+    #         text = tts_queue.get()
+    #         if text is None:
+    #             break
+    #         print(f"[TTS fallback] {text}")
+    #     return
+    print("[TTS] Engine ready")
     while True:
         text = tts_queue.get()
         if text is None:
             break
-        try:
-            engine.say(text)
-            engine.runAndWait()
-        except Exception as e:
-            print(f"[TTS] error: {e}")
+        
+        # On Windows, pyttsx3 often hangs after the first speech when run in a persistent 
+        # background thread due to COM apartment message pump limitations.
+        # Spawning a short-lived thread for each utterance forces COM to clean up properly.
+        def _say(txt):
+            try:
+                #engine.say(text)
+                import pyttsx3
+                engine = pyttsx3.init()
+                engine.setProperty("rate", 170)
+                engine.say(txt)
+                engine.runAndWait()
+            except Exception as e:
+                print(f"[TTS] error: {e}")
+
+        import threading
+        t = threading.Thread(target=_say, args=(text,), daemon=True)
+        t.start()
+        t.join() # Wait so we don't overlap speech
 
 
 def speak(text: str):
@@ -358,7 +325,11 @@ def main():
             detection_queue = nn_with_parser.out.createOutputQueue(maxSize=4, blocking=False)
             depth_queue = stereo.depth.createOutputQueue(maxSize=4, blocking=False)
 
-            alert = ObstacleAlert(red_cooldown=1.0, yellow_cooldown=3.0)
+            # Navigation direction engine
+            nav_engine = SafeDirectionEngine()
+            last_nav_command = "STOP"
+            last_nav_tts_time = 0.0
+
             print("Pipeline created.")
 
             pipeline.start()
@@ -368,6 +339,8 @@ def main():
 
             last_zone = "GREEN"
 
+            last_det = None
+
             while pipeline.isRunning():
                 try:
                     if visualizer is not None:
@@ -376,23 +349,29 @@ def main():
                             print("Got q key! Exiting.")
                             pipeline.stop()
                             break
+
+                    # Always grab the latest detection if ones are queuing up
+                    while detection_queue.has():
+                        last_det = detection_queue.get()
+
+                    # Only process a cycle when a fresh depth frame arrives
+                    if depth_queue.has():
+                        depth_msg = depth_queue.get()
                     else:
                         time.sleep(0.005)
-
-                    det = detection_queue.get() if detection_queue.has() else None
-                    depth_msg = depth_queue.get() if depth_queue.has() else None
-
-                    if det is None or depth_msg is None:
                         continue
 
+                    if last_det is None:
+                        continue  # Wait until first YOLO frame arrives
+                    
+                    det = last_det
                     depth_frame = depth_msg.getFrame()
                     if depth_frame is None or depth_frame.size == 0:
                         continue
 
                     depth_h, depth_w = depth_frame.shape
 
-                    closest_distance = float("inf")
-                    closest_label = None
+                    yolo_obstacles = []
 
                     for d in det.detections:
                         label_name = label_map[d.label]
@@ -409,6 +388,8 @@ def main():
                             except Exception:
                                 mask = None
 
+                        cx = (d.xmin + d.xmax) / 2.0
+
                         if mask is not None:
                             roi = depth_frame[mask > 0]
                         else:
@@ -417,13 +398,13 @@ def main():
                             x2 = int(d.xmax * depth_w)
                             y2 = int(d.ymax * depth_h)
 
-                            cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+                            cx_px, cy_px = (x1 + x2) // 2, (y1 + y2) // 2
                             hw, hh = (x2 - x1) // 4, (y2 - y1) // 4
 
-                            x1 = max(0, cx - hw)
-                            x2 = min(depth_w - 1, cx + hw)
-                            y1 = max(0, cy - hh)
-                            y2 = min(depth_h - 1, cy + hh)
+                            x1 = max(0, cx_px - hw)
+                            x2 = min(depth_w - 1, cx_px + hw)
+                            y1 = max(0, cy_px - hh)
+                            y2 = min(depth_h - 1, cy_px + hh)
 
                             if x2 <= x1 or y2 <= y1:
                                 continue
@@ -438,50 +419,49 @@ def main():
                             continue
 
                         distance_m = float(np.median(valid)) / 1000.0
+                        yolo_obstacles.append(YoloObstacle(label=label_name, distance_mm=distance_m * 1000.0, cx_ratio=cx))
 
-                        if distance_m < closest_distance:
-                            closest_distance = distance_m
-                            closest_label = label_name
+                    # ── Unified Decision Processing ──────────
+                    raw_nav, nav_metrics, nav_vis = nav_engine.analyze_scene(depth_frame, yolo_obstacles)
+                    stable_nav = nav_engine.smooth_decision(raw_nav)
 
-                    # Fallback from center depth
-                    center_x1 = depth_w // 4
-                    center_x2 = 3 * depth_w // 4
-                    center_y1 = depth_h // 4
-                    center_y2 = 3 * depth_h // 4
-                    center_roi = depth_frame[center_y1:center_y2, center_x1:center_x2]
-                    center_valid = center_roi[(center_roi > 100) & (center_roi < 10000)]
+                    # Draw stable command
+                    stable_nav_color = {
+                        "FORWARD": (0, 255, 0),
+                        "LEFT": (0, 165, 255),
+                        "RIGHT": (255, 100, 0),
+                        "STOP": (0, 0, 255),
+                    }.get(stable_nav, (255, 255, 255))
+                    cv2.putText(
+                        nav_vis,
+                        f"CMD: {stable_nav}",
+                        (20, nav_vis.shape[0] - 25),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        1.0,
+                        stable_nav_color,
+                        3,
+                        cv2.LINE_AA,
+                    )
+                    
 
-                    if center_valid.size > 50:
-                        center_dist = float(np.median(center_valid)) / 1000.0
-                        if center_dist < 0.4 and (closest_label is None or center_dist < closest_distance):
-                            closest_distance = center_dist
-                            closest_label = "obstacle"
-
-                    if closest_label is not None:
-                        zone = classify_zone(closest_distance)
-                    else:
-                        zone = "GREEN"
-
-                    should_serial = alert.should_alert(zone, closest_distance if closest_label is not None else 0.0)
-                    stable_zone = alert.committed_zone
-
-                    if stable_zone != last_zone:
-                        zone = stable_zone
-                        if zone == "RED":
-                            speak(f"Stop. {closest_distance:.1f} meters")
-                        elif zone == "YELLOW":
-                            speak(f"Caution. {closest_distance:.1f} meters")
-                        elif zone == "GREEN":
-                            speak("Clear")
-
-                        print(
-                            f"[ZONE] {last_zone} -> {zone}"
-                            + (f" | {closest_label} at {closest_distance:.2f}m" if closest_label else "")
-                        )
-                        last_zone = stable_zone
-
-                    if should_serial:
-                        send_to_arduino(zone, closest_distance if zone != "GREEN" else 0.0)
+                    if stable_nav != last_nav_command:
+                        now_t = time.time()
+                        
+                        send_command(stable_nav)
+                        print(f"[CMD] {last_nav_command} -> {stable_nav}")
+                        
+                        # TTS with cooldown
+                        if now_t - last_nav_tts_time >= NAV_TTS_COOLDOWN:
+                            tts_map = {
+                                "FORWARD": "Go forward",
+                                "LEFT": "Turn left",
+                                "RIGHT": "Turn right",
+                                "STOP": "Stop",
+                            }
+                            speak(tts_map.get(stable_nav, stable_nav))
+                            last_nav_tts_time = now_t
+                            
+                        last_nav_command = stable_nav
 
                 except KeyboardInterrupt:
                     print("Interrupted by user.")
