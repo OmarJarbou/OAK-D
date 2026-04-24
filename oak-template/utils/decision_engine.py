@@ -167,7 +167,7 @@ class DecisionEngine:
                     current_m = analysis.corridors.get(current_zone)
                     best_m = analysis.corridors.get(best_target)
                     if current_m and best_m:
-                        if current_m.safety_score >= best_m.safety_score * 0.70:
+                        if current_m.safety_score >= best_m.safety_score * 0.80:
                             best_group = g
                             best_target = current_zone
                             center_blocked_reason = self._why_not_center(

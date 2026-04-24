@@ -86,6 +86,10 @@ class SnapsProducer(dai.node.HostNode):
         except Exception as e:
             print(f"[SnapsProducer] process error (skipping frame): {e}")
 
-    def __del__(self):
+    def close(self):
         if self.em is not None:
             self.em.waitForPendingUploads()
+            self.em = None
+
+    def __del__(self):
+        self.close()

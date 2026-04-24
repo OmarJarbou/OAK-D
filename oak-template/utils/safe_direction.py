@@ -1,4 +1,4 @@
-# safe_direction.py
+# safe_direction.py - DEPRECATED
 """
 Unified Depth & AI Navigation Engine.
 

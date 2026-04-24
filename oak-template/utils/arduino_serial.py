@@ -248,7 +248,11 @@ class ArduinoSerial:
                 )
 
             elif status == "FREE":
-                self.state.update(mode="FREE", ready=True)
+                # Only set ready if also authorized
+                if self.state.authorized:
+                    self.state.update(mode="FREE", ready=True)
+                else:
+                    self.state.update(mode="FREE")
 
             elif status == "ASSIST":
                 self.state.update(mode="ASSIST", ready=True)
