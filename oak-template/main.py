@@ -346,13 +346,14 @@ def build_debug_frame(depth_frame, analysis, result, arduino_state,
 
 def main():
     print("=" * 60)
-    print("  Smart Walker — OAK-D Navigation System v3.0")
+    print("  Smart Walker - OAK-D Navigation System v3.0")
     print("=" * 60)
     print(f"  Arduino port : {cfg.ARDUINO_PORT}")
-    print(f"  Walker width : {cfg.WALKER_WIDTH_M}m + 2×{cfg.SIDE_MARGIN_M}m margin"
+    print(f"  Walker width : {cfg.WALKER_WIDTH_M}m + 2x{cfg.SIDE_MARGIN_M}m margin"
           f" = {cfg.REQUIRED_CLEAR_WIDTH_M}m")
     print(f"  Debug display: {'ON' if cfg.DEBUG_DISPLAY else 'OFF'}")
     print(f"  TTS          : {'ON' if cfg.USE_TTS else 'OFF'}")
+    print(f"  Snaps        : {'ON' if cfg.ENABLE_SNAPS else 'OFF'}")
     print("=" * 60)
 
     # ── Components ────────────────────────────────────────
@@ -428,8 +429,13 @@ def main():
                 visualizer.addTopic("Depth", depth_colormap.out, "images")
                 visualizer.addTopic("YOLO", nn_with_parser.out, "images")
 
-            _snaps_producer = pipeline.create(SnapsProducer).build(
-                nn_with_parser.passthrough, nn_with_parser.out, label_map=label_map)
+            _snaps_producer = None
+            if cfg.ENABLE_SNAPS:
+                _snaps_producer = pipeline.create(SnapsProducer).build(
+                    nn_with_parser.passthrough, nn_with_parser.out, label_map=label_map)
+                print("[Snaps] Enabled")
+            else:
+                print("[Snaps] Disabled")
 
             depth_queue = stereo.depth.createOutputQueue(maxSize=4, blocking=False)
 
@@ -456,11 +462,17 @@ def main():
                             break
 
                     # Get depth frame
-                    if depth_queue.has():
-                        depth_msg = depth_queue.get()
-                    else:
-                        time.sleep(0.005)
-                        continue
+                    try:
+                        if depth_queue.has():
+                            depth_msg = depth_queue.get()
+                        else:
+                            time.sleep(0.005)
+                            continue
+                    except Exception as e:
+                        if "QueueException" in str(e) or not pipeline.isRunning():
+                            print("[Pipeline] Depth queue closed during shutdown.")
+                            break
+                        raise
 
                     depth_frame = depth_msg.getFrame()
                     if depth_frame is None or depth_frame.size == 0:
@@ -473,11 +485,11 @@ def main():
 
                     # Auth transitions
                     if state["authorized"] and not was_authorized:
-                        print("[System] ✓ AUTHORIZED — navigation begins when ready")
+                        print("[System] [OK] AUTHORIZED - navigation begins when ready")
                         speak("System authorized")
                         was_authorized = True
                     elif not state["authorized"] and was_authorized:
-                        print("[System] ✗ DEAUTHORIZED — navigation stopped")
+                        print("[System] DEAUTHORIZED - navigation stopped")
                         decision_engine.reset()
                         publisher.reset()
                         speak("System locked")
@@ -490,7 +502,11 @@ def main():
                     result = decision_engine.decide(analysis, state)
 
                     # Publish (rate-limited)
-                    sent = publisher.publish(result.stable_command)
+                    sent = publisher.publish(
+                        result.stable_command,
+                        state,
+                        reason=result.reason,
+                    )
 
                     # TTS on change
                     if sent and result.stable_command != "NONE":
@@ -538,10 +554,19 @@ def main():
                     break
 
     finally:
-        arduino.stop()
-        tts_queue.put(None)
+        try:
+            arduino.stop()
+        except Exception as e:
+            print(f"[Shutdown] Arduino stop error: {e}")
+        try:
+            tts_queue.put(None)
+        except Exception as e:
+            print(f"[Shutdown] TTS queue stop error: {e}")
         if cfg.DEBUG_DISPLAY:
-            cv2.destroyAllWindows()
+            try:
+                cv2.destroyAllWindows()
+            except Exception as e:
+                print(f"[Shutdown] cv2 cleanup error: {e}")
         print("[System] Shutdown complete.")
 
 

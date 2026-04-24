@@ -31,6 +31,7 @@ class CorridorMetrics:
     p50_depth: float            # Median depth (mm)
     mean_depth: float           # Mean depth (mm)
     close_obstacle_ratio: float # Fraction of pixels < CLOSE_OBSTACLE_MM
+    danger_obstacle_ratio: float # Fraction of pixels < EMERGENCY_STOP_MM
     emergency_ratio: float      # Fraction of pixels < EMERGENCY_STOP_MM
     zone_width_m: float         # Physical width of this single zone (meters)
     is_clear: bool              # True if zone has safe depth (not width-gated)
@@ -173,7 +174,7 @@ class CorridorAnalyzer:
                 name=name, zone_index=zone_index,
                 valid_ratio=0.0, p20_depth=0.0, p25_depth=0.0,
                 p50_depth=0.0, mean_depth=0.0,
-                close_obstacle_ratio=1.0, emergency_ratio=1.0,
+                close_obstacle_ratio=1.0, danger_obstacle_ratio=1.0, emergency_ratio=1.0,
                 zone_width_m=0.0, is_clear=False, score=0.0,
                 safety_score=0.0,
             )
@@ -184,7 +185,8 @@ class CorridorAnalyzer:
         p50_depth = float(np.percentile(valid_values, 50))
         mean_depth = float(np.mean(valid_values))
         close_obstacle_ratio = float(np.mean(valid_values < cfg.CLOSE_OBSTACLE_MM))
-        emergency_ratio = float(np.mean(valid_values < cfg.EMERGENCY_STOP_MM))
+        danger_obstacle_ratio = float(np.mean(valid_values < cfg.EMERGENCY_STOP_MM))
+        emergency_ratio = danger_obstacle_ratio
 
         # Physical width of this single zone at its median depth
         depth_m = p50_depth / 1000.0
@@ -198,6 +200,7 @@ class CorridorAnalyzer:
             valid_ratio >= cfg.MIN_VALID_RATIO
             and p20_depth > cfg.EMERGENCY_STOP_MM
             and close_obstacle_ratio < 0.60
+            and danger_obstacle_ratio < 0.25
         )
 
         # Depth-based score (used for ranking within merged groups)
@@ -206,6 +209,7 @@ class CorridorAnalyzer:
             0.0, 1.0,
         ))
         close_penalty = 1.0 - close_obstacle_ratio
+        danger_penalty = 1.0 - danger_obstacle_ratio
 
         # Center preference (baked into corridor score, NOT into safety_score)
         center_idx = cfg.NUM_ZONES // 2
@@ -217,6 +221,7 @@ class CorridorAnalyzer:
         score = (
             cfg.WEIGHT_DEPTH_P20 * depth_score
             + cfg.WEIGHT_CLOSE_OBS * close_penalty
+            + 0.20 * danger_penalty
             + cfg.WEIGHT_VALID_RATIO * valid_ratio
             + center_bonus
         )
@@ -230,6 +235,7 @@ class CorridorAnalyzer:
         safety_score = (
             cfg.SAFETY_W_DEPTH * depth_norm_25
             + cfg.SAFETY_W_CLOSE_OBS * close_penalty
+            + 0.10 * danger_penalty
             + cfg.SAFETY_W_VALID * valid_ratio
             + cfg.SAFETY_W_FLOOR_INV * (1.0 - floor_invalid_ratio)
         )
@@ -240,6 +246,7 @@ class CorridorAnalyzer:
             p25_depth=p25_depth,
             p50_depth=p50_depth, mean_depth=mean_depth,
             close_obstacle_ratio=close_obstacle_ratio,
+            danger_obstacle_ratio=danger_obstacle_ratio,
             emergency_ratio=emergency_ratio,
             zone_width_m=zone_width_m, is_clear=is_clear,
             score=score, safety_score=safety_score,
@@ -334,7 +341,7 @@ class CorridorAnalyzer:
                 name=name, zone_index=i,
                 valid_ratio=0.0, p20_depth=0.0, p25_depth=0.0,
                 p50_depth=0.0, mean_depth=0.0,
-                close_obstacle_ratio=1.0, emergency_ratio=1.0,
+                close_obstacle_ratio=1.0, danger_obstacle_ratio=1.0, emergency_ratio=1.0,
                 zone_width_m=0.0, is_clear=False, score=0.0,
                 safety_score=0.0,
             )

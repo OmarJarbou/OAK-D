@@ -31,51 +31,76 @@ class CommandPublisher:
         self._serial = serial
         self._last_sent: Optional[str] = None
         self._last_send_time: float = 0.0
+        self._heartbeat_s: float = 2.0
+        self._stop_heartbeat_s: float = 0.7
 
-    def publish(self, command: str) -> bool:
+    @staticmethod
+    def _is_left_command(command: str) -> bool:
+        return command in {"GO:LEFT", "GO:L2", "GO:L1"}
+
+    @staticmethod
+    def _is_right_command(command: str) -> bool:
+        return command in {"GO:RIGHT", "GO:R2", "GO:R1"}
+
+    def _is_allowed(self, command: str, state: dict) -> tuple[bool, str]:
+        """Validate command against Arduino readiness and lock/safety state."""
+        if command.startswith("GO:"):
+            if not state.get("ready", False):
+                return False, "arduino_not_ready"
+            if not state.get("sensor_ok", True):
+                return False, "sensor_error"
+            if not state.get("calibrated", True):
+                return False, "not_calibrated"
+            if self._is_left_command(command) and state.get("locked_left", False):
+                return False, "locked_left"
+            if self._is_right_command(command) and state.get("locked_right", False):
+                return False, "locked_right"
+        return True, "allowed"
+
+    def publish(self, command: str, state: dict, reason: str = "") -> bool:
         """
         Attempt to publish a command. Returns True if actually sent.
 
         Rules:
-          1. If command == "NONE", do nothing (no nav commands before auth).
-          2. If command differs from last sent → send immediately
-             (respecting MIN_COMMAND_INTERVAL_S).
-          3. If same command → send only after COMMAND_REFRESH_S
-             (STOP uses STOP_REPEAT_INTERVAL_S for faster heartbeat).
-          4. Never send faster than MIN_COMMAND_INTERVAL_S.
+          1. If command == "NONE", do nothing.
+          2. Send immediately on command transition (subject to state safety checks).
+          3. For unchanged command, heartbeat every 2.0s.
+          4. STOP heartbeat may repeat faster, but not below 0.7s.
         """
         if command == "NONE":
             return False
 
         now = time.time()
         elapsed = now - self._last_send_time
-
-        # Respect minimum interval
-        if elapsed < self.cfg.MIN_COMMAND_INTERVAL_S:
-            return False
-
         changed = (command != self._last_sent)
 
+        allowed, block_reason = self._is_allowed(command, state)
+        if not allowed:
+            if changed:
+                print(
+                    f"[Publisher] {self._last_sent or '(none)'} -> {command} "
+                    f"reason=blocked:{block_reason}"
+                )
+            return False
+
         if changed:
-            # New command → send immediately
-            self._send(command, now)
+            self._send(command, now, reason or "changed")
             return True
 
-        # Same command → heartbeat refresh (same interval for all commands)
-        if elapsed >= self.cfg.COMMAND_REFRESH_S:
-            self._send(command, now)
+        heartbeat_s = self._stop_heartbeat_s if command == "STOP" else self._heartbeat_s
+        if elapsed >= heartbeat_s:
+            self._send(command, now, reason or f"heartbeat_{heartbeat_s:.1f}s")
             return True
 
         return False
 
-    def _send(self, command: str, now: float) -> None:
+    def _send(self, command: str, now: float, reason: str) -> None:
         """Actually send the command via serial."""
-        self._serial.send_command(command)
         prev = self._last_sent
+        self._serial.send_command(command)
         self._last_sent = command
         self._last_send_time = now
-        if prev != command:
-            print(f"[Publisher] {prev or '(none)'} → {command}")
+        print(f"[Publisher] {prev or '(none)'} -> {command} reason={reason}")
 
     @property
     def last_command(self) -> Optional[str]:

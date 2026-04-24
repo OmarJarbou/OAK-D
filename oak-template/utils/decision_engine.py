@@ -14,6 +14,7 @@ Key changes from v2.1:
 """
 
 from collections import Counter, deque
+import time
 from dataclasses import dataclass
 from typing import Optional, List
 
@@ -49,6 +50,22 @@ class DecisionEngine:
         self.cfg = cfg
         self._history: deque = deque(maxlen=cfg.HISTORY_SIZE)
         self._last_stable: str = "STOP"
+        self._last_change_time: float = 0.0
+        self._unsafe_streak: int = 0
+        self._free_streak: int = 0
+        self._go_streak: int = 0
+        self._go_candidate: str = ""
+
+        # Task-4 hysteresis/cooldown (from config/.env)
+        self._stop_frames_required: int = cfg.STOP_FRAMES_REQUIRED
+        self._free_frames_required: int = cfg.FREE_FRAMES_REQUIRED
+        self._go_frames_required: int = cfg.GO_FRAMES_REQUIRED
+        self._command_change_cooldown_s: float = cfg.COMMAND_CHANGE_COOLDOWN_S
+        self._unsafe_conf_threshold: float = cfg.UNSAFE_CONF_THRESHOLD
+        self._free_conf_threshold: float = cfg.FREE_CONF_THRESHOLD
+        self._free_center_close_obs_max: float = cfg.FREE_CENTER_CLOSE_OBS_MAX
+        self._free_center_min_valid_ratio: float = cfg.FREE_CENTER_MIN_VALID_RATIO
+        self._free_center_min_p20_mm: float = cfg.FREE_CENTER_MIN_P20_MM
 
     def decide(
         self,
@@ -63,7 +80,7 @@ class DecisionEngine:
             return DecisionResult(
                 raw_command="NONE", stable_command="NONE",
                 confidence=0.0, chosen_corridor="", chosen_group=None,
-                reason="Not authorized — waiting for RFID",
+                reason="Not authorized - waiting for RFID",
                 valid_groups=[], center_blocked_reason="",
             )
 
@@ -76,46 +93,35 @@ class DecisionEngine:
             )
 
         if not arduino_state.get("sensor_ok", True):
-            self._push_and_stabilize("STOP")
+            stable = self._apply_mode_hysteresis("STOP", critical_stop=True)
             return DecisionResult(
-                raw_command="STOP", stable_command="STOP",
+                raw_command="STOP", stable_command=stable,
                 confidence=1.0, chosen_corridor="", chosen_group=None,
-                reason="Sensor error — STOP for safety",
+                reason="STOP: sensor error",
                 valid_groups=[], center_blocked_reason="",
             )
 
         if not arduino_state.get("calibrated", True):
-            self._push_and_stabilize("STOP")
+            stable = self._apply_mode_hysteresis("STOP", critical_stop=True)
             return DecisionResult(
-                raw_command="STOP", stable_command="STOP",
+                raw_command="STOP", stable_command=stable,
                 confidence=1.0, chosen_corridor="", chosen_group=None,
-                reason="Not calibrated — cannot steer",
+                reason="STOP: not calibrated",
                 valid_groups=[], center_blocked_reason="",
             )
 
-        # ── 2. Emergency Stop ───────────────────────────────
-        if analysis.has_emergency:
+        # ── 2. No Depth Data ────────────────────────────────
+        if not analysis.corridors:
             raw = "STOP"
-            stable = self._push_and_stabilize(raw)
+            stable = self._apply_mode_hysteresis(raw, critical_stop=True)
             return DecisionResult(
                 raw_command=raw, stable_command=stable,
-                confidence=0.95, chosen_corridor="", chosen_group=None,
-                reason="Emergency: center danger + no side escape",
-                valid_groups=analysis.valid_groups,
-                center_blocked_reason="Emergency: too close in center",
-            )
-
-        # ── 3. No Depth Data ────────────────────────────────
-        if not analysis.corridors:
-            self._push_and_stabilize("STOP")
-            return DecisionResult(
-                raw_command="STOP", stable_command="STOP",
                 confidence=0.5, chosen_corridor="", chosen_group=None,
                 reason="No depth data",
                 valid_groups=[], center_blocked_reason="",
             )
 
-        # ── 4. Choose from Valid Merged Groups ──────────────
+        # ── 3. Choose from Valid Merged Groups ──────────────
         valid = analysis.valid_groups
         locked_left = arduino_state.get("locked_left", False)
         locked_right = arduino_state.get("locked_right", False)
@@ -127,69 +133,167 @@ class DecisionEngine:
             if best is not None:
                 eligible.append((g, best))
 
+        confidence = self._compute_confidence(analysis)
+
+        # ── 4. Determine raw mode candidate by priority ──────
         if not eligible:
-            raw = "STOP"
-            stable = self._push_and_stabilize(raw)
-            confidence = self._compute_confidence(analysis)
-            return DecisionResult(
-                raw_command=raw, stable_command=stable,
-                confidence=confidence, chosen_corridor="", chosen_group=None,
-                reason=f"No valid path (groups={len(analysis.groups)}, valid={len(valid)}, all locked/blocked)",
-                valid_groups=valid,
-                center_blocked_reason="No eligible group",
+            raw_cmd = "STOP"
+            reason = "STOP: no valid group width"
+            best_group = None
+            best_target = ""
+            center_blocked_reason = "No eligible group"
+            critical_stop = False
+        else:
+            # ── 5. Pick Best Group (by avg safety_score, not has_center) ──
+            def group_priority(item):
+                g, _target = item
+                zone_safety_scores = [
+                    analysis.corridors[name].safety_score
+                    for name in g.zone_names
+                    if name in analysis.corridors
+                ]
+                avg_safety = sum(zone_safety_scores) / max(len(zone_safety_scores), 1)
+                return (avg_safety, g.total_width_m)
+
+            eligible.sort(key=group_priority, reverse=True)
+            best_group, best_target = eligible[0]
+
+            # ── 6. Determine why CENTER was not chosen ──────────
+            center_blocked_reason = self._why_not_center(
+                best_target, best_group, analysis, locked_left, locked_right
             )
 
-        # ── 5. Pick Best Group (by avg safety_score, not has_center) ──
-        def group_priority(item):
-            g, target = item
-            # Compute average safety_score for the group
-            zone_safety_scores = [
-                analysis.corridors[name].safety_score
-                for name in g.zone_names
-                if name in analysis.corridors
-            ]
-            avg_safety = sum(zone_safety_scores) / max(len(zone_safety_scores), 1)
-            return (avg_safety, g.total_width_m)
+            # ── 7. Stickiness: prefer current GO if still valid ──
+            if self._last_stable.startswith("GO:"):
+                current_zone = self._last_stable.replace("GO:", "")
+                for g, _t in eligible:
+                    if current_zone in g.zone_names:
+                        current_m = analysis.corridors.get(current_zone)
+                        best_m = analysis.corridors.get(best_target)
+                        if current_m and best_m:
+                            if current_m.safety_score >= best_m.safety_score * 0.80:
+                                best_group = g
+                                best_target = current_zone
+                                center_blocked_reason = self._why_not_center(
+                                    best_target, best_group, analysis,
+                                    locked_left, locked_right
+                                )
+                        break
 
-        eligible.sort(key=group_priority, reverse=True)
-        best_group, best_target = eligible[0]
+            go_cmd = cfg.ZONE_TO_CMD.get(best_target, "GO:CENTER")
+            free_candidate = self._is_free_candidate(analysis, best_target, confidence)
+            critical_stop = bool(analysis.has_emergency)
+            unsafe_condition = (
+                analysis.has_emergency
+                or len(valid) == 0
+                or confidence < self._unsafe_conf_threshold
+            )
 
-        # ── 6. Determine why CENTER was not chosen ──────────
-        center_blocked_reason = self._why_not_center(
-            best_target, best_group, analysis, locked_left, locked_right
-        )
-
-        # ── 7. Stickiness: prefer current command if still valid ──
-        if self._last_stable.startswith("GO:"):
-            current_zone = self._last_stable.replace("GO:", "")
-            for g, t in eligible:
-                if current_zone in g.zone_names:
-                    current_m = analysis.corridors.get(current_zone)
-                    best_m = analysis.corridors.get(best_target)
-                    if current_m and best_m:
-                        if current_m.safety_score >= best_m.safety_score * 0.80:
-                            best_group = g
-                            best_target = current_zone
-                            center_blocked_reason = self._why_not_center(
-                                best_target, best_group, analysis,
-                                locked_left, locked_right
-                            )
-                    break
-
-        # ── 8. Map to Command ───────────────────────────────
-        raw_cmd = cfg.ZONE_TO_CMD.get(best_target, "GO:CENTER")
-        stable_cmd = self._push_and_stabilize(raw_cmd)
-        confidence = self._compute_confidence(analysis)
+            if unsafe_condition:
+                raw_cmd = "STOP"
+                if analysis.has_emergency:
+                    reason = "STOP: danger close ratio high"
+                elif len(valid) == 0:
+                    reason = "STOP: no valid group width"
+                else:
+                    reason = f"STOP: depth confidence unsafe ({confidence:.2f})"
+            elif free_candidate:
+                raw_cmd = "FREE"
+                reason = "FREE: center clear and no obstacle"
+            else:
+                raw_cmd = go_cmd
+                reason = self._build_go_reason(best_target, analysis, confidence)
+        # ── 8. Hysteresis + cooldown ─────────────────────────
+        stable_cmd = self._apply_mode_hysteresis(raw_cmd, critical_stop=critical_stop)
 
         return DecisionResult(
             raw_command=raw_cmd, stable_command=stable_cmd,
             confidence=confidence,
             chosen_corridor=best_target,
             chosen_group=best_group,
-            reason=f"Group [{','.join(best_group.zone_names)}] w={best_group.total_width_m:.2f}m → {best_target}",
+            reason=reason,
             valid_groups=valid,
             center_blocked_reason=center_blocked_reason,
         )
+
+    def _is_free_candidate(
+        self, analysis: AnalysisResult, best_target: str, confidence: float
+    ) -> bool:
+        center = analysis.corridors.get("CENTER")
+        if center is None:
+            return False
+        if best_target != "CENTER":
+            return False
+        if confidence < self._free_conf_threshold:
+            return False
+        return (
+            center.is_clear
+            and center.valid_ratio >= self._free_center_min_valid_ratio
+            and center.close_obstacle_ratio <= self._free_center_close_obs_max
+            and center.p20_depth >= self._free_center_min_p20_mm
+        )
+
+    def _build_go_reason(
+        self, best_target: str, analysis: AnalysisResult, confidence: float
+    ) -> str:
+        if best_target == "CENTER":
+            return f"GO:CENTER: correction mode active (conf={confidence:.2f})"
+        side = "right" if best_target.startswith("R") or best_target == "RIGHT" else "left"
+        return f"GO:{best_target}: center weak, {side} safer (conf={confidence:.2f})"
+
+    def _apply_mode_hysteresis(self, raw: str, critical_stop: bool = False) -> str:
+        """Apply STOP/FREE/GO frame hysteresis and 700ms change cooldown."""
+        self._history.append(raw)
+        now = time.time()
+
+        if raw == "STOP":
+            self._unsafe_streak += 1
+            self._free_streak = 0
+            self._go_streak = 0
+            self._go_candidate = ""
+            if critical_stop or self._unsafe_streak >= self._stop_frames_required:
+                if self._last_stable != "STOP":
+                    self._last_stable = "STOP"
+                    self._last_change_time = now
+                return self._last_stable
+            return self._last_stable
+
+        self._unsafe_streak = 0
+
+        if raw == "FREE":
+            self._free_streak += 1
+            self._go_streak = 0
+            self._go_candidate = ""
+            if self._free_streak < self._free_frames_required:
+                return self._last_stable
+            if (
+                self._last_stable != "FREE"
+                and now - self._last_change_time < self._command_change_cooldown_s
+            ):
+                return self._last_stable
+            if self._last_stable != "FREE":
+                self._last_stable = "FREE"
+                self._last_change_time = now
+            return self._last_stable
+
+        # GO:* candidate
+        self._free_streak = 0
+        if self._go_candidate == raw:
+            self._go_streak += 1
+        else:
+            self._go_candidate = raw
+            self._go_streak = 1
+        if self._go_streak < self._go_frames_required:
+            return self._last_stable
+        if (
+            self._last_stable != raw
+            and now - self._last_change_time < self._command_change_cooldown_s
+        ):
+            return self._last_stable
+        if self._last_stable != raw:
+            self._last_stable = raw
+            self._last_change_time = now
+        return self._last_stable
 
     # ── Safety-Score Target Selection ────────────────────────
 
@@ -283,37 +387,6 @@ class DecisionEngine:
 
         return f"CENTER weaker than {chosen}"
 
-    # ── Temporal Smoothing ──────────────────────────────────
-
-    def _push_and_stabilize(self, raw: str) -> str:
-        """Add raw command to history and return stabilized command."""
-        self._history.append(raw)
-        counts = Counter(self._history)
-        best_cmd, best_count = counts.most_common(1)[0]
-        cfg = self.cfg
-
-        # STOP hysteresis: once stopped, require strong evidence to move
-        if self._last_stable == "STOP" and best_cmd != "STOP":
-            if best_count >= cfg.STOP_CLEAR_COUNT:
-                self._last_stable = best_cmd
-        # Turn stickiness: don't flip direction easily
-        elif (
-            self._last_stable.startswith("GO:")
-            and self._last_stable != "GO:CENTER"
-            and best_cmd != self._last_stable
-        ):
-            if best_cmd == "STOP":
-                if best_count >= cfg.MIN_STABLE_COUNT:
-                    self._last_stable = best_cmd
-            else:
-                if best_count >= cfg.TURN_STICK_COUNT:
-                    self._last_stable = best_cmd
-        else:
-            if best_count >= cfg.MIN_STABLE_COUNT:
-                self._last_stable = best_cmd
-
-        return self._last_stable
-
     # ── Confidence ──────────────────────────────────────────
 
     def _compute_confidence(self, analysis: AnalysisResult) -> float:
@@ -342,3 +415,8 @@ class DecisionEngine:
     def reset(self) -> None:
         self._history.clear()
         self._last_stable = "STOP"
+        self._last_change_time = 0.0
+        self._unsafe_streak = 0
+        self._free_streak = 0
+        self._go_streak = 0
+        self._go_candidate = ""

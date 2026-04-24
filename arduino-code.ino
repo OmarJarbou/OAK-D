@@ -186,9 +186,9 @@ enum Position {
 };
 
 const char* posNames[] = {
-  "LEFT", "2LEFT/3", "LEFT/3",
+  "LEFT", "L2", "L1",
   "CENTER",
-  "RIGHT/3", "2RIGHT/3", "RIGHT"
+  "R1", "R2", "RIGHT"
 };
 
 // ================================================================
@@ -209,6 +209,10 @@ const int NUM_NOTES = sizeof(notes) / sizeof(notes[0]);
 String piBuffer   = "";
 String localBuffer = "";
 
+// Forward declarations used before function definitions
+void setFreeMode(bool sendStatus = true);
+void setAssistMode(bool sendStatus = true);
+
 // ================================================================
 //  BRAKE / VIBRATION
 // ================================================================
@@ -225,7 +229,7 @@ void brakePush() {
 void vibrationPulse(unsigned long durationMs = 1000) {
   digitalWrite(MOTOR_PIN, HIGH); // vibration ON
   delay(durationMs);             // durationMs ms pulse
-  digitalWrite(MOTOR_PIN, LOW);  // vibration OFF — brake stays ON
+  digitalWrite(MOTOR_PIN, LOW);  // vibration OFF - brake stays ON
 }
 
 void outputsOn() {
@@ -245,17 +249,18 @@ void startAuthSequence() {
   Serial.println("[AUTH] Sequence started");
 }
 
-void stopAuthSequence() {
+void stopAuthSequence(bool sendFreeStatus = true) {
   authSequenceActive     = false;
   authSequenceOutputOn   = false;
   authSequenceCyclesDone = 0;
-  brakeRelease();
+  setFreeMode(false);   // enforce FREE state after auth sequence
   Serial.println("[AUTH] Sequence finished");
+  if (sendFreeStatus) Serial1.println("STATUS:FREE");
 }
 
 void handleAuthSequence() {
   if (!authorized) {
-    if (authSequenceActive || authSequenceOutputOn) stopAuthSequence();
+    if (authSequenceActive || authSequenceOutputOn) stopAuthSequence(false);
     else brakeRelease();
     return;
   }
@@ -307,16 +312,19 @@ void handleRFID() {
   if (checkUID(mfrc522.uid.uidByte, allowedUID, 4)) {
     authorized      = true;
     objectDetected  = false;
-    Serial.println("[RFID] Authorized — system unlocked");
+    Serial.println("[RFID] Authorized - system unlocked");
     Serial1.println("STATUS:AUTHORIZED");
     startAuthSequence();
   } else {
     authorized      = false;
     objectDetected  = false;
-    Serial.println("[RFID] Denied — system locked");
+    Serial.println("[RFID] Denied - system locked");
     Serial1.println("STATUS:UNAUTHORIZED");
-    stopAuthSequence();
-    setFreeMode();   // release wheel on deauth
+    if (authSequenceActive || authSequenceOutputOn) {
+      stopAuthSequence(false);
+    } else {
+      setFreeMode(false);   // release wheel on deauth, no FREE protocol status
+    }
   }
 
   mfrc522.PICC_HaltA();
@@ -336,7 +344,7 @@ bool sensorOK(int val) {
     Serial.print("[POT] SENSOR ERROR: ");
     Serial.println(val);
     Serial1.println("STATUS:SENSOR_ERROR");
-    setFreeMode();
+    setFreeMode(false);
     return false;
   }
   return true;
@@ -354,24 +362,25 @@ int readPot() {
 // ================================================================
 //  STEPPER — MODE
 // ================================================================
-void setFreeMode() {
+void setFreeMode(bool sendStatus) {
   currentMode   = MODE_FREE;
   lockedAtLeft  = false;
   lockedAtRight = false;
+  brakeRelease();
   digitalWrite(EN_PIN, HIGH);   // release motor
-  Serial.println("[STEER] FREE MODE — wheel released");
-  Serial1.println("STATUS:FREE");
+  Serial.println("[STEER] FREE MODE - wheel released");
+  if (sendStatus) Serial1.println("STATUS:FREE");
 }
 
-void setAssistMode() {
+void setAssistMode(bool sendStatus) {
   if (!authorized) {
-    Serial.println("[STEER] Cannot enter ASSIST — not authorized");
+    Serial.println("[STEER] Cannot enter ASSIST - not authorized");
     return;
   }
   currentMode = MODE_ASSIST;
   digitalWrite(EN_PIN, LOW);    // engage motor
-  Serial.println("[STEER] ASSIST MODE — system steering");
-  Serial1.println("STATUS:ASSIST");
+  Serial.println("[STEER] ASSIST MODE - system steering");
+  if (sendStatus) Serial1.println("STATUS:ASSIST");
 }
 
 // ================================================================
@@ -426,7 +435,7 @@ bool moveToADC(int targetADC) {
     return false;
   }
   if (currentMode == MODE_FREE) {
-    Serial.println("[STEER] In FREE mode — send M:ASSIST first");
+    Serial.println("[STEER] In FREE mode - send M:ASSIST first");
     return false;
   }
 
@@ -500,20 +509,20 @@ void goToPosition(Position pos) {
     Serial1.println("STATUS:NOT_CALIBRATED");
     return;
   }
-  Serial.print("[STEER] Moving → "); Serial.println(posNames[pos]);
+  Serial.print("[STEER] Moving -> "); Serial.println(posNames[pos]);
   Serial1.print("STATUS:MOVING:"); Serial1.println(posNames[pos]);
   moveToADC(adcForPosition(pos));
 }
 
 void jogLeft() {
   int target = clampToRange(readPot() + JOG_ADC);
-  Serial.print("[STEER] Jog LEFT → "); Serial.println(target);
+  Serial.print("[STEER] Jog LEFT -> "); Serial.println(target);
   moveToADC(target);
 }
 
 void jogRight() {
   int target = clampToRange(readPot() - JOG_ADC);
-  Serial.print("[STEER] Jog RIGHT → "); Serial.println(target);
+  Serial.print("[STEER] Jog RIGHT -> "); Serial.println(target);
   moveToADC(target);
 }
 
@@ -656,7 +665,7 @@ void handleBanknoteDetection() {
 // ================================================================
 void printStatus() {
   int current = readPot();
-  Serial.println("─────────────────────────────────────");
+  Serial.println("-------------------------------------");
   Serial.print("Authorized    = "); Serial.println(authorized  ? "YES" : "NO");
   Serial.print("Mode          = "); Serial.println(currentMode == MODE_FREE ? "FREE" : "ASSIST");
   Serial.print("Current potADC= "); Serial.println(current);
@@ -671,11 +680,11 @@ void printStatus() {
       Serial.println(adcForPosition((Position)i));
     }
   }
-  Serial.println("─────────────────────────────────────");
+  Serial.println("-------------------------------------");
 }
 
 void printHelp() {
-  Serial.println("── LOCAL COMMANDS (USB) ────────────────────");
+  Serial.println("-- LOCAL COMMANDS (USB) --------------------");
   Serial.println("Mode   : M:FREE       M:ASSIST");
   Serial.println("Jog    : a=left       d=right");
   Serial.println("Go     : GO:LEFT/L2/L1/CENTER/R1/R2/RIGHT");
@@ -684,14 +693,14 @@ void printHelp() {
   Serial.println("EEPROM : e=save");
   Serial.println("Unlock : u");
   Serial.println("Status : p            h=help");
-  Serial.println("── Pi COMMANDS (Serial1) ───────────────────");
+  Serial.println("-- Pi COMMANDS (Serial1) -------------------");
   Serial.println("CMD:STOP");
   Serial.println("CMD:FREE");
   Serial.println("CMD:ASSIST");
   Serial.println("CMD:GO:LEFT/L2/L1/CENTER/R1/R2/RIGHT");
   Serial.println("CMD:BRAKE:ON / CMD:BRAKE:OFF");
   Serial.println("CMD:UNLOCK");
-  Serial.println("────────────────────────────────────────────");
+  Serial.println("--------------------------------------------");
 }
 
 // ================================================================
@@ -708,9 +717,9 @@ void executeCommand(String cmd) {
 
   // ── Emergency stop ────────────────────────────────────────────
   if (cmd == "CMD:STOP") {
-    setAssistMode();          // engage motor to hold
+    setAssistMode(false);     // engage motor to hold, avoid extra STATUS:ASSIST
     outputsOn();              // brake + vibration
-    Serial.println("[CMD] STOP — brake & vibration engaged");
+    Serial.println("[CMD] STOP - brake and vibration engaged");
     Serial1.println("STATUS:STOPPED");
     return;
   }
@@ -735,9 +744,16 @@ void executeCommand(String cmd) {
   // ── GO commands ───────────────────────────────────────────────
   // Accepts both GO:LEFT and CMD:GO:LEFT
   String goCmd = cmd;
-  if (goCmd.startsWith("CMD:GO:")) goCmd = goCmd.substring(4); // strip CMD:
+  if (goCmd.startsWith("CMD:GO:")) {
+    goCmd = goCmd.substring(4); // strip CMD:
+  }
 
   if (goCmd.startsWith("GO:")) {
+    if (!authorized) { Serial.println("[CMD] Not authorized"); return; }
+    if (currentMode == MODE_FREE) {
+      setAssistMode(true);   // enter ASSIST for steering and report mode change
+    }
+    brakeRelease();
     String pos = goCmd.substring(3);
     if      (pos == "LEFT")   goToPosition(POS_LEFT);
     else if (pos == "L2")     goToPosition(POS_L2);
@@ -806,11 +822,17 @@ void handlePiSerial() {
     char c = Serial1.read();
     if (c == '\n' || c == '\r') {
       if (piBuffer.length() > 0) {
-        Serial.print("[Pi] Received: "); Serial.println(piBuffer);
+    Serial.print("[Pi] Received: "); Serial.println(piBuffer);
 
         // Only execute if authorized and auth sequence done
-        if (!authorized || authSequenceActive) {
-          Serial.println("[Pi] Ignored — not ready");
+        if (!authorized) {
+          Serial.println("[Pi] Ignored - unauthorized");
+          Serial1.println("STATUS:UNAUTHORIZED");
+          piBuffer = "";
+          return;
+        }
+        if (authSequenceActive) {
+          Serial.println("[Pi] Ignored - not ready");
           Serial1.println("STATUS:NOT_READY");
           piBuffer = "";
           return;
@@ -840,7 +862,6 @@ void setup() {
   pinMode(DIR_PIN,  OUTPUT);
   pinMode(EN_PIN,   OUTPUT);
   pinMode(POT_PIN,  INPUT);
-  setFreeMode();   // safe default on boot
 
   // Brake + vibration
   pinMode(MOTOR_PIN, OUTPUT);
@@ -854,7 +875,7 @@ void setup() {
   // Servos
   RightArmServo.attach(RIGHT_SERVO_PIN);
   LeftArmServo.attach(LEFT_SERVO_PIN);
-  brakeRelease();
+  setFreeMode(false);   // safe default on boot (no protocol status before RFID)
 
   // RFID (Mega SPI fix)
   pinMode(53, OUTPUT);
@@ -885,7 +906,7 @@ void setup() {
     Serial.println("[EEPROM] Calibration loaded");
     printStatus();
   } else {
-    Serial.println("[EEPROM] No calibration — run calibration first");
+    Serial.println("[EEPROM] No calibration - run calibration first");
   }
 
   authorized             = false;

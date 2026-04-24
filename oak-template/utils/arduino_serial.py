@@ -108,7 +108,7 @@ class ArduinoSerial:
         self._running = True
 
         if self.mock:
-            print("[Serial] MOCK mode — no Arduino connected")
+            print("[Serial] MOCK mode - no Arduino connected")
             self.state.update(connected=True)
             self._writer_thread = threading.Thread(
                 target=self._mock_writer, daemon=True
@@ -160,7 +160,7 @@ class ArduinoSerial:
         """
         Queue a command to send to Arduino.
         Prepends CMD: if not already present.
-        Example: send_command("GO:CENTER") → sends "CMD:GO:CENTER\\n"
+        Example: send_command("GO:CENTER") -> sends "CMD:GO:CENTER\\n"
         """
         if not cmd:
             return
@@ -180,7 +180,7 @@ class ArduinoSerial:
                 break
             try:
                 self._ser.write((msg + "\n").encode("utf-8"))
-                print(f"[Serial → Arduino] {msg}")
+                print(f"[Serial -> Arduino] {msg}")
             except Exception as e:
                 print(f"[Serial] Write error: {e}")
                 self.state.update(connected=False)
@@ -194,7 +194,7 @@ class ArduinoSerial:
                 continue
             if msg is None:
                 break
-            print(f"[Serial → Arduino] (MOCK) {msg}")
+            print(f"[Serial -> Arduino] (MOCK) {msg}")
 
     # ── Reader Thread ──────────────────────────────────────
 
@@ -226,7 +226,11 @@ class ArduinoSerial:
         if not msg:
             return
 
-        print(f"[Arduino → Pi] {msg}")
+        if not (msg.startswith("STATUS:") or msg.startswith("BANK:")):
+            print(f"[Serial] Ignoring non-protocol line: {msg}")
+            return
+
+        print(f"[Arduino -> Pi] {msg}")
         self.state.update(last_status=msg)
 
         # ── STATUS messages ───────────────────────────────
@@ -258,7 +262,7 @@ class ArduinoSerial:
                 self.state.update(mode="ASSIST", ready=True)
 
             elif status == "REACHED":
-                pass  # Informational — steering reached target
+                pass  # Informational - steering reached target
 
             elif status == "AT_TARGET":
                 pass  # Already at target position
@@ -285,7 +289,7 @@ class ArduinoSerial:
                 self.state.update(locked_left=False, locked_right=False)
 
             elif status.startswith("MOVING:"):
-                pass  # Informational — steering in progress
+                pass  # Informational - steering in progress
 
             else:
                 print(f"[Serial] Unknown STATUS: {status}")

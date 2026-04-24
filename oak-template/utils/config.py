@@ -102,13 +102,25 @@ class WalkerConfig:
     COMMAND_REFRESH_S: float = 2.0          # Re-send same command interval
     STOP_REPEAT_INTERVAL_S: float = 1.0     # Re-send STOP more often
 
+    # ── Decision Hysteresis / Mode Switching ────────────────
+    STOP_FRAMES_REQUIRED: int = 4
+    FREE_FRAMES_REQUIRED: int = 6
+    GO_FRAMES_REQUIRED: int = 4
+    COMMAND_CHANGE_COOLDOWN_S: float = 0.7
+    UNSAFE_CONF_THRESHOLD: float = 0.35
+    FREE_CONF_THRESHOLD: float = 0.62
+    FREE_CENTER_CLOSE_OBS_MAX: float = 0.10
+    FREE_CENTER_MIN_VALID_RATIO: float = 0.40
+    FREE_CENTER_MIN_P20_MM: float = 1600.0
+
     # ── Serial Communication ─────────────────────────────────
     ARDUINO_PORT: str = "MOCK"
     ARDUINO_BAUD: int = 9600
 
-    # ── Visualization ────────────────────────────────────────
+    # ── Visualization / Optional Features ────────────────────
     DEBUG_DISPLAY: bool = True
     USE_TTS: bool = True
+    ENABLE_SNAPS: bool = False
 
     # ── Floor Removal ────────────────────────────────────────
     FLOOR_GRADIENT_MIN: int = 1
@@ -126,4 +138,22 @@ class WalkerConfig:
             ARDUINO_BAUD=int(os.getenv("ARDUINO_BAUD", "9600")),
             DEBUG_DISPLAY=os.getenv("DEBUG_DISPLAY", "1") == "1",
             USE_TTS=os.getenv("USE_TTS", "1") == "1",
+            ENABLE_SNAPS=os.getenv("ENABLE_SNAPS", "0") == "1",
+            STOP_FRAMES_REQUIRED=int(os.getenv("STOP_FRAMES_REQUIRED", "4")),
+            FREE_FRAMES_REQUIRED=int(os.getenv("FREE_FRAMES_REQUIRED", "6")),
+            GO_FRAMES_REQUIRED=int(os.getenv("GO_FRAMES_REQUIRED", "4")),
+            COMMAND_CHANGE_COOLDOWN_S=float(
+                os.getenv("COMMAND_CHANGE_COOLDOWN_S", "0.7")
+            ),
+            UNSAFE_CONF_THRESHOLD=float(os.getenv("UNSAFE_CONF_THRESHOLD", "0.35")),
+            FREE_CONF_THRESHOLD=float(os.getenv("FREE_CONF_THRESHOLD", "0.62")),
+            FREE_CENTER_CLOSE_OBS_MAX=float(
+                os.getenv("FREE_CENTER_CLOSE_OBS_MAX", "0.10")
+            ),
+            FREE_CENTER_MIN_VALID_RATIO=float(
+                os.getenv("FREE_CENTER_MIN_VALID_RATIO", "0.40")
+            ),
+            FREE_CENTER_MIN_P20_MM=float(
+                os.getenv("FREE_CENTER_MIN_P20_MM", "1600.0")
+            ),
         )
