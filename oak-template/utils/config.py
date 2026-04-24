@@ -71,6 +71,22 @@ class WalkerConfig:
     # Adjacent zones get partial center bias
     ADJACENT_BIAS: float = 0.06
 
+    # ── Safety-Score-Based Steering ───────────────────────────
+    # Soft additive bonus for CENTER during target comparison only
+    CENTER_SAFETY_BIAS: float = 0.10
+    # Fraction of center zones (L1/CENTER/R1) that must be in emergency
+    # before triggering emergency stop (0.50 = majority)
+    EMERGENCY_CENTER_COVERAGE: float = 0.50
+    # Minimum p20 depth (mm) for a side path to override emergency stop
+    MIN_SIDE_DEPTH_MM: float = 800.0
+    # Safety score weights (pure safety, no center bias)
+    SAFETY_W_DEPTH: float = 0.35        # p25 depth normalised
+    SAFETY_W_CLOSE_OBS: float = 0.25    # 1 - close_obstacle_ratio
+    SAFETY_W_VALID: float = 0.25        # valid_ratio
+    SAFETY_W_FLOOR_INV: float = 0.15    # 1 - floor/invalid ratio
+    # CENTER must be within this fraction of best zone to be chosen
+    CENTER_ACCEPT_RATIO: float = 0.85
+
     # Minimum requirements for a corridor to be "passable"
     MIN_VALID_RATIO: float = 0.25       # At least 25% valid pixels
     MIN_P20_FOR_PASS: float = 700.0     # p20 must exceed emergency zone

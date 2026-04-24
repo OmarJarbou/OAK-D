@@ -27,13 +27,15 @@ class CorridorMetrics:
     zone_index: int             # 0=LEFT ... 6=RIGHT
     valid_ratio: float          # Fraction of valid depth pixels
     p20_depth: float            # 20th percentile depth (mm)
+    p25_depth: float            # 25th percentile depth (mm)
     p50_depth: float            # Median depth (mm)
     mean_depth: float           # Mean depth (mm)
     close_obstacle_ratio: float # Fraction of pixels < CLOSE_OBSTACLE_MM
     emergency_ratio: float      # Fraction of pixels < EMERGENCY_STOP_MM
     zone_width_m: float         # Physical width of this single zone (meters)
     is_clear: bool              # True if zone has safe depth (not width-gated)
-    score: float                # Depth-based navigation score [0, 1]
+    score: float                # Depth-based navigation score [0, 1] (includes center bias)
+    safety_score: float         # Pure safety score [0, 1] (NO center bias)
 
 
 @dataclass
@@ -116,14 +118,31 @@ class CorridorAnalyzer:
             m = self._compute_zone(name, i, z_depth, z_valid, zone_width_px, roi_w)
             corridors[name] = m
 
-            # Check for emergency in center region
-            if name in ("L1", "CENTER", "R1"):
-                if m.emergency_ratio > 0.35 and m.valid_ratio > 0.20:
-                    has_emergency = True
-
         # ── Merge Adjacent Clear Zones ──────────────────────
         groups = self._merge_clear_zones(corridors)
         valid_groups = [g for g in groups if g.is_valid]
+
+        # ── Emergency Detection (smarter) ────────────────
+        center_zone_names = ("L1", "CENTER", "R1")
+        emergency_count = 0
+        for cname in center_zone_names:
+            m = corridors[cname]
+            if m.emergency_ratio > 0.35 and m.valid_ratio > 0.20:
+                emergency_count += 1
+
+        has_emergency = False
+        if emergency_count >= len(center_zone_names) * cfg.EMERGENCY_CENTER_COVERAGE:
+            # Center is dangerous — but check if sides offer escape
+            side_escape = False
+            for g in groups:
+                if g.is_valid and g.avg_p20_depth > cfg.MIN_SIDE_DEPTH_MM:
+                    # Check group doesn’t overlap with blocked center
+                    center_idx = cfg.NUM_ZONES // 2
+                    if center_idx not in g.zone_indices:
+                        side_escape = True
+                        break
+            if not side_escape:
+                has_emergency = True
 
         return AnalysisResult(
             corridors=corridors,
@@ -152,13 +171,16 @@ class CorridorAnalyzer:
         if valid_values.size == 0:
             return CorridorMetrics(
                 name=name, zone_index=zone_index,
-                valid_ratio=0.0, p20_depth=0.0, p50_depth=0.0, mean_depth=0.0,
+                valid_ratio=0.0, p20_depth=0.0, p25_depth=0.0,
+                p50_depth=0.0, mean_depth=0.0,
                 close_obstacle_ratio=1.0, emergency_ratio=1.0,
                 zone_width_m=0.0, is_clear=False, score=0.0,
+                safety_score=0.0,
             )
 
         valid_ratio = valid_values.size / total_pixels
         p20_depth = float(np.percentile(valid_values, 20))
+        p25_depth = float(np.percentile(valid_values, 25))
         p50_depth = float(np.percentile(valid_values, 50))
         mean_depth = float(np.mean(valid_values))
         close_obstacle_ratio = float(np.mean(valid_values < cfg.CLOSE_OBSTACLE_MM))
@@ -185,7 +207,7 @@ class CorridorAnalyzer:
         ))
         close_penalty = 1.0 - close_obstacle_ratio
 
-        # Center preference
+        # Center preference (baked into corridor score, NOT into safety_score)
         center_idx = cfg.NUM_ZONES // 2
         dist_from_center = abs(zone_index - center_idx)
         center_bonus = cfg.CENTER_BIAS if dist_from_center == 0 else (
@@ -199,14 +221,28 @@ class CorridorAnalyzer:
             + center_bonus
         )
 
+        # ── Safety Score (pure safety, NO center bias) ───────
+        depth_norm_25 = float(np.clip(
+            (p25_depth - cfg.MIN_DEPTH_MM) / (cfg.SAFE_CORRIDOR_MM - cfg.MIN_DEPTH_MM),
+            0.0, 1.0,
+        ))
+        floor_invalid_ratio = 1.0 - valid_ratio
+        safety_score = (
+            cfg.SAFETY_W_DEPTH * depth_norm_25
+            + cfg.SAFETY_W_CLOSE_OBS * close_penalty
+            + cfg.SAFETY_W_VALID * valid_ratio
+            + cfg.SAFETY_W_FLOOR_INV * (1.0 - floor_invalid_ratio)
+        )
+
         return CorridorMetrics(
             name=name, zone_index=zone_index,
             valid_ratio=valid_ratio, p20_depth=p20_depth,
+            p25_depth=p25_depth,
             p50_depth=p50_depth, mean_depth=mean_depth,
             close_obstacle_ratio=close_obstacle_ratio,
             emergency_ratio=emergency_ratio,
             zone_width_m=zone_width_m, is_clear=is_clear,
-            score=score,
+            score=score, safety_score=safety_score,
         )
 
     # ── Merge Adjacent Clear Zones ───────────────────────────
@@ -249,9 +285,8 @@ class CorridorAnalyzer:
         avg_p20 = sum(z.p20_depth for z in zones) / len(zones)
         avg_score = sum(z.score for z in zones) / len(zones)
 
-        # Choose best target: prefer CENTER if in group, else closest to center
-        center_idx = cfg.NUM_ZONES // 2
-        best_zone_m = min(zones, key=lambda z: abs(z.zone_index - center_idx))
+        # Choose best target: zone with highest safety_score (not closest to center)
+        best_zone_m = max(zones, key=lambda z: z.safety_score)
 
         return FreeSpaceGroup(
             zone_names=names,
@@ -297,9 +332,11 @@ class CorridorAnalyzer:
         empty_corridors = {
             name: CorridorMetrics(
                 name=name, zone_index=i,
-                valid_ratio=0.0, p20_depth=0.0, p50_depth=0.0, mean_depth=0.0,
+                valid_ratio=0.0, p20_depth=0.0, p25_depth=0.0,
+                p50_depth=0.0, mean_depth=0.0,
                 close_obstacle_ratio=1.0, emergency_ratio=1.0,
                 zone_width_m=0.0, is_clear=False, score=0.0,
+                safety_score=0.0,
             )
             for i, name in enumerate(self.cfg.ZONE_NAMES)
         }

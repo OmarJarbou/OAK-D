@@ -1,6 +1,6 @@
 # main.py
 """
-Smart Walker — OAK-D Navigation System v2.1
+Smart Walker — OAK-D Navigation System v3.0
 ════════════════════════════════════════════
 Full integration with Arduino Mega via Serial1.
 
@@ -275,6 +275,7 @@ def build_debug_frame(depth_frame, analysis, result, arduino_state,
         lines = [
             name,
             f"p20:{int(m.p20_depth)}",
+            f"sf:{m.safety_score:.2f}",
             f"w:{m.zone_width_m:.2f}m",
             f"{'CLR' if m.is_clear else 'BLK'}",
         ]
@@ -330,6 +331,12 @@ def build_debug_frame(depth_frame, analysis, result, arduino_state,
     cv2.putText(vis, f"Groups:{n_groups} Valid:{n_valid}", (w - 200, panel_y - 12),
                 font, 0.4, (200, 200, 200), 1, cv2.LINE_AA)
 
+    # Center rejection reason (if any)
+    cbr = getattr(result, 'center_blocked_reason', '')
+    if cbr:
+        cv2.putText(vis, f"CTR: {cbr[:65]}", (10, y1 - 8),
+                    font, 0.38, (0, 165, 255), 1, cv2.LINE_AA)
+
     return vis
 
 
@@ -339,7 +346,7 @@ def build_debug_frame(depth_frame, analysis, result, arduino_state,
 
 def main():
     print("=" * 60)
-    print("  Smart Walker — OAK-D Navigation System v2.1")
+    print("  Smart Walker — OAK-D Navigation System v3.0")
     print("=" * 60)
     print(f"  Arduino port : {cfg.ARDUINO_PORT}")
     print(f"  Walker width : {cfg.WALKER_WIDTH_M}m + 2×{cfg.SIDE_MARGIN_M}m margin"
