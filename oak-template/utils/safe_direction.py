@@ -26,9 +26,9 @@ MIN_DEPTH_MM = 300
 MAX_DEPTH_MM = 5000
 
 # Navigation thresholds
-STOP_DISTANCE_MM = 700
-TURN_DISTANCE_MM = 1200
-FORWARD_CLEAR_MM = 1600
+STOP_DISTANCE_MM = 800
+TURN_DISTANCE_MM = 1500
+FORWARD_CLEAR_MM = 1800
 
 # ROI settings
 TOP_CROP_RATIO = 0.45
@@ -39,6 +39,7 @@ SIDE_MARGIN_RATIO = 0.03
 HISTORY_SIZE = 5
 MIN_STABLE_COUNT = 3
 HYSTERESIS_STOP_CLEAR_COUNT = 4  # How many FORWARDs needed to exit STOP
+TURN_BIAS_BONUS = 0.40  # Bonus score given to maintain a turn
 
 
 # ============================================================
@@ -49,6 +50,7 @@ HYSTERESIS_STOP_CLEAR_COUNT = 4  # How many FORWARDs needed to exit STOP
 class ZoneMetrics:
     name: str
     valid_ratio: float
+    p5_depth: float    # Absolute closest structures
     p25_depth: float
     mean_depth: float
     close_turn_ratio: float
@@ -98,12 +100,15 @@ class SafeDirectionEngine:
         roi_depth = depth[y1:y2, x1:x2]
         roi_valid = valid_mask[y1:y2, x1:x2]
 
+        floor_mask = self._remove_floor(roi_depth, roi_valid)
+        roi_valid = roi_valid & (~floor_mask)
+
         zone_metrics = self._compute_zone_metrics(
             w, roi_depth, roi_valid, yolo_obstacles, x1, x2
         )
         raw_decision = self._decide(zone_metrics)
         vis = self._build_visualization(
-            depth, zone_metrics, yolo_obstacles, raw_decision, (x1, y1, x2, y2)
+            depth, zone_metrics, yolo_obstacles, raw_decision, (x1, y1, x2, y2), floor_mask
         )
 
         return raw_decision, zone_metrics, vis
@@ -115,6 +120,12 @@ class SafeDirectionEngine:
         
         # Determine the most frequent command
         best_cmd, best_count = counts.most_common(1)[0]
+        
+        # Directional stickiness: if we were turning, require overwhelming evidence to switch back
+        if self.last_stable_command in ["LEFT", "RIGHT"] and best_cmd != self.last_stable_command:
+            # Only switch away from a turn if the new command is STOP or FORWARD(clearly open)
+            if best_cmd not in ["STOP", "FORWARD"] or counts[best_cmd] < HYSTERESIS_STOP_CLEAR_COUNT:
+                best_cmd = self.last_stable_command
 
         # Hysteresis: If we are stopped, make it harder to start again
         if self.last_stable_command == "STOP" and best_cmd == "FORWARD":
@@ -130,6 +141,30 @@ class SafeDirectionEngine:
                  self.last_stable_command = "STOP"
 
         return self.last_stable_command
+
+    def _remove_floor(self, roi_depth: np.ndarray, roi_valid: np.ndarray) -> np.ndarray:
+        """
+        Calculates a dynamic mask of the floor by relying on the vertical depth gradient.
+        Returns a boolean mask where True corresponds to the floor.
+        """
+        h, w = roi_depth.shape
+        is_floor = np.zeros((h, w), dtype=bool)
+        if h < 2: return is_floor
+        
+        # The very bottom row is assumed to be floor if its depth is typical for a cart's ground base
+        is_floor[h-1, :] = roi_valid[h-1, :] & (roi_depth[h-1, :] > 300) & (roi_depth[h-1, :] < 3000)
+        
+        # Raycast vertically from bottom to top
+        for y in range(h-2, -1, -1):
+            # diff > 0 means the row above is FURTHER than the row below (Property of Ground)
+            diff = roi_depth[y, :] - roi_depth[y+1, :]
+            
+            # Floor continues if the row above is smoothly further away
+            # We accept a tight gradient threshold to reject noisy obstacles
+            continues_floor = is_floor[y+1, :] & (diff > 1) & (diff < 150)
+            is_floor[y, :] = continues_floor
+            
+        return is_floor
 
     # ----------------------------------------------------------
     # Zone analysis
@@ -188,10 +223,11 @@ class SafeDirectionEngine:
             penalty = zone_penalties[name]
 
             if valid_values.size == 0:
-                metrics[name] = ZoneMetrics(name, 0.0, 0.0, 0.0, 1.0, 1.0, penalty, 0.0)
+                metrics[name] = ZoneMetrics(name, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, penalty, 0.0)
                 continue
 
             valid_ratio = valid_values.size / total_pixels
+            p5_depth = float(np.percentile(valid_values, 5))
             p25_depth = float(np.percentile(valid_values, 25))
             mean_depth = float(np.mean(valid_values))
             close_turn_ratio = float(np.mean(valid_values < TURN_DISTANCE_MM))
@@ -203,19 +239,28 @@ class SafeDirectionEngine:
                 1.0,
             )
 
+            # Repulsion score heavily weights the closest objects to push the cart away
+            repulsion_score = np.clip((p5_depth - MIN_DEPTH_MM) / (MAX_DEPTH_MM - MIN_DEPTH_MM), 0, 1.0)
+
             # Base score from depth analysis
             base_score = (
-                0.55 * depth_score
-                + 0.30 * (1.0 - close_turn_ratio)
-                + 0.15 * valid_ratio
+                0.40 * repulsion_score
+                + 0.30 * depth_score
+                + 0.20 * (1.0 - close_turn_ratio)
+                + 0.10 * valid_ratio
             )
             
             # Apply YOLO penalty subtractively
             final_score = max(0.0, base_score - penalty)
+            
+            # Directional hysteresis applied to score
+            if self.last_stable_command == name:
+                final_score += TURN_BIAS_BONUS
 
             metrics[name] = ZoneMetrics(
                 name=name,
                 valid_ratio=valid_ratio,
+                p5_depth=p5_depth,
                 p25_depth=p25_depth,
                 mean_depth=mean_depth,
                 close_turn_ratio=close_turn_ratio,
@@ -235,43 +280,46 @@ class SafeDirectionEngine:
         center = m["CENTER"]
         right = m["RIGHT"]
 
-        # A zone is completely blocked if depth says so OR YOLO sees something super close
-        left_blocked = (left.p25_depth < TURN_DISTANCE_MM) or (left.close_turn_ratio > 0.40) or (left.yolo_penalty >= 1.0)
-        center_blocked = (center.p25_depth < TURN_DISTANCE_MM) or (center.close_turn_ratio > 0.35) or (center.yolo_penalty >= 1.0)
-        right_blocked = (right.p25_depth < TURN_DISTANCE_MM) or (right.close_turn_ratio > 0.40) or (right.yolo_penalty >= 1.0)
-
-        # Emergency stop
-        if center.yolo_penalty >= 1.0 or (
-            center.close_stop_ratio > 0.28
-            and left.close_stop_ratio > 0.18
-            and right.close_stop_ratio > 0.18
-        ):
+        # 1. Dead-End Check (True STOP)
+        # Are we fundamentally trapped in all directions?
+        if (center.p5_depth < STOP_DISTANCE_MM and left.p5_depth < STOP_DISTANCE_MM and right.p5_depth < STOP_DISTANCE_MM) or center.yolo_penalty >= 1.0:
             return "STOP"
 
-        # Center is clearly open and not severely penalized
-        if (
-            not center_blocked
-            and center.p25_depth > FORWARD_CLEAR_MM
-            and center.close_turn_ratio < 0.18
-            and center.valid_ratio > 0.20
-            and center.yolo_penalty < 0.3
-        ):
-            return "FORWARD"
+        # 2. Corridor Navigation (Threading the Needle)
+        # If left and right have obstacles, but center extends significantly past them
+        # Note: Center must still be safe enough to not instantly crash ( > STOP_DISTANCE_MM)
+        if center.p5_depth > STOP_DISTANCE_MM + 100:
+            # If center is clearer than both side walls, commit to FORWARD to thread the needle
+            if center.p5_depth > left.p5_depth + 300 and center.p5_depth > right.p5_depth + 300:
+                if center.yolo_penalty < 0.5:
+                    return "FORWARD"
 
-        # Evaluate best alternative
-        if center_blocked:
-            if left_blocked and right_blocked:
-                return "STOP"
-            if left.score > right.score + 0.05:
+        # 3. Obstacle Evasion (Handling Walls/Blocks ahead)
+        # If center is starting to close in, we evaluate turning rather than blindly stopping
+        if center.p5_depth < TURN_DISTANCE_MM or center.close_turn_ratio > 0.30:
+            # We must pick the side with the most open space. 
+            # We integrate the stable hysteresis score to prevent wiggling, but hard-override if one physical path is significantly wider
+            
+            # If one path has way more clearance, force a turn in that direction
+            if left.p5_depth > right.p5_depth + 300:
                 return "LEFT"
-            if right.score > left.score + 0.05:
+            if right.p5_depth > left.p5_depth + 300:
                 return "RIGHT"
-            return "LEFT" if left.p25_depth >= right.p25_depth else "RIGHT"
+                
+            # If physical spaces are roughly similar, trust the mathematically enhanced score (which includes hysteresis stickiness)
+            return "LEFT" if left.score >= right.score else "RIGHT"
 
-        best_side_gap = abs(left.score - right.score)
-        if best_side_gap > 0.22:
-            return "LEFT" if left.score > right.score else "RIGHT"
+        # 4. Clear Path Default
+        # Let's ensure turning isn't accidentally locked in if the center is totally clear
+        if center.p5_depth > FORWARD_CLEAR_MM and center.yolo_penalty < 0.3:
+             return "FORWARD"
 
+        # 5. Fallback Soft-Centering
+        # If we have slight variance ahead, lightly drift left/right to stay in the widest part of the path
+        best_gap = abs(left.score - right.score)
+        if best_gap > 0.20:
+             return "LEFT" if left.score > right.score else "RIGHT"
+             
         return "FORWARD"
 
     # ----------------------------------------------------------
@@ -285,11 +333,18 @@ class SafeDirectionEngine:
         obstacles: List[YoloObstacle],
         raw_decision: str,
         roi_box: Tuple[int, int, int, int],
+        floor_mask: np.ndarray = None
     ) -> np.ndarray:
         depth_vis = self._colorize_depth(depth_frame)
         h, w, _ = depth_vis.shape
 
         x1, y1, x2, y2 = roi_box
+        
+        # Erase the floor in the visualization so the user sees the AI ignoring it
+        if floor_mask is not None:
+            roi_vis = depth_vis[y1:y2, x1:x2]
+            roi_vis[floor_mask] = [0, 0, 0]
+            
         cv2.rectangle(depth_vis, (x1, y1), (x2, y2), (255, 255, 255), 2)
 
         roi_w = x2 - x1
@@ -319,8 +374,8 @@ class SafeDirectionEngine:
                 color = zone_colors[zone_name]
                 lines = [
                     zone_name,
+                    f"p5: {int(m.p5_depth)} mm",
                     f"p25: {int(m.p25_depth)} mm",
-                    f"close: {m.close_turn_ratio:.2f}",
                     f"pen: {m.yolo_penalty:.2f}",
                     f"score: {m.score:.2f}",
                 ]

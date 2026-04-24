@@ -1,4 +1,18 @@
 # main.py
+"""
+Smart Walker — OAK-D Navigation System v2.1
+════════════════════════════════════════════
+Full integration with Arduino Mega via Serial1.
+
+Architecture:
+  WalkerConfig        → all tunable parameters
+  ArduinoSerial       → bidirectional serial (reader + writer threads)
+  CorridorAnalyzer    → 7-zone depth + merged free-space groups
+  DecisionEngine      → safety gates, group selection, temporal smoothing
+  CommandPublisher    → rate-limited command dispatch
+  Visualizer          → OpenCV debug overlay (optional)
+"""
+
 import os
 import time
 import threading
@@ -7,22 +21,25 @@ from collections import defaultdict
 
 import cv2
 import numpy as np
-import serial
-import pyttsx3
 from dotenv import load_dotenv
 
 import depthai as dai
 from depthai_nodes.node.parsing_neural_network import ParsingNeuralNetwork
 from depthai_nodes.node import ApplyDepthColormap
 
+# ── Local Modules ─────────────────────────────────────────────
+from utils.config import WalkerConfig
+from utils.arduino_serial import ArduinoSerial
+from utils.corridor_analyzer import CorridorAnalyzer
+from utils.decision_engine import DecisionEngine
+from utils.command_publisher import CommandPublisher
 
-# ============================================================
-# Optional local imports fallback
-# ============================================================
+# ── SnapsProducer ─────────────────────────────────────────────
 try:
     from utils.snaps_producer import SnapsProducer
 except Exception:
     class SnapsProducer(dai.node.HostNode):
+        """Fallback SnapsProducer when the real one is unavailable."""
         def __init__(self):
             super().__init__()
             self.em = None
@@ -34,21 +51,11 @@ except Exception:
             self._detection_streak = defaultdict(int)
             self._required_streak = 3
 
-        def build(
-            self,
-            rgb: dai.Node.Output,
-            detections: dai.Node.Output,
-            label_map: list,
-            confidence_threshold: float = 0.7,
-            labels: list = None,
-            time_interval: float = 60.0,
-            required_streak: int = 3,
-        ):
+        def build(self, rgb, detections, label_map, confidence_threshold=0.7,
+                  labels=None, time_interval=60.0, required_streak=3):
             self.link_args(rgb, detections)
-
             self.em = dai.EventsManager()
             self.em.setLogResponse(True)
-
             self.label_map = label_map
             self.confidence_threshold = confidence_threshold
             self.labels = labels if labels is not None else ["person"]
@@ -57,27 +64,22 @@ except Exception:
             self._required_streak = required_streak
             return self
 
-        def process(self, rgb: dai.Buffer, detections):
+        def process(self, rgb, detections):
             if rgb is None or detections is None:
                 return
-
             now = time.time()
-
             detected_this_frame = set()
             for det in detections.detections:
                 label_str = self.label_map[det.label]
                 if det.confidence >= self.confidence_threshold and label_str in self.labels:
                     detected_this_frame.add(label_str)
-
             for label in self.labels:
                 if label in detected_this_frame:
                     self._detection_streak[label] += 1
                 else:
                     self._detection_streak[label] = 0
-
             if now < self.last_update + self.time_interval:
                 return
-
             try:
                 for det in detections.detections:
                     label_str = self.label_map[det.label]
@@ -107,84 +109,22 @@ except Exception:
                 self.em.waitForPendingUploads()
 
 
-# ============================================================
-# Safe direction engine (navigation)
-# ============================================================
-from utils.safe_direction import SafeDirectionEngine, YoloObstacle
-
-
-
-# ============================================================
-# Config
-# ============================================================
+# ── Config ────────────────────────────────────────────────────
 load_dotenv()
 
+cfg = WalkerConfig.from_env()
 api_key = os.getenv("OAK_API_KEY", "")
-arduino_port = os.getenv("ARDUINO_PORT", "/dev/ttyUSB0")
-arduino_baud = int(os.getenv("ARDUINO_BAUD", 9600))
 use_visualizer = os.getenv("USE_VISUALIZER", "0") == "1"
-use_tts = os.getenv("USE_TTS", "1") == "1"
-
 model = "luxonis/yolov8-instance-segmentation-nano:coco-512x288"
 
-OBSTACLE_LABELS = {
-    "person", "bicycle", "car", "motorcycle", "bus", "truck",
-    "chair", "couch", "dining table", "door", "potted plant",
-    "dog", "cat", "backpack", "suitcase"
-}
 
-
-
-
-# ============================================================
-# Serial
-# ============================================================
-serial_queue = queue.Queue()
-
-
-def serial_writer(port: str, baud: int):
-    if port.upper() == "MOCK":
-        print("[Serial] Running in MOCK mode — no Arduino connected")
-        while True:
-            msg = serial_queue.get()
-            if msg is None:
-                break
-            print(f"[Serial → Arduino] {msg}")
-        return
-
-    try:
-        ser = serial.Serial(port, baud, timeout=1)
-        print(f"Serial connected: {port} @ {baud}")
-        while True:
-            msg = serial_queue.get()
-            if msg is None:
-                break
-            try:
-                ser.write((msg + "\n").encode())
-            except Exception as e:
-                print(f"[Serial] write error: {e}")
-        ser.close()
-    except Exception as e:
-        print(f"[Serial] Could not open {port}: {e}")
-
-
-def send_command(command: str):
-    """Send a CMD:<command> message to the Arduino."""
-    serial_queue.put(f"CMD:{command}")
-
-
-# Navigation TTS cooldown (seconds)
+# ── TTS ───────────────────────────────────────────────────────
 NAV_TTS_COOLDOWN = 3.0
-
-
-# ============================================================
-# TTS (Linux / Raspberry Pi)
-# ============================================================
-tts_queue = queue.Queue(maxsize=2)
+tts_queue: queue.Queue = queue.Queue(maxsize=2)
 
 
 def tts_worker():
-    if not use_tts:
+    if not cfg.USE_TTS:
         print("[TTS] Disabled")
         while True:
             text = tts_queue.get()
@@ -192,30 +132,14 @@ def tts_worker():
                 break
         return
 
-    # try:
-    #     engine = pyttsx3.init()
-    #     engine.setProperty("rate", 170)
-    #     print("[TTS] Engine initialized")
-    # except Exception as e:
-    #     print(f"[TTS] init failed: {e}")
-    #     while True:
-    #         text = tts_queue.get()
-    #         if text is None:
-    #             break
-    #         print(f"[TTS fallback] {text}")
-    #     return
     print("[TTS] Engine ready")
     while True:
         text = tts_queue.get()
         if text is None:
             break
-        
-        # On Windows, pyttsx3 often hangs after the first speech when run in a persistent 
-        # background thread due to COM apartment message pump limitations.
-        # Spawning a short-lived thread for each utterance forces COM to clean up properly.
+
         def _say(txt):
             try:
-                #engine.say(text)
                 import pyttsx3
                 engine = pyttsx3.init()
                 engine.setProperty("rate", 170)
@@ -224,10 +148,9 @@ def tts_worker():
             except Exception as e:
                 print(f"[TTS] error: {e}")
 
-        import threading
         t = threading.Thread(target=_say, args=(text,), daemon=True)
         t.start()
-        t.join() # Wait so we don't overlap speech
+        t.join()
 
 
 def speak(text: str):
@@ -242,30 +165,213 @@ def speak(text: str):
         pass
 
 
-# ============================================================
+TTS_MAP = {
+    "GO:CENTER": "Go forward",
+    "GO:L1":     "Slight left",
+    "GO:L2":     "Turn left",
+    "GO:LEFT":   "Hard left",
+    "GO:R1":     "Slight right",
+    "GO:R2":     "Turn right",
+    "GO:RIGHT":  "Hard right",
+    "STOP":      "Stop",
+    "FREE":      "Free mode",
+}
+
+
+# ══════════════════════════════════════════════════════════════
+# Debug Visualization — shows merged groups
+# ══════════════════════════════════════════════════════════════
+
+def build_debug_frame(depth_frame, analysis, result, arduino_state,
+                      last_sent, cfg_ref):
+    """Build debug visualization showing zones, merged groups, and decision."""
+    # Colorize depth
+    clipped = np.clip(depth_frame, cfg_ref.MIN_DEPTH_MM, cfg_ref.MAX_DEPTH_MM)
+    norm = (
+        (clipped - cfg_ref.MIN_DEPTH_MM)
+        / max(cfg_ref.MAX_DEPTH_MM - cfg_ref.MIN_DEPTH_MM, 1)
+        * 255.0
+    ).astype(np.uint8)
+    norm = 255 - norm
+    vis = cv2.applyColorMap(norm, cv2.COLORMAP_JET)
+
+    h, w = depth_frame.shape
+    x1, y1, x2, y2 = analysis.roi_box
+
+    # Blackout floor
+    if analysis.floor_mask is not None and analysis.floor_mask.size > 1:
+        roi_vis = vis[y1:y2, x1:x2]
+        if roi_vis.shape[:2] == analysis.floor_mask.shape:
+            roi_vis[analysis.floor_mask] = [0, 0, 0]
+
+    # Draw ROI rectangle
+    cv2.rectangle(vis, (x1, y1), (x2, y2), (255, 255, 255), 2)
+
+    roi_w = x2 - x1
+    zone_w = roi_w // cfg_ref.NUM_ZONES
+    font = cv2.FONT_HERSHEY_SIMPLEX
+
+    # ── Draw merged group backgrounds first ──────────────
+    for g in analysis.groups:
+        if not g.zone_indices:
+            continue
+        gx1 = x1 + g.zone_indices[0] * zone_w
+        gx2 = x1 + (g.zone_indices[-1] + 1) * zone_w
+        if g.zone_indices[-1] == cfg_ref.NUM_ZONES - 1:
+            gx2 = x2  # Last zone extends to edge
+
+        # Valid group = green tint, invalid = orange tint
+        color = (0, 180, 0) if g.is_valid else (0, 100, 180)
+        overlay = vis.copy()
+        cv2.rectangle(overlay, (gx1, y2 - 30), (gx2, y2), color, -1)
+        cv2.addWeighted(overlay, 0.4, vis, 0.6, 0, vis)
+
+        # Draw merged width label
+        width_txt = f"{g.total_width_m:.2f}m"
+        status = "OK" if g.is_valid else "NARROW"
+        mid_x = (gx1 + gx2) // 2 - 40
+        cv2.putText(vis, f"{width_txt} {status}", (mid_x, y2 - 10),
+                    font, 0.45, (255, 255, 255), 1, cv2.LINE_AA)
+
+    # ── Highlight chosen corridor ────────────────────────
+    if result.chosen_corridor:
+        chosen_m = analysis.corridors.get(result.chosen_corridor)
+        if chosen_m:
+            ci = chosen_m.zone_index
+            cx1 = x1 + ci * zone_w
+            cx2 = cx1 + zone_w
+            overlay = vis.copy()
+            cv2.rectangle(overlay, (cx1, y1), (cx2, y2 - 30), (0, 255, 0), -1)
+            cv2.addWeighted(overlay, 0.18, vis, 0.82, 0, vis)
+            # Draw target marker
+            cv2.arrowedLine(vis, ((cx1 + cx2) // 2, y2 - 35),
+                           ((cx1 + cx2) // 2, y1 + 10),
+                           (0, 255, 0), 3, tipLength=0.15)
+
+    # ── Draw individual zone info ────────────────────────
+    for i, name in enumerate(cfg_ref.ZONE_NAMES):
+        zx = x1 + i * zone_w
+
+        # Separator
+        if i > 0:
+            cv2.line(vis, (zx, y1), (zx, y2), (180, 180, 180), 1)
+
+        m = analysis.corridors.get(name)
+        if m is None:
+            continue
+
+        # Color by clear/blocked status
+        if name == result.chosen_corridor:
+            color = (0, 255, 0)         # Bright green — target
+        elif m.is_clear:
+            color = (255, 255, 0)       # Cyan — clear
+        else:
+            color = (0, 0, 255)         # Red — blocked
+
+        # Zone metrics
+        text_x = zx + 3
+        text_y = y1 + 16
+        fs = 0.35
+        lines = [
+            name,
+            f"p20:{int(m.p20_depth)}",
+            f"w:{m.zone_width_m:.2f}m",
+            f"{'CLR' if m.is_clear else 'BLK'}",
+        ]
+        for j, txt in enumerate(lines):
+            cv2.putText(vis, txt, (text_x, text_y + j * 14),
+                        font, fs, color, 1, cv2.LINE_AA)
+
+    # ── Bottom Info Panel ─────────────────────────────────
+    panel_y = h - 5
+
+    # Raw + Stable command
+    raw_color = (0, 0, 255) if "STOP" in result.raw_command else (0, 200, 255)
+    cv2.putText(vis, f"RAW: {result.raw_command}", (10, panel_y - 80),
+                font, 0.55, raw_color, 2, cv2.LINE_AA)
+
+    stable_color = {
+        "STOP": (0, 0, 255), "GO:CENTER": (0, 255, 0), "NONE": (128, 128, 128),
+    }.get(result.stable_command, (0, 200, 255))
+    cv2.putText(vis, f"CMD: {result.stable_command}", (10, panel_y - 55),
+                font, 0.65, stable_color, 2, cv2.LINE_AA)
+
+    # Confidence
+    conf_color = ((0, 255, 0) if result.confidence > 0.6
+                  else (0, 200, 255) if result.confidence > 0.3
+                  else (0, 0, 255))
+    cv2.putText(vis, f"Conf: {result.confidence:.0%}", (10, panel_y - 32),
+                font, 0.5, conf_color, 2, cv2.LINE_AA)
+
+    # Last sent + reason
+    cv2.putText(vis, f"Sent: {last_sent or '-'}", (10, panel_y - 12),
+                font, 0.45, (200, 200, 200), 1, cv2.LINE_AA)
+    cv2.putText(vis, result.reason[:70], (10, panel_y),
+                font, 0.38, (200, 200, 200), 1, cv2.LINE_AA)
+
+    # Arduino state (right side)
+    auth_txt = "AUTH" if arduino_state.get("authorized") else "LOCKED"
+    auth_color = (0, 255, 0) if arduino_state.get("authorized") else (0, 0, 255)
+    cv2.putText(vis, auth_txt, (w - 100, panel_y - 80),
+                font, 0.55, auth_color, 2, cv2.LINE_AA)
+
+    mode_txt = arduino_state.get("mode", "?")
+    cv2.putText(vis, f"Mode:{mode_txt}", (w - 130, panel_y - 55),
+                font, 0.45, (200, 200, 200), 1, cv2.LINE_AA)
+
+    ready_txt = "READY" if arduino_state.get("ready") else "WAIT"
+    ready_clr = (0, 255, 0) if arduino_state.get("ready") else (0, 165, 255)
+    cv2.putText(vis, ready_txt, (w - 100, panel_y - 32),
+                font, 0.5, ready_clr, 2, cv2.LINE_AA)
+
+    # Group info
+    n_groups = len(analysis.groups)
+    n_valid = len(analysis.valid_groups)
+    cv2.putText(vis, f"Groups:{n_groups} Valid:{n_valid}", (w - 200, panel_y - 12),
+                font, 0.4, (200, 200, 200), 1, cv2.LINE_AA)
+
+    return vis
+
+
+# ══════════════════════════════════════════════════════════════
 # Main
-# ============================================================
+# ══════════════════════════════════════════════════════════════
+
 def main():
+    print("=" * 60)
+    print("  Smart Walker — OAK-D Navigation System v2.1")
+    print("=" * 60)
+    print(f"  Arduino port : {cfg.ARDUINO_PORT}")
+    print(f"  Walker width : {cfg.WALKER_WIDTH_M}m + 2×{cfg.SIDE_MARGIN_M}m margin"
+          f" = {cfg.REQUIRED_CLEAR_WIDTH_M}m")
+    print(f"  Debug display: {'ON' if cfg.DEBUG_DISPLAY else 'OFF'}")
+    print(f"  TTS          : {'ON' if cfg.USE_TTS else 'OFF'}")
+    print("=" * 60)
+
+    # ── Components ────────────────────────────────────────
+    arduino = ArduinoSerial(port=cfg.ARDUINO_PORT, baud=cfg.ARDUINO_BAUD)
+    corridor_analyzer = CorridorAnalyzer(cfg)
+    decision_engine = DecisionEngine(cfg)
+    publisher = CommandPublisher(cfg, arduino)
+
     visualizer = None
     if use_visualizer:
         visualizer = dai.RemoteConnection(httpPort=8082)
-        print("Visualizer enabled on port 8082")
+        print("[Visualizer] Enabled on port 8082")
     else:
-        print("Visualizer disabled for stability")
+        print("[Visualizer] Disabled")
 
-    serial_thread = threading.Thread(
-        target=serial_writer,
-        args=(arduino_port, arduino_baud),
-        daemon=True
-    )
-    serial_thread.start()
+    arduino.start()
 
     tts_thread = threading.Thread(target=tts_worker, daemon=True)
     tts_thread.start()
 
+    last_nav_tts_time = 0.0
+    was_authorized = False
+
     try:
         with dai.Device() as device, dai.Pipeline(device) as pipeline:
-            print("Creating pipeline...")
+            print("[Pipeline] Creating...")
 
             model_desc = dai.NNModelDescription(model)
             model_desc.platform = device.getPlatformAsString()
@@ -277,39 +383,38 @@ def main():
             left_cam = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
             right_cam = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
 
-            # Lighter outputs for Raspberry Pi stability
+            color_cam.initialControl.setAutoExposureLimit(8000)
+            left_cam.initialControl.setAutoExposureLimit(8000)
+            right_cam.initialControl.setAutoExposureLimit(8000)
+
             color_preview = None
             if visualizer is not None:
-    	        color_preview = color_cam.requestOutput(
-                    size=(416, 416),
-                    type=dai.ImgFrame.Type.NV12,
-                    fps=15
-                )
+                color_preview = color_cam.requestOutput(
+                    size=(416, 416), type=dai.ImgFrame.Type.NV12, fps=30)
 
             left_out = left_cam.requestOutput(
-                size=(400, 400),
-                type=dai.ImgFrame.Type.NV12,
-                fps=15
-            )
+                size=(400, 400), type=dai.ImgFrame.Type.NV12, fps=30)
             right_out = right_cam.requestOutput(
-                size=(400, 400),
-                type=dai.ImgFrame.Type.NV12,
-                fps=15
-            )
+                size=(400, 400), type=dai.ImgFrame.Type.NV12, fps=30)
 
-            stereo = pipeline.create(dai.node.StereoDepth).build(left=left_out, right=right_out)
+            # Stereo
+            stereo = pipeline.create(dai.node.StereoDepth).build(
+                left=left_out, right=right_out)
             stereo.initialConfig.setMedianFilter(dai.MedianFilter.MEDIAN_OFF)
             stereo.setRectification(True)
-            stereo.setExtendedDisparity(True)   
-            stereo.setLeftRightCheck(True)      
+            stereo.setExtendedDisparity(False)
+            stereo.setSubpixel(True)
+            stereo.setLeftRightCheck(True)
             stereo.setPostProcessingHardwareResources(2, 2)
             stereo.setDepthAlign(dai.CameraBoardSocket.CAM_A)
-            stereo.setOutputSize(640, 400)
+            stereo.setOutputSize(cfg.DEPTH_WIDTH, cfg.DEPTH_HEIGHT)
 
             depth_colormap = pipeline.create(ApplyDepthColormap).build(stereo.disparity)
             depth_colormap.setColormap(cv2.COLORMAP_JET)
 
-            nn_with_parser = pipeline.create(ParsingNeuralNetwork).build(color_cam, nn_archive)
+            # YOLO
+            nn_with_parser = pipeline.create(ParsingNeuralNetwork).build(
+                color_cam, nn_archive)
 
             if visualizer is not None:
                 visualizer.addTopic("Color", color_preview, "images")
@@ -317,163 +422,120 @@ def main():
                 visualizer.addTopic("YOLO", nn_with_parser.out, "images")
 
             _snaps_producer = pipeline.create(SnapsProducer).build(
-                nn_with_parser.passthrough,
-                nn_with_parser.out,
-                label_map=label_map
-            )
+                nn_with_parser.passthrough, nn_with_parser.out, label_map=label_map)
 
-            detection_queue = nn_with_parser.out.createOutputQueue(maxSize=4, blocking=False)
             depth_queue = stereo.depth.createOutputQueue(maxSize=4, blocking=False)
 
-            # Navigation direction engine
-            nav_engine = SafeDirectionEngine()
-            last_nav_command = "STOP"
-            last_nav_tts_time = 0.0
-
-            print("Pipeline created.")
-
+            print("[Pipeline] Created. Starting...")
             pipeline.start()
 
             if visualizer is not None:
                 visualizer.registerPipeline(pipeline)
 
-            last_zone = "GREEN"
+            print("[Pipeline] Running. Waiting for RFID authorization...")
 
-            last_det = None
+            # ══════════════════════════════════════════════
+            # Main Loop
+            # ══════════════════════════════════════════════
+            frame_count = 0
 
             while pipeline.isRunning():
                 try:
                     if visualizer is not None:
                         key = visualizer.waitKey(1)
                         if key == ord("q"):
-                            print("Got q key! Exiting.")
+                            print("Quit key pressed.")
                             pipeline.stop()
                             break
 
-                    # Always grab the latest detection if ones are queuing up
-                    while detection_queue.has():
-                        last_det = detection_queue.get()
-
-                    # Only process a cycle when a fresh depth frame arrives
+                    # Get depth frame
                     if depth_queue.has():
                         depth_msg = depth_queue.get()
                     else:
                         time.sleep(0.005)
                         continue
 
-                    if last_det is None:
-                        continue  # Wait until first YOLO frame arrives
-                    
-                    det = last_det
                     depth_frame = depth_msg.getFrame()
                     if depth_frame is None or depth_frame.size == 0:
                         continue
 
-                    depth_h, depth_w = depth_frame.shape
+                    frame_count += 1
 
-                    yolo_obstacles = []
+                    # Arduino state
+                    state = arduino.state.snapshot()
 
-                    for d in det.detections:
-                        label_name = label_map[d.label]
-                        if label_name not in OBSTACLE_LABELS:
-                            continue
-                        if d.confidence < 0.65:
-                            continue
+                    # Auth transitions
+                    if state["authorized"] and not was_authorized:
+                        print("[System] ✓ AUTHORIZED — navigation begins when ready")
+                        speak("System authorized")
+                        was_authorized = True
+                    elif not state["authorized"] and was_authorized:
+                        print("[System] ✗ DEAUTHORIZED — navigation stopped")
+                        decision_engine.reset()
+                        publisher.reset()
+                        speak("System locked")
+                        was_authorized = False
 
-                        mask = None
-                        if hasattr(d, "mask") and d.mask is not None:
-                            try:
-                                raw_mask = np.array(d.mask, dtype=np.uint8)
-                                mask = cv2.resize(raw_mask, (depth_w, depth_h), interpolation=cv2.INTER_NEAREST)
-                            except Exception:
-                                mask = None
+                    # Corridor analysis (merged groups)
+                    analysis = corridor_analyzer.analyze(depth_frame)
 
-                        cx = (d.xmin + d.xmax) / 2.0
+                    # Decision (uses merged groups)
+                    result = decision_engine.decide(analysis, state)
 
-                        if mask is not None:
-                            roi = depth_frame[mask > 0]
-                        else:
-                            x1 = int(d.xmin * depth_w)
-                            y1 = int(d.ymin * depth_h)
-                            x2 = int(d.xmax * depth_w)
-                            y2 = int(d.ymax * depth_h)
+                    # Publish (rate-limited)
+                    sent = publisher.publish(result.stable_command)
 
-                            cx_px, cy_px = (x1 + x2) // 2, (y1 + y2) // 2
-                            hw, hh = (x2 - x1) // 4, (y2 - y1) // 4
-
-                            x1 = max(0, cx_px - hw)
-                            x2 = min(depth_w - 1, cx_px + hw)
-                            y1 = max(0, cy_px - hh)
-                            y2 = min(depth_h - 1, cy_px + hh)
-
-                            if x2 <= x1 or y2 <= y1:
-                                continue
-
-                            roi = depth_frame[y1:y2, x1:x2].flatten()
-
-                        if roi.size < 10:
-                            continue
-
-                        valid = roi[(roi > 100) & (roi < 10000)]
-                        if valid.size < 5:
-                            continue
-
-                        distance_m = float(np.median(valid)) / 1000.0
-                        yolo_obstacles.append(YoloObstacle(label=label_name, distance_mm=distance_m * 1000.0, cx_ratio=cx))
-
-                    # ── Unified Decision Processing ──────────
-                    raw_nav, nav_metrics, nav_vis = nav_engine.analyze_scene(depth_frame, yolo_obstacles)
-                    stable_nav = nav_engine.smooth_decision(raw_nav)
-
-                    # Draw stable command
-                    stable_nav_color = {
-                        "FORWARD": (0, 255, 0),
-                        "LEFT": (0, 165, 255),
-                        "RIGHT": (255, 100, 0),
-                        "STOP": (0, 0, 255),
-                    }.get(stable_nav, (255, 255, 255))
-                    cv2.putText(
-                        nav_vis,
-                        f"CMD: {stable_nav}",
-                        (20, nav_vis.shape[0] - 25),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        1.0,
-                        stable_nav_color,
-                        3,
-                        cv2.LINE_AA,
-                    )
-                    
-
-                    if stable_nav != last_nav_command:
+                    # TTS on change
+                    if sent and result.stable_command != "NONE":
                         now_t = time.time()
-                        
-                        send_command(stable_nav)
-                        print(f"[CMD] {last_nav_command} -> {stable_nav}")
-                        
-                        # TTS with cooldown
                         if now_t - last_nav_tts_time >= NAV_TTS_COOLDOWN:
-                            tts_map = {
-                                "FORWARD": "Go forward",
-                                "LEFT": "Turn left",
-                                "RIGHT": "Turn right",
-                                "STOP": "Stop",
-                            }
-                            speak(tts_map.get(stable_nav, stable_nav))
+                            tts_text = TTS_MAP.get(result.stable_command,
+                                                   result.stable_command)
+                            speak(tts_text)
                             last_nav_tts_time = now_t
-                            
-                        last_nav_command = stable_nav
+
+                    # Debug visualization
+                    if cfg.DEBUG_DISPLAY:
+                        debug_frame = build_debug_frame(
+                            depth_frame, analysis, result, state,
+                            publisher.last_command or "-", cfg)
+                        cv2.imshow("Smart Walker Navigation", debug_frame)
+                        key = cv2.waitKey(1) & 0xFF
+                        if key == ord("q"):
+                            print("Quit key pressed.")
+                            pipeline.stop()
+                            break
+
+                    # Periodic log
+                    if frame_count % 200 == 0:
+                        n_grp = len(analysis.groups)
+                        n_val = len(analysis.valid_groups)
+                        print(
+                            f"[Status] f={frame_count} "
+                            f"auth={state['authorized']} "
+                            f"ready={state['ready']} "
+                            f"cmd={result.stable_command} "
+                            f"conf={result.confidence:.0%} "
+                            f"groups={n_grp}/{n_val} "
+                            f"target={result.chosen_corridor or '-'}"
+                        )
 
                 except KeyboardInterrupt:
-                    print("Interrupted by user.")
+                    print("Interrupted.")
                     pipeline.stop()
                     break
                 except Exception as e:
-                    print(f"Error in main loop: {e}")
+                    print(f"[ERROR] {e}")
+                    import traceback
+                    traceback.print_exc()
                     break
 
     finally:
-        serial_queue.put(None)
+        arduino.stop()
         tts_queue.put(None)
+        if cfg.DEBUG_DISPLAY:
+            cv2.destroyAllWindows()
+        print("[System] Shutdown complete.")
 
 
 if __name__ == "__main__":

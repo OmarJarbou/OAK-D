@@ -1,0 +1,11 @@
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+oak-template/.env
+
+# Do NOT ignore the example file (optional but recommended)
+!.env.example
