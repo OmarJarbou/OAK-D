@@ -323,8 +323,9 @@ class DecisionEngine:
             self._free_streak += 1
             self._go_streak = 0
             self._go_candidate = ""
-            if self._free_streak < self._free_frames_required:
-                return self._last_stable, self._free_streak
+            # FREE streak is already guaranteed by _is_free_candidate's
+            # FREE_STABLE_FRAMES check — don't double-gate here.
+            # Only enforce cooldown.
             if (
                 self._last_stable != "FREE"
                 and now - self._last_change_time < self._command_change_cooldown_s

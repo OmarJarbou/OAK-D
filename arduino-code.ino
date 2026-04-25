@@ -131,7 +131,7 @@ const float MATCH_THRESHOLD = 0.085;
 // ================================================================
 const unsigned long ACTION_ON_TIME    = 2000;
 const unsigned long ACTION_OFF_TIME   = 2000;
-const int           ACTION_TOTAL_CYCLES = 4;
+const int           ACTION_TOTAL_CYCLES = 2;
 const unsigned long STARTUP_IGNORE_TIME = 1500;
 
 // ================================================================

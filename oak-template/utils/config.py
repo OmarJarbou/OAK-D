@@ -113,13 +113,13 @@ class WalkerConfig:
     COMMAND_CHANGE_COOLDOWN_S: float = 0.7
     MIN_COMMAND_HOLD_MS: float = 800.0   # minimum ms before any non-critical transition
     UNSAFE_CONF_THRESHOLD: float = 0.35
-    FREE_CONF_THRESHOLD: float = 0.62
+    FREE_CONF_THRESHOLD: float = 0.55
     FREE_CENTER_CLOSE_OBS_MAX: float = 0.10
     FREE_CENTER_MIN_VALID_RATIO: float = 0.40
     FREE_CENTER_MIN_P20_MM: float = 1600.0
 
     # ── FREE Mode Stability ───────────────────────────────────────
-    FREE_STABLE_FRAMES: int = 8
+    FREE_STABLE_FRAMES: int = 6
     FREE_CLEAR_DISTANCE_MM: float = 1200.0
 
     # ── Serial Communication ─────────────────────────────────
@@ -155,7 +155,7 @@ class WalkerConfig:
                 os.getenv("COMMAND_CHANGE_COOLDOWN_S", "0.7")
             ),
             UNSAFE_CONF_THRESHOLD=float(os.getenv("UNSAFE_CONF_THRESHOLD", "0.35")),
-            FREE_CONF_THRESHOLD=float(os.getenv("FREE_CONF_THRESHOLD", "0.62")),
+            FREE_CONF_THRESHOLD=float(os.getenv("FREE_CONF_THRESHOLD", "0.55")),
             FREE_CENTER_CLOSE_OBS_MAX=float(
                 os.getenv("FREE_CENTER_CLOSE_OBS_MAX", "0.10")
             ),
@@ -166,7 +166,7 @@ class WalkerConfig:
                 os.getenv("FREE_CENTER_MIN_P20_MM", "1600.0")
             ),
             FREE_STABLE_FRAMES=int(
-                os.getenv("FREE_STABLE_FRAMES", "8")
+                os.getenv("FREE_STABLE_FRAMES", "6")
             ),
             FREE_CLEAR_DISTANCE_MM=float(
                 os.getenv("FREE_CLEAR_DISTANCE_MM", "1200.0")
