@@ -501,11 +501,10 @@ def main():
                     # Decision (uses merged groups)
                     result = decision_engine.decide(analysis, state)
 
-                    # Compute min p20 depth across center zones for critical stop check
-                    center_zones = ("L1", "CENTER", "R1")
+                    # Compute min p20 depth across ALL zones for critical stop check.
+                    # Side escape paths should prevent CRITICAL_STOP from latching.
                     min_p20 = min(
-                        (analysis.corridors[z].p20_depth for z in center_zones
-                        if z in analysis.corridors and analysis.corridors[z].p20_depth > 0),
+                        (m.p20_depth for m in analysis.corridors.values() if m.p20_depth > 0),
                         default=0.0,
                     )
 

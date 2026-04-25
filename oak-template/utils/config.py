@@ -122,6 +122,8 @@ class WalkerConfig:
     FREE_STABLE_FRAMES: int = 6
     FREE_CLEAR_DISTANCE_MM: float = 1200.0
     FREE_STICKY_SECONDS: float = 3.0   # how long FREE resists GO:CENTER re-entry
+    SIDE_PREFER_MARGIN: float = 0.15   # side wins if safety beats CENTER by this much
+    POST_RECOVERY_GRACE_S: float = 3.0 # grace after STOP->FREE recovery
 
     # ── Serial Communication ─────────────────────────────────
     ARDUINO_PORT: str = "MOCK"

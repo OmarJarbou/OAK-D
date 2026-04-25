@@ -283,14 +283,15 @@ class DecisionEngine:
         - p20 depth exceeds FREE_CLEAR_DISTANCE_MM
         - stable for FREE_STABLE_FRAMES consecutive frames
         """
+        # Side steering needed → FREE must not engage.
+        if best_target != "CENTER":
+            self._free_stable_streak = 0
+            return False
+
         center = analysis.corridors.get("CENTER")
 
         # Structural failures — hard reset streak
         if center is None:
-            self._free_stable_streak = 0
-            return False
-
-        if best_target != "CENTER":
             self._free_stable_streak = 0
             return False
 
@@ -416,6 +417,30 @@ class DecisionEngine:
         if not candidates:
             return None
 
+        # If a side zone clearly beats CENTER by SIDE_PREFER_MARGIN, prefer it
+        # unconditionally (ignore CENTER bias and accept-ratio).
+        center_name = cfg.ZONE_NAMES[center_idx]
+        center_m = analysis.corridors.get(center_name)
+        if center_m is not None:
+            center_safety = center_m.safety_score
+            best_side_name = None
+            best_side_safety = -1.0
+            for name, m in candidates:
+                if name == center_name:
+                    continue
+                if m.safety_score > best_side_safety:
+                    best_side_safety = m.safety_score
+                    best_side_name = name
+            if (
+                best_side_name is not None
+                and (best_side_safety - center_safety) > cfg.SIDE_PREFER_MARGIN
+            ):
+                print(
+                    f"[Decision] Side zone {best_side_name} preferred: "
+                    f"safety={best_side_safety:.2f} vs CENTER={center_safety:.2f}"
+                )
+                return best_side_name
+
         # Find the zone with the best safety_score
         best_name = None
         best_effective_score = -1.0
@@ -428,7 +453,6 @@ class DecisionEngine:
                 best_name = name
 
         # Check if CENTER is in the group and close enough to the best
-        center_name = cfg.ZONE_NAMES[center_idx]
         center_m = None
         for name, m in candidates:
             if name == center_name:

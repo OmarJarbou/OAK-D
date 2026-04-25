@@ -33,6 +33,8 @@ class CommandPublisher:
         self._last_send_time: float = 0.0
         self._heartbeat_s: float = 2.0
         self._free_sticky_seconds: float = cfg.FREE_STICKY_SECONDS
+        self._post_recovery_grace_s: float = cfg.POST_RECOVERY_GRACE_S
+        self._post_recovery_until: float = 0.0
         self._stop_entered_time: float = 0.0
         self._stop_hold_seconds: float = cfg.STOP_HOLD_SECONDS
         self._critical_stop_distance_mm: float = cfg.CRITICAL_STOP_DISTANCE_MM
@@ -92,6 +94,18 @@ class CommandPublisher:
                     f"reason=blocked:{block_reason} stable={stable_count}"
                 )
             return False
+
+        # POST_RECOVERY grace: after STOP -> FREE recovery, allow GO:* immediately
+        # so the user can steer out, but block STOP unless it's truly critical.
+        if now < self._post_recovery_until:
+            if command == "STOP":
+                if not (min_p20_depth > 0.0 and min_p20_depth < self._critical_stop_distance_mm):
+                    print("[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO")
+                    return False
+            elif command.startswith("GO:") and changed:
+                print("[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO")
+                self._send(command, now, reason or "POST_RECOVERY_GO")
+                return True
 
         # Task B: FREE should be sticky. If we're in FREE and the engine tries to
         # switch to GO:CENTER shortly after, suppress it. Only STOP or a genuine
@@ -155,6 +169,7 @@ class CommandPublisher:
                 f"held={held:.2f}s stable={stable_count}"
             )
             self._send("FREE", now, "RECOVERY_FREE")
+            self._post_recovery_until = now + self._post_recovery_grace_s
             return True
 
         # ── Non-STOP transition with cooldown guard ───────────────────
