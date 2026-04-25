@@ -174,6 +174,7 @@ bool lockedAtRight = false;
 
 enum Mode     { MODE_FREE, MODE_ASSIST };
 Mode currentMode = MODE_FREE;
+bool stopLatched = false;
 
 // ================================================================
 //  POSITION ENUM
@@ -364,6 +365,7 @@ int readPot() {
 // ================================================================
 void setFreeMode(bool sendStatus) {
   currentMode   = MODE_FREE;
+  stopLatched   = false;
   lockedAtLeft  = false;
   lockedAtRight = false;
   brakeRelease();
@@ -718,9 +720,15 @@ void executeCommand(String cmd) {
   // ── Emergency stop ────────────────────────────────────────────
   if (cmd == "CMD:STOP") {
     setAssistMode(false);     // engage motor to hold, avoid extra STATUS:ASSIST
-    outputsOn();              // brake + vibration
-    Serial.println("[CMD] STOP - brake and vibration engaged");
-    Serial1.println("STATUS:STOPPED");
+    brakePush();              // keep brake ON while stopped
+    if (!stopLatched) {
+      vibrationPulse(1000);   // pulse only on STOP transition
+      stopLatched = true;
+      Serial.println("[CMD] STOP - brake and vibration engaged");
+      Serial1.println("STATUS:STOPPED");
+    } else {
+      Serial.println("[CMD] STOP already latched - skipping vibration");
+    }
     return;
   }
 
@@ -733,6 +741,7 @@ void executeCommand(String cmd) {
   }
   if (cmd == "BRAKE:OFF" || cmd == "CMD:BRAKE:OFF") {
     if (!authorized) { Serial.println("[CMD] Not authorized"); return; }
+    stopLatched = false;
     brakeRelease();
     Serial.println("[CMD] Brake OFF");
     return;
@@ -753,6 +762,7 @@ void executeCommand(String cmd) {
     if (currentMode == MODE_FREE) {
       setAssistMode(true);   // enter ASSIST for steering and report mode change
     }
+    stopLatched = false;
     brakeRelease();
     String pos = goCmd.substring(3);
     if      (pos == "LEFT")   goToPosition(POS_LEFT);

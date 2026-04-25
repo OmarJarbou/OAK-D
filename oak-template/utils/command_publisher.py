@@ -32,7 +32,11 @@ class CommandPublisher:
         self._last_sent: Optional[str] = None
         self._last_send_time: float = 0.0
         self._heartbeat_s: float = 2.0
-        self._stop_heartbeat_s: float = 0.7
+        self._stop_entered_time: float = 0.0
+        self._stop_hold_seconds: float = cfg.STOP_HOLD_SECONDS
+        self._critical_stop_distance_mm: float = cfg.CRITICAL_STOP_DISTANCE_MM
+        self._min_command_hold_s: float = cfg.MIN_COMMAND_HOLD_MS / 1000.0
+        self._current_cmd_entered_time: float = 0.0
 
     @staticmethod
     def _is_left_command(command: str) -> bool:
@@ -57,49 +61,113 @@ class CommandPublisher:
                 return False, "locked_right"
         return True, "allowed"
 
-    def publish(self, command: str, state: dict, reason: str = "") -> bool:
+    def publish(self, command: str, state: dict, reason: str = "",
+            min_p20_depth: float = 0.0,
+            stable_count: int = 0,
+            critical_stop: bool = False) -> bool:
         """
         Attempt to publish a command. Returns True if actually sent.
 
         Rules:
-          1. If command == "NONE", do nothing.
-          2. Send immediately on command transition (subject to state safety checks).
-          3. For unchanged command, heartbeat every 2.0s.
-          4. STOP heartbeat may repeat faster, but not below 0.7s.
+        1. NONE → skip.
+        2. Critical STOP overrides all cooldowns immediately.
+        3. Non-critical transitions must hold MIN_COMMAND_HOLD_MS.
+        4. STOP is edge-triggered (latch), with recovery FREE after hold.
+        5. Non-STOP unchanged commands heartbeat every 2.0s.
         """
         if command == "NONE":
             return False
 
         now = time.time()
         elapsed = now - self._last_send_time
+        held_current = now - self._current_cmd_entered_time
         changed = (command != self._last_sent)
 
         allowed, block_reason = self._is_allowed(command, state)
         if not allowed:
             if changed:
                 print(
-                    f"[Publisher] {self._last_sent or '(none)'} -> {command} "
-                    f"reason=blocked:{block_reason}"
+                    f"[Publisher] BLOCKED {self._last_sent or '(none)'} -> {command} "
+                    f"reason=blocked:{block_reason} stable={stable_count}"
                 )
             return False
 
+        # ── Critical STOP: override all cooldowns immediately ────────
+        if command == "STOP" and critical_stop and changed:
+            print(
+                f"[Publisher] {self._last_sent or '(none)'} -> STOP "
+                f"reason=CRITICAL_STOP stable={stable_count} "
+                f"(cooldown override)"
+            )
+            self._stop_entered_time = now
+            self._send(command, now, "CRITICAL_STOP")
+            return True
+
+        # ── Entering STOP (non-critical) ─────────────────────────────
+        if command == "STOP" and changed:
+            if held_current < self._min_command_hold_s:
+                print(
+                    f"[Publisher] COOLDOWN {self._last_sent or '(none)'} -> STOP "
+                    f"held={held_current*1000:.0f}ms < {self._min_command_hold_s*1000:.0f}ms "
+                    f"stable={stable_count}"
+                )
+                return False
+            self._stop_entered_time = now
+            self._send(command, now, reason or "STOP_transition")
+            return True
+
+        # ── Already in STOP ──────────────────────────────────────────
+        if command == "STOP" and self._last_sent == "STOP":
+            held = now - self._stop_entered_time
+
+            if min_p20_depth > 0.0 and min_p20_depth < self._critical_stop_distance_mm:
+                print(
+                    f"[Publisher] CRITICAL_STOP held={held:.2f}s "
+                    f"depth={min_p20_depth:.0f}mm stable={stable_count}"
+                )
+                return False
+
+            if held < self._stop_hold_seconds:
+                print(
+                    f"[Publisher] STOP_HOLD {held:.2f}s / {self._stop_hold_seconds}s "
+                    f"stable={stable_count}"
+                )
+                return False
+
+            # Recovery FREE
+            print(
+                f"[Publisher] STOP -> FREE reason=RECOVERY_FREE "
+                f"held={held:.2f}s stable={stable_count}"
+            )
+            self._send("FREE", now, "RECOVERY_FREE")
+            return True
+
+        # ── Non-STOP transition with cooldown guard ───────────────────
         if changed:
+            if held_current < self._min_command_hold_s:
+                print(
+                    f"[Publisher] COOLDOWN {self._last_sent or '(none)'} -> {command} "
+                    f"held={held_current*1000:.0f}ms < {self._min_command_hold_s*1000:.0f}ms "
+                    f"stable={stable_count}"
+                )
+                return False
             self._send(command, now, reason or "changed")
             return True
 
-        heartbeat_s = self._stop_heartbeat_s if command == "STOP" else self._heartbeat_s
-        if elapsed >= heartbeat_s:
-            self._send(command, now, reason or f"heartbeat_{heartbeat_s:.1f}s")
+        # ── Heartbeat for unchanged non-STOP ─────────────────────────
+        if elapsed >= self._heartbeat_s:
+            self._send(command, now, reason or f"heartbeat_{self._heartbeat_s:.1f}s")
             return True
 
         return False
 
     def _send(self, command: str, now: float, reason: str) -> None:
-        """Actually send the command via serial."""
+        """Actually send the command via serial and log transition."""
         prev = self._last_sent
         self._serial.send_command(command)
         self._last_sent = command
         self._last_send_time = now
+        self._current_cmd_entered_time = now
         print(f"[Publisher] {prev or '(none)'} -> {command} reason={reason}")
 
     @property

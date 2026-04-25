@@ -102,16 +102,25 @@ class WalkerConfig:
     COMMAND_REFRESH_S: float = 2.0          # Re-send same command interval
     STOP_REPEAT_INTERVAL_S: float = 1.0     # Re-send STOP more often
 
+    # ── STOP Recovery ────────────────────────────────────────────
+    STOP_HOLD_SECONDS: float = 1.5
+    CRITICAL_STOP_DISTANCE_MM: float = 600.0
+
     # ── Decision Hysteresis / Mode Switching ────────────────
     STOP_FRAMES_REQUIRED: int = 4
     FREE_FRAMES_REQUIRED: int = 6
     GO_FRAMES_REQUIRED: int = 4
     COMMAND_CHANGE_COOLDOWN_S: float = 0.7
+    MIN_COMMAND_HOLD_MS: float = 800.0   # minimum ms before any non-critical transition
     UNSAFE_CONF_THRESHOLD: float = 0.35
     FREE_CONF_THRESHOLD: float = 0.62
     FREE_CENTER_CLOSE_OBS_MAX: float = 0.10
     FREE_CENTER_MIN_VALID_RATIO: float = 0.40
     FREE_CENTER_MIN_P20_MM: float = 1600.0
+
+    # ── FREE Mode Stability ───────────────────────────────────────
+    FREE_STABLE_FRAMES: int = 8
+    FREE_CLEAR_DISTANCE_MM: float = 1800.0
 
     # ── Serial Communication ─────────────────────────────────
     ARDUINO_PORT: str = "MOCK"
@@ -155,5 +164,14 @@ class WalkerConfig:
             ),
             FREE_CENTER_MIN_P20_MM=float(
                 os.getenv("FREE_CENTER_MIN_P20_MM", "1600.0")
+            ),
+            FREE_STABLE_FRAMES=int(
+                os.getenv("FREE_STABLE_FRAMES", "8")
+            ),
+            FREE_CLEAR_DISTANCE_MM=float(
+                os.getenv("FREE_CLEAR_DISTANCE_MM", "1800.0")
+            ),
+            MIN_COMMAND_HOLD_MS=float(
+                os.getenv("MIN_COMMAND_HOLD_MS", "800.0")
             ),
         )

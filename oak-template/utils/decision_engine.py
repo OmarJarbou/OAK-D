@@ -33,6 +33,8 @@ class DecisionResult:
     reason: str                  # Human-readable explanation
     valid_groups: List[FreeSpaceGroup]
     center_blocked_reason: str   # Why CENTER was not chosen (empty if chosen)
+    critical_stop: bool = False
+    stable_count: int = 0
 
 
 class DecisionEngine:
@@ -66,6 +68,9 @@ class DecisionEngine:
         self._free_center_close_obs_max: float = cfg.FREE_CENTER_CLOSE_OBS_MAX
         self._free_center_min_valid_ratio: float = cfg.FREE_CENTER_MIN_VALID_RATIO
         self._free_center_min_p20_mm: float = cfg.FREE_CENTER_MIN_P20_MM
+        self._free_stable_frames: int = cfg.FREE_STABLE_FRAMES
+        self._free_clear_distance_mm: float = cfg.FREE_CLEAR_DISTANCE_MM
+        self._free_stable_streak: int = 0   # consecutive frames where FREE conditions met
 
     def decide(
         self,
@@ -82,6 +87,7 @@ class DecisionEngine:
                 confidence=0.0, chosen_corridor="", chosen_group=None,
                 reason="Not authorized - waiting for RFID",
                 valid_groups=[], center_blocked_reason="",
+                critical_stop=False, stable_count=0,
             )
 
         if not arduino_state.get("ready", False):
@@ -90,6 +96,7 @@ class DecisionEngine:
                 confidence=0.0, chosen_corridor="", chosen_group=None,
                 reason="Arduino not ready (auth sequence in progress)",
                 valid_groups=[], center_blocked_reason="",
+                critical_stop=False, stable_count=0,
             )
 
         if not arduino_state.get("sensor_ok", True):
@@ -99,6 +106,7 @@ class DecisionEngine:
                 confidence=1.0, chosen_corridor="", chosen_group=None,
                 reason="STOP: sensor error",
                 valid_groups=[], center_blocked_reason="",
+                critical_stop=False, stable_count=0,
             )
 
         if not arduino_state.get("calibrated", True):
@@ -108,6 +116,7 @@ class DecisionEngine:
                 confidence=1.0, chosen_corridor="", chosen_group=None,
                 reason="STOP: not calibrated",
                 valid_groups=[], center_blocked_reason="",
+                critical_stop=False, stable_count=0,
             )
 
         # ── 2. No Depth Data ────────────────────────────────
@@ -119,6 +128,7 @@ class DecisionEngine:
                 confidence=0.5, chosen_corridor="", chosen_group=None,
                 reason="No depth data",
                 valid_groups=[], center_blocked_reason="",
+                critical_stop=False, stable_count=0,
             )
 
         # ── 3. Choose from Valid Merged Groups ──────────────
@@ -199,12 +209,17 @@ class DecisionEngine:
                     reason = f"STOP: depth confidence unsafe ({confidence:.2f})"
             elif free_candidate:
                 raw_cmd = "FREE"
-                reason = "FREE: center clear and no obstacle"
+                reason = (
+                    f"FREE: clear path "
+                    f"(p20={int(analysis.corridors['CENTER'].p20_depth)}mm "
+                    f"streak={self._free_stable_streak}/{self._free_stable_frames} "
+                    f"conf={confidence:.2f})"
+                )
             else:
                 raw_cmd = go_cmd
                 reason = self._build_go_reason(best_target, analysis, confidence)
         # ── 8. Hysteresis + cooldown ─────────────────────────
-        stable_cmd = self._apply_mode_hysteresis(raw_cmd, critical_stop=critical_stop)
+        stable_cmd, stable_count = self._apply_mode_hysteresis(raw_cmd, critical_stop=critical_stop)
 
         return DecisionResult(
             raw_command=raw_cmd, stable_command=stable_cmd,
@@ -214,35 +229,73 @@ class DecisionEngine:
             reason=reason,
             valid_groups=valid,
             center_blocked_reason=center_blocked_reason,
+            critical_stop=critical_stop,
+            stable_count=stable_count,
         )
 
     def _is_free_candidate(
         self, analysis: AnalysisResult, best_target: str, confidence: float
     ) -> bool:
+        """
+        Return True when the center path is safely clear and no steering
+        correction is needed — prefer FREE over GO:CENTER in this case.
+
+        Conditions (all must pass):
+        - best target is CENTER (no side-steering needed)
+        - confidence is acceptable
+        - center zone is clear with no close obstacles
+        - p20 depth exceeds FREE_CLEAR_DISTANCE_MM
+        - stable for FREE_STABLE_FRAMES consecutive frames
+        """
         center = analysis.corridors.get("CENTER")
         if center is None:
+            self._free_stable_streak = 0
             return False
+
+        # Must not need side steering
         if best_target != "CENTER":
+            self._free_stable_streak = 0
             return False
+
+        # Confidence gate
         if confidence < self._free_conf_threshold:
+            self._free_stable_streak = 0
             return False
-        return (
+
+        # Center must be genuinely clear
+        center_ok = (
             center.is_clear
             and center.valid_ratio >= self._free_center_min_valid_ratio
             and center.close_obstacle_ratio <= self._free_center_close_obs_max
-            and center.p20_depth >= self._free_center_min_p20_mm
+            and center.p20_depth >= self._free_clear_distance_mm
         )
+
+        if not center_ok:
+            self._free_stable_streak = 0
+            return False
+
+        # Increment stability counter
+        self._free_stable_streak += 1
+        return self._free_stable_streak >= self._free_stable_frames
 
     def _build_go_reason(
         self, best_target: str, analysis: AnalysisResult, confidence: float
     ) -> str:
         if best_target == "CENTER":
-            return f"GO:CENTER: correction mode active (conf={confidence:.2f})"
+            center = analysis.corridors.get("CENTER")
+            if center is not None:
+                return (
+                    f"GO:CENTER: active recenter needed "
+                    f"(p20={int(center.p20_depth)}mm "
+                    f"streak={self._free_stable_streak}/{self._free_stable_frames} "
+                    f"conf={confidence:.2f})"
+                )
+            return f"GO:CENTER: active recenter needed (conf={confidence:.2f})"
         side = "right" if best_target.startswith("R") or best_target == "RIGHT" else "left"
         return f"GO:{best_target}: center weak, {side} safer (conf={confidence:.2f})"
 
-    def _apply_mode_hysteresis(self, raw: str, critical_stop: bool = False) -> str:
-        """Apply STOP/FREE/GO frame hysteresis and 700ms change cooldown."""
+    def _apply_mode_hysteresis(self, raw: str, critical_stop: bool = False) -> tuple[str, int]:
+        """Apply STOP/FREE/GO frame hysteresis. Returns (stable_command, stable_count)."""
         self._history.append(raw)
         now = time.time()
 
@@ -255,8 +308,9 @@ class DecisionEngine:
                 if self._last_stable != "STOP":
                     self._last_stable = "STOP"
                     self._last_change_time = now
-                return self._last_stable
-            return self._last_stable
+                return self._last_stable, self._unsafe_streak
+
+            return self._last_stable, self._unsafe_streak
 
         self._unsafe_streak = 0
 
@@ -265,16 +319,16 @@ class DecisionEngine:
             self._go_streak = 0
             self._go_candidate = ""
             if self._free_streak < self._free_frames_required:
-                return self._last_stable
+                return self._last_stable, self._free_streak
             if (
                 self._last_stable != "FREE"
                 and now - self._last_change_time < self._command_change_cooldown_s
             ):
-                return self._last_stable
+                return self._last_stable, self._free_streak
             if self._last_stable != "FREE":
                 self._last_stable = "FREE"
                 self._last_change_time = now
-            return self._last_stable
+            return self._last_stable, self._free_streak
 
         # GO:* candidate
         self._free_streak = 0
@@ -284,16 +338,16 @@ class DecisionEngine:
             self._go_candidate = raw
             self._go_streak = 1
         if self._go_streak < self._go_frames_required:
-            return self._last_stable
+            return self._last_stable, self._go_streak
         if (
             self._last_stable != raw
             and now - self._last_change_time < self._command_change_cooldown_s
         ):
-            return self._last_stable
+            return self._last_stable, self._go_streak
         if self._last_stable != raw:
             self._last_stable = raw
             self._last_change_time = now
-        return self._last_stable
+        return self._last_stable, self._go_streak
 
     # ── Safety-Score Target Selection ────────────────────────
 
@@ -420,3 +474,4 @@ class DecisionEngine:
         self._free_streak = 0
         self._go_streak = 0
         self._go_candidate = ""
+        self._free_stable_streak = 0

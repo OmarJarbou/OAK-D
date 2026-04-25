@@ -501,11 +501,21 @@ def main():
                     # Decision (uses merged groups)
                     result = decision_engine.decide(analysis, state)
 
-                    # Publish (rate-limited)
+                    # Compute min p20 depth across center zones for critical stop check
+                    center_zones = ("L1", "CENTER", "R1")
+                    min_p20 = min(
+                        (analysis.corridors[z].p20_depth for z in center_zones
+                        if z in analysis.corridors and analysis.corridors[z].p20_depth > 0),
+                        default=0.0,
+                    )
+
                     sent = publisher.publish(
                         result.stable_command,
                         state,
                         reason=result.reason,
+                        min_p20_depth=min_p20,
+                        stable_count=result.stable_count,
+                        critical_stop=result.critical_stop,
                     )
 
                     # TTS on change
