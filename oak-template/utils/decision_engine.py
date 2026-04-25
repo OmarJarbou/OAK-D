@@ -71,10 +71,59 @@ class DecisionEngine:
         self._free_stable_frames: int = cfg.FREE_STABLE_FRAMES
         self._free_clear_distance_mm: float = cfg.FREE_CLEAR_DISTANCE_MM
         self._free_stable_streak: int = 0   # consecutive frames where FREE conditions met
+        self._free_exit_bad_streak: int = 0
+        self._free_exit_bad_frames: int = int(cfg.FREE_EXIT_BAD_FRAMES)
 
-        # True once Arduino reports CENTER reached/at-target at least once.
-        # Used to suppress redundant GO:CENTER commands when we're already centered.
-        self._centered: bool = False
+        # Latched True once Arduino reports CENTER reached/at-target.
+        # While True and center path remains clear, we suppress GO:CENTER and emit FREE only.
+        # Cleared on STOP, side-steer need, or obstacle/center degradation.
+        self._confirmed_centered: bool = False
+
+        # Lightweight temporal smoothing (EMA) for stability without vision changes.
+        self._ema_alpha: float = float(cfg.TEMP_EMA_ALPHA)
+        self._ema_warmup_frames: int = int(cfg.TEMP_EMA_WARMUP_FRAMES)
+        self._ema_frames_seen: int = 0
+        self._ema_p20: dict[str, float] = {}
+        self._ema_close: dict[str, float] = {}
+
+    def _update_ema(self, analysis: AnalysisResult) -> None:
+        """Update EMA dicts for per-zone p20_depth and close_obstacle_ratio."""
+        if not analysis.corridors:
+            return
+        a = self._ema_alpha
+        for name, m in analysis.corridors.items():
+            p20 = float(m.p20_depth or 0.0)
+            close = float(m.close_obstacle_ratio or 0.0)
+            if name not in self._ema_p20:
+                self._ema_p20[name] = p20
+            else:
+                self._ema_p20[name] = a * p20 + (1.0 - a) * self._ema_p20[name]
+            if name not in self._ema_close:
+                self._ema_close[name] = close
+            else:
+                self._ema_close[name] = a * close + (1.0 - a) * self._ema_close[name]
+        self._ema_frames_seen += 1
+
+    def _ema_ready(self) -> bool:
+        return self._ema_frames_seen >= self._ema_warmup_frames
+
+    def _center_path_clear(self, analysis: AnalysisResult) -> bool:
+        """Return True when CENTER remains clearly passable (used for confirmed-center latch)."""
+        center = analysis.corridors.get("CENTER")
+        if center is None:
+            return False
+        p20 = self._ema_p20.get("CENTER", center.p20_depth) if self._ema_ready() else center.p20_depth
+        close = (
+            self._ema_close.get("CENTER", center.close_obstacle_ratio)
+            if self._ema_ready()
+            else center.close_obstacle_ratio
+        )
+        return (
+            center.is_clear
+            and center.valid_ratio >= self._free_center_min_valid_ratio
+            and close <= self._free_center_close_obs_max
+            and p20 >= self._free_clear_distance_mm
+        )
 
     def decide(
         self,
@@ -85,9 +134,10 @@ class DecisionEngine:
         cfg = self.cfg
         prev_stable = self._last_stable
 
-        # Track whether we've ever successfully centered (based on Arduino feedback).
+        # Track whether Arduino confirmed CENTER reached/at-target (latched).
+        # Prefer explicit center_confirmed if present; also tolerate alternate fields safely.
         if arduino_state.get("center_confirmed", False):
-            self._centered = True
+            self._confirmed_centered = True
 
         # ── 1. Safety Gates ─────────────────────────────────
         if not arduino_state.get("authorized", False):
@@ -140,6 +190,10 @@ class DecisionEngine:
                 critical_stop=False, stable_count=0,
             )
 
+        # Update lightweight temporal smoothing (EMA). Used only by
+        # _center_path_clear() and _is_free_candidate().
+        self._update_ema(analysis)
+
         # ── 3. Choose from Valid Merged Groups ──────────────
         valid = analysis.valid_groups
         locked_left = arduino_state.get("locked_left", False)
@@ -162,6 +216,8 @@ class DecisionEngine:
             best_target = ""
             center_blocked_reason = "No eligible group"
             critical_stop = False
+            # STOP clears confirmed centering.
+            self._confirmed_centered = False
         else:
             # ── 5. Pick Best Group (by avg safety_score, not has_center) ──
             def group_priority(item):
@@ -200,7 +256,6 @@ class DecisionEngine:
                         break
 
             go_cmd = cfg.ZONE_TO_CMD.get(best_target, "GO:CENTER")
-            free_candidate = self._is_free_candidate(analysis, best_target, confidence)
             critical_stop = bool(analysis.has_emergency)
             unsafe_condition = (
                 analysis.has_emergency
@@ -208,54 +263,101 @@ class DecisionEngine:
                 or confidence < self._unsafe_conf_threshold
             )
 
+            # Clear confirmed-centered latch if steering away from center is needed
+            # or if center is no longer clearly passable.
+            if best_target != "CENTER" or not self._center_path_clear(analysis):
+                self._confirmed_centered = False
+
             if unsafe_condition:
                 raw_cmd = "STOP"
+                # STOP clears confirmed centering.
+                self._confirmed_centered = False
                 if analysis.has_emergency:
                     reason = "STOP: danger close ratio high"
                 elif len(valid) == 0:
                     reason = "STOP: no valid group width"
                 else:
                     reason = f"STOP: depth confidence unsafe ({confidence:.2f})"
-            elif free_candidate:
-                raw_cmd = "FREE"
-                reason = (
-                    f"FREE: clear path "
-                    f"(p20={int(analysis.corridors['CENTER'].p20_depth)}mm "
-                    f"streak={self._free_stable_streak}/{self._free_stable_frames} "
-                    f"conf={confidence:.2f})"
-                )
             else:
-                raw_cmd = go_cmd
-                reason = self._build_go_reason(best_target, analysis, confidence)
-
-                # Task A: Suppress redundant GO:CENTER once we've already centered.
-                #
-                # If the best target is CENTER and we're already in FREE/GO:CENTER,
-                # and Arduino has previously confirmed we reached CENTER, then emit
-                # FREE directly (avoid spamming GO:CENTER while already centered).
-                #
-                # GO:CENTER should still be allowed when we've never centered, or
-                # after a STOP that led to a side-steer (handled by clearing
-                # self._centered when STOP -> side GO:* happens).
+                # If Arduino already confirmed we're centered and CENTER remains clear,
+                # force FREE only (avoid GO:CENTER↔FREE oscillation).
                 if (
-                    best_target == "CENTER"
-                    and go_cmd == "GO:CENTER"
-                    and self._centered
-                    and prev_stable in {"FREE", "GO:CENTER"}
+                    self._confirmed_centered
+                    and best_target == "CENTER"
+                    and self._center_path_clear(analysis)
                 ):
                     raw_cmd = "FREE"
-                    reason = "FREE: already centered (suppress GO:CENTER)"
+                    reason = "FREE: confirmed centered (suppress GO:CENTER)"
+                else:
+                    free_candidate = self._is_free_candidate(analysis, best_target, confidence)
+                    if free_candidate:
+                        raw_cmd = "FREE"
+                        reason = (
+                            f"FREE: clear path "
+                            f"(p20={int(analysis.corridors['CENTER'].p20_depth)}mm "
+                            f"streak={self._free_stable_streak}/{self._free_stable_frames} "
+                            f"conf={confidence:.2f})"
+                        )
+                    else:
+                        raw_cmd = go_cmd
+                        reason = self._build_go_reason(best_target, analysis, confidence)
+
+                        # If we are trying to re-center (GO:CENTER), that implies we are
+                        # not yet confirmed centered.
+                        if best_target == "CENTER" and raw_cmd == "GO:CENTER":
+                            self._confirmed_centered = False
+
+            if raw_cmd == "FREE":
+                # FREE does not clear confirmed-centered latch by itself.
+                pass
+
+        # ── 7.5 FREE exit hysteresis (Option C) ─────────────────────
+        # When currently stable FREE, require N consecutive "not free" frames
+        # before leaving FREE (unless critical STOP or a clear side-steer win).
+        free_exit_bad_frames = self._free_exit_bad_frames
+
+        def _is_side_steer(cmd: str) -> bool:
+            return cmd in {
+                "GO:LEFT", "GO:L2", "GO:L1",
+                "GO:R1", "GO:R2", "GO:RIGHT",
+            }
+
+        bypass_bad_streak = False
+        if raw_cmd == "STOP" and critical_stop:
+            bypass_bad_streak = True
+        elif _is_side_steer(raw_cmd):
+            # Bypass only if side safety beats CENTER by SIDE_PREFER_MARGIN.
+            side_name = raw_cmd.replace("GO:", "")
+            side_m = analysis.corridors.get(side_name)
+            center_m = analysis.corridors.get("CENTER")
+            if side_m is not None and center_m is not None:
+                if (side_m.safety_score - center_m.safety_score) > cfg.SIDE_PREFER_MARGIN:
+                    bypass_bad_streak = True
+
+        if raw_cmd == "FREE":
+            self._free_exit_bad_streak = 0
+        elif self._last_stable == "FREE" and not bypass_bad_streak:
+            self._free_exit_bad_streak += 1
+            if self._free_exit_bad_streak < free_exit_bad_frames:
+                raw_cmd = "FREE"
+                reason = f"FREE: exit-hold bad_streak={self._free_exit_bad_streak}/{free_exit_bad_frames}"
+            else:
+                self._free_exit_bad_streak = 0
         # ── 8. Hysteresis + cooldown ─────────────────────────
         stable_cmd, stable_count = self._apply_mode_hysteresis(raw_cmd, critical_stop=critical_stop)
 
-        # If we exit STOP into a side-steer, treat that as losing centered state.
+        # If we exit STOP into a side-steer, treat that as losing confirmed centered state.
         # This makes a later return-to-center eligible to fire GO:CENTER again.
         if (
             prev_stable == "STOP"
             and stable_cmd.startswith("GO:")
             and stable_cmd != "GO:CENTER"
         ):
-            self._centered = False
+            self._confirmed_centered = False
+
+        # Any STOP clears confirmed centered state.
+        if stable_cmd == "STOP":
+            self._confirmed_centered = False
 
         return DecisionResult(
             raw_command=raw_cmd, stable_command=stable_cmd,
@@ -311,7 +413,8 @@ class DecisionEngine:
             self._free_stable_streak = 0
             return False
 
-        if center.p20_depth < self._free_clear_distance_mm:
+        p20 = self._ema_p20.get("CENTER", center.p20_depth) if self._ema_ready() else center.p20_depth
+        if p20 < self._free_clear_distance_mm:
             # Soft failure — borderline depth, don't reset streak fully,
             # just don't increment. This prevents one bad frame killing progress.
             return False
@@ -541,4 +644,8 @@ class DecisionEngine:
         self._go_streak = 0
         self._go_candidate = ""
         self._free_stable_streak = 0
-        self._centered = False
+        self._free_exit_bad_streak = 0
+        self._confirmed_centered = False
+        self._ema_frames_seen = 0
+        self._ema_p20.clear()
+        self._ema_close.clear()

@@ -124,6 +124,12 @@ class WalkerConfig:
     FREE_STICKY_SECONDS: float = 3.0   # how long FREE resists GO:CENTER re-entry
     SIDE_PREFER_MARGIN: float = 0.15   # side wins if safety beats CENTER by this much
     POST_RECOVERY_GRACE_S: float = 3.0 # grace after STOP->FREE recovery
+    FREE_EXIT_BAD_FRAMES: int = 2      # consecutive "not free" frames required to exit FREE
+
+    # ── Lightweight Temporal Smoothing (DecisionEngine only) ─────────
+    # EMA applied to p20_depth and close_obstacle_ratio per zone
+    TEMP_EMA_ALPHA: float = 0.25
+    TEMP_EMA_WARMUP_FRAMES: int = 4
 
     # ── Serial Communication ─────────────────────────────────
     ARDUINO_PORT: str = "MOCK"
@@ -173,6 +179,36 @@ class WalkerConfig:
             ),
             FREE_CLEAR_DISTANCE_MM=float(
                 os.getenv("FREE_CLEAR_DISTANCE_MM", "1200.0")
+            ),
+            FREE_STICKY_SECONDS=float(
+                os.getenv("FREE_STICKY_SECONDS", "3.0")
+            ),
+            SIDE_PREFER_MARGIN=float(
+                os.getenv("SIDE_PREFER_MARGIN", "0.15")
+            ),
+            POST_RECOVERY_GRACE_S=float(
+                os.getenv("POST_RECOVERY_GRACE_S", "3.0")
+            ),
+            CENTER_SAFETY_BIAS=float(
+                os.getenv("CENTER_SAFETY_BIAS", "0.10")
+            ),
+            CENTER_ACCEPT_RATIO=float(
+                os.getenv("CENTER_ACCEPT_RATIO", "0.85")
+            ),
+            STOP_HOLD_SECONDS=float(
+                os.getenv("STOP_HOLD_SECONDS", "1.5")
+            ),
+            CRITICAL_STOP_DISTANCE_MM=float(
+                os.getenv("CRITICAL_STOP_DISTANCE_MM", "600.0")
+            ),
+            TEMP_EMA_ALPHA=float(
+                os.getenv("TEMP_EMA_ALPHA", "0.25")
+            ),
+            TEMP_EMA_WARMUP_FRAMES=int(
+                os.getenv("TEMP_EMA_WARMUP_FRAMES", "4")
+            ),
+            FREE_EXIT_BAD_FRAMES=int(
+                os.getenv("FREE_EXIT_BAD_FRAMES", "2")
             ),
             MIN_COMMAND_HOLD_MS=float(
                 os.getenv("MIN_COMMAND_HOLD_MS", "800.0")

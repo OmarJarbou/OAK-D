@@ -40,6 +40,8 @@ class CommandPublisher:
         self._critical_stop_distance_mm: float = cfg.CRITICAL_STOP_DISTANCE_MM
         self._min_command_hold_s: float = cfg.MIN_COMMAND_HOLD_MS / 1000.0
         self._current_cmd_entered_time: float = 0.0
+        self._last_depth_mm: float = 0.0
+        self._last_stable_count: int = 0
 
     @staticmethod
     def _is_left_command(command: str) -> bool:
@@ -85,6 +87,10 @@ class CommandPublisher:
         elapsed = now - self._last_send_time
         held_current = now - self._current_cmd_entered_time
         changed = (command != self._last_sent)
+
+        # Keep latest telemetry for transition logs.
+        self._last_depth_mm = float(min_p20_depth or 0.0)
+        self._last_stable_count = int(stable_count or 0)
 
         allowed, block_reason = self._is_allowed(command, state)
         if not allowed:
@@ -198,7 +204,12 @@ class CommandPublisher:
         self._last_sent = command
         self._last_send_time = now
         self._current_cmd_entered_time = now
-        print(f"[Publisher] {prev or '(none)'} -> {command} reason={reason}")
+        # Required transition log format:
+        # old_cmd → new_cmd | reason | stable_count | depth_mm
+        print(
+            f"[Publisher] {prev or '(none)'} -> {command} | {reason} | "
+            f"stable_count={self._last_stable_count} | depth_mm={self._last_depth_mm:.0f}"
+        )
 
     @property
     def last_command(self) -> Optional[str]:
