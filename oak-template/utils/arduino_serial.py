@@ -33,6 +33,7 @@ class ArduinoState:
     last_bank_result: str = ""
     last_status: str = ""
     connected: bool = False
+    center_confirmed: bool = False      # True once stepper confirmed CENTER reached
 
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
@@ -56,6 +57,7 @@ class ArduinoState:
                 "last_bank_result": self.last_bank_result,
                 "last_status": self.last_status,
                 "connected": self.connected,
+                "center_confirmed": self.center_confirmed,
             }
 
     def can_navigate(self) -> bool:
@@ -100,6 +102,7 @@ class ArduinoSerial:
         self._writer_thread: Optional[threading.Thread] = None
         self._reader_thread: Optional[threading.Thread] = None
         self._on_status = on_status   # Optional callback for status changes
+        self._last_sent_cmd: str = ""
 
     # ── Public API ─────────────────────────────────────────
 
@@ -165,6 +168,13 @@ class ArduinoSerial:
         if not cmd:
             return
         full_cmd = cmd if cmd.startswith("CMD:") else f"CMD:{cmd}"
+        self._last_sent_cmd = full_cmd
+
+        # Reset centering confirmation on STOP or any side-steer command.
+        # GO:CENTER should NOT reset this.
+        base = full_cmd[4:] if full_cmd.startswith("CMD:") else full_cmd
+        if base == "STOP" or (base.startswith("GO:") and base != "GO:CENTER"):
+            self.state.update(center_confirmed=False)
         self._send_queue.put(full_cmd)
 
     # ── Writer Threads ─────────────────────────────────────
@@ -236,6 +246,7 @@ class ArduinoSerial:
         # ── STATUS messages ───────────────────────────────
         if msg.startswith("STATUS:"):
             status = msg[7:]  # Strip "STATUS:"
+            status_main = status.split(":", 1)[0]  # allow STATUS:REACHED:CENTER etc.
 
             if status == "AUTHORIZED":
                 self.state.update(authorized=True, ready=False)
@@ -261,11 +272,14 @@ class ArduinoSerial:
             elif status == "ASSIST":
                 self.state.update(mode="ASSIST", ready=True)
 
-            elif status == "REACHED":
-                pass  # Informational - steering reached target
+            elif status_main == "REACHED":
+                # If Arduino says "reached" right after a GO:CENTER, mark centered.
+                if self._last_sent_cmd == "CMD:GO:CENTER":
+                    self.state.update(center_confirmed=True)
 
-            elif status == "AT_TARGET":
-                pass  # Already at target position
+            elif status_main == "AT_TARGET":
+                if self._last_sent_cmd == "CMD:GO:CENTER":
+                    self.state.update(center_confirmed=True)
 
             elif status == "STOPPED":
                 pass  # Emergency stop executed

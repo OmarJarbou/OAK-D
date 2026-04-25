@@ -72,6 +72,10 @@ class DecisionEngine:
         self._free_clear_distance_mm: float = cfg.FREE_CLEAR_DISTANCE_MM
         self._free_stable_streak: int = 0   # consecutive frames where FREE conditions met
 
+        # True once Arduino reports CENTER reached/at-target at least once.
+        # Used to suppress redundant GO:CENTER commands when we're already centered.
+        self._centered: bool = False
+
     def decide(
         self,
         analysis: AnalysisResult,
@@ -79,6 +83,11 @@ class DecisionEngine:
     ) -> DecisionResult:
         """Main entry point. Returns a DecisionResult."""
         cfg = self.cfg
+        prev_stable = self._last_stable
+
+        # Track whether we've ever successfully centered (based on Arduino feedback).
+        if arduino_state.get("center_confirmed", False):
+            self._centered = True
 
         # ── 1. Safety Gates ─────────────────────────────────
         if not arduino_state.get("authorized", False):
@@ -218,8 +227,35 @@ class DecisionEngine:
             else:
                 raw_cmd = go_cmd
                 reason = self._build_go_reason(best_target, analysis, confidence)
+
+                # Task A: Suppress redundant GO:CENTER once we've already centered.
+                #
+                # If the best target is CENTER and we're already in FREE/GO:CENTER,
+                # and Arduino has previously confirmed we reached CENTER, then emit
+                # FREE directly (avoid spamming GO:CENTER while already centered).
+                #
+                # GO:CENTER should still be allowed when we've never centered, or
+                # after a STOP that led to a side-steer (handled by clearing
+                # self._centered when STOP -> side GO:* happens).
+                if (
+                    best_target == "CENTER"
+                    and go_cmd == "GO:CENTER"
+                    and self._centered
+                    and prev_stable in {"FREE", "GO:CENTER"}
+                ):
+                    raw_cmd = "FREE"
+                    reason = "FREE: already centered (suppress GO:CENTER)"
         # ── 8. Hysteresis + cooldown ─────────────────────────
         stable_cmd, stable_count = self._apply_mode_hysteresis(raw_cmd, critical_stop=critical_stop)
+
+        # If we exit STOP into a side-steer, treat that as losing centered state.
+        # This makes a later return-to-center eligible to fire GO:CENTER again.
+        if (
+            prev_stable == "STOP"
+            and stable_cmd.startswith("GO:")
+            and stable_cmd != "GO:CENTER"
+        ):
+            self._centered = False
 
         return DecisionResult(
             raw_command=raw_cmd, stable_command=stable_cmd,
@@ -481,3 +517,4 @@ class DecisionEngine:
         self._go_streak = 0
         self._go_candidate = ""
         self._free_stable_streak = 0
+        self._centered = False

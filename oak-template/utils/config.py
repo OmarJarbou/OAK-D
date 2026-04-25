@@ -121,6 +121,7 @@ class WalkerConfig:
     # ── FREE Mode Stability ───────────────────────────────────────
     FREE_STABLE_FRAMES: int = 6
     FREE_CLEAR_DISTANCE_MM: float = 1200.0
+    FREE_STICKY_SECONDS: float = 3.0   # how long FREE resists GO:CENTER re-entry
 
     # ── Serial Communication ─────────────────────────────────
     ARDUINO_PORT: str = "MOCK"

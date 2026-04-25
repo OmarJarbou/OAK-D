@@ -32,6 +32,7 @@ class CommandPublisher:
         self._last_sent: Optional[str] = None
         self._last_send_time: float = 0.0
         self._heartbeat_s: float = 2.0
+        self._free_sticky_seconds: float = cfg.FREE_STICKY_SECONDS
         self._stop_entered_time: float = 0.0
         self._stop_hold_seconds: float = cfg.STOP_HOLD_SECONDS
         self._critical_stop_distance_mm: float = cfg.CRITICAL_STOP_DISTANCE_MM
@@ -90,6 +91,20 @@ class CommandPublisher:
                     f"[Publisher] BLOCKED {self._last_sent or '(none)'} -> {command} "
                     f"reason=blocked:{block_reason} stable={stable_count}"
                 )
+            return False
+
+        # Task B: FREE should be sticky. If we're in FREE and the engine tries to
+        # switch to GO:CENTER shortly after, suppress it. Only STOP or a genuine
+        # side-steer GO:* should break out of FREE.
+        if (
+            self._last_sent == "FREE"
+            and command == "GO:CENTER"
+            and held_current < self._free_sticky_seconds
+        ):
+            print(
+                f"[Publisher] STICKY_FREE FREE -> GO:CENTER blocked "
+                f"held={held_current:.2f}s < {self._free_sticky_seconds:.2f}s stable={stable_count}"
+            )
             return False
 
         # ── Critical STOP: override all cooldowns immediately ────────
