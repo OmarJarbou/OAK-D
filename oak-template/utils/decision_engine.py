@@ -248,33 +248,38 @@ class DecisionEngine:
         - stable for FREE_STABLE_FRAMES consecutive frames
         """
         center = analysis.corridors.get("CENTER")
+
+        # Structural failures — hard reset streak
         if center is None:
             self._free_stable_streak = 0
             return False
 
-        # Must not need side steering
         if best_target != "CENTER":
             self._free_stable_streak = 0
             return False
 
-        # Confidence gate
         if confidence < self._free_conf_threshold:
             self._free_stable_streak = 0
             return False
 
-        # Center must be genuinely clear
-        center_ok = (
-            center.is_clear
-            and center.valid_ratio >= self._free_center_min_valid_ratio
-            and center.close_obstacle_ratio <= self._free_center_close_obs_max
-            and center.p20_depth >= self._free_clear_distance_mm
-        )
-
-        if not center_ok:
+        if not center.is_clear:
             self._free_stable_streak = 0
             return False
 
-        # Increment stability counter
+        if center.valid_ratio < self._free_center_min_valid_ratio:
+            self._free_stable_streak = 0
+            return False
+
+        if center.close_obstacle_ratio > self._free_center_close_obs_max:
+            self._free_stable_streak = 0
+            return False
+
+        if center.p20_depth < self._free_clear_distance_mm:
+            # Soft failure — borderline depth, don't reset streak fully,
+            # just don't increment. This prevents one bad frame killing progress.
+            return False
+
+        # All conditions passed — increment streak
         self._free_stable_streak += 1
         return self._free_stable_streak >= self._free_stable_frames
 

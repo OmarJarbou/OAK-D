@@ -120,7 +120,7 @@ class WalkerConfig:
 
     # ── FREE Mode Stability ───────────────────────────────────────
     FREE_STABLE_FRAMES: int = 8
-    FREE_CLEAR_DISTANCE_MM: float = 1800.0
+    FREE_CLEAR_DISTANCE_MM: float = 1200.0
 
     # ── Serial Communication ─────────────────────────────────
     ARDUINO_PORT: str = "MOCK"
@@ -169,7 +169,7 @@ class WalkerConfig:
                 os.getenv("FREE_STABLE_FRAMES", "8")
             ),
             FREE_CLEAR_DISTANCE_MM=float(
-                os.getenv("FREE_CLEAR_DISTANCE_MM", "1800.0")
+                os.getenv("FREE_CLEAR_DISTANCE_MM", "1200.0")
             ),
             MIN_COMMAND_HOLD_MS=float(
                 os.getenv("MIN_COMMAND_HOLD_MS", "800.0")
