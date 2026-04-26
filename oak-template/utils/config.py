@@ -41,7 +41,7 @@ class WalkerConfig:
     # ── ROI Crop Ratios ──────────────────────────────────────
     TOP_CROP_RATIO: float = 0.40    # Skip upper 40% (ceiling/sky)
     BOTTOM_CROP_RATIO: float = 0.95 # Skip bottom 5% (walker frame)
-    SIDE_MARGIN_RATIO: float = 0.03 # Trim 3% each side
+    SIDE_MARGIN_RATIO: float = 0.20 # Trim 8% each side
 
     # ── Corridor / Zone Configuration ────────────────────────
     NUM_ZONES: int = 7
@@ -88,7 +88,7 @@ class WalkerConfig:
     CENTER_ACCEPT_RATIO: float = 0.85
 
     # Minimum requirements for a corridor to be "passable"
-    MIN_VALID_RATIO: float = 0.25       # At least 25% valid pixels
+    MIN_VALID_RATIO: float = 0.20       # At least 20% valid pixels
     MIN_P20_FOR_PASS: float = 700.0     # p20 must exceed emergency zone
 
     # ── Temporal Smoothing ───────────────────────────────────
