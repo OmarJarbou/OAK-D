@@ -120,49 +120,52 @@ model = "luxonis/yolov8-instance-segmentation-nano:coco-512x288"
 
 # ── TTS ───────────────────────────────────────────────────────
 NAV_TTS_COOLDOWN = 3.0
-tts_queue: queue.Queue = queue.Queue(maxsize=2)
+tts_queue = queue.Queue(maxsize=2)
+
+last_tts_time = 0
+last_text = None
 
 
 def tts_worker():
+    global last_tts_time, last_text
+
     if not cfg.USE_TTS:
         print("[TTS] Disabled")
-        while True:
-            text = tts_queue.get()
-            if text is None:
-                break
         return
 
     print("[TTS] Engine ready")
+
     while True:
         text = tts_queue.get()
         if text is None:
             break
 
-        def _say(txt):
-            try:
-                import pyttsx3
-                engine = pyttsx3.init()
-                engine.setProperty("rate", 170)
-                engine.say(txt)
-                engine.runAndWait()
-            except Exception as e:
-                print(f"[TTS] error: {e}")
+        now = time.time()
 
-        t = threading.Thread(target=_say, args=(text,), daemon=True)
-        t.start()
-        t.join()
+        if text == last_text and (now - last_tts_time < NAV_TTS_COOLDOWN):
+            continue
 
+        last_text = text
+        last_tts_time = now
 
+        try:
+            print(f"[TTS worker] saying: {text}")
+            os.system(f'espeak-ng -v en+f3 -s 135 "{text}" >/dev/null 2>&1')
+        except Exception as e:
+            print(f"[TTS] error: {e}")
+            
 def speak(text: str):
+    # clear old pending messages
     while not tts_queue.empty():
         try:
             tts_queue.get_nowait()
         except queue.Empty:
             break
+
     try:
         tts_queue.put_nowait(text)
     except queue.Full:
-        pass
+        print("[TTS] queue full, skipped")
 
 
 TTS_MAP = {
@@ -517,13 +520,22 @@ def main():
                         critical_stop=result.critical_stop,
                     )
 
-                    # TTS on change
-                    if sent and result.stable_command != "NONE":
+                    # TTS on stable command change
+                    if result.stable_command != "NONE":
                         now_t = time.time()
-                        if now_t - last_nav_tts_time >= NAV_TTS_COOLDOWN:
-                            tts_text = TTS_MAP.get(result.stable_command,
-                                                   result.stable_command)
+
+                        if not hasattr(main, "last_spoken_command"):
+                            main.last_spoken_command = None
+
+                        if (
+                            result.stable_command != main.last_spoken_command
+                            and now_t - last_nav_tts_time >= NAV_TTS_COOLDOWN
+                        ):
+                            tts_text = TTS_MAP.get(result.stable_command, result.stable_command)
+                            print(f"[TTS] speaking: {tts_text}")
                             speak(tts_text)
+
+                            main.last_spoken_command = result.stable_command
                             last_nav_tts_time = now_t
 
                     # Debug visualization
