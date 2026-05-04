@@ -10,6 +10,7 @@ oak-template/.cache/
 oak-template/.depthai_cached_models/
 oak-template/oak2-env/
 oak-template/venv/
+oak-template/__pycache__/
 oak-template/utils/__pycache__/
 oak-template/.cache/*
 oak-template/oak2-env/*
