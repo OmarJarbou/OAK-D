@@ -35,6 +35,7 @@ class DecisionResult:
     center_blocked_reason: str   # Why CENTER was not chosen (empty if chosen)
     critical_stop: bool = False
     stable_count: int = 0
+    allow_recenter: bool = False  # bypass FREE→GO:CENTER sticky when recentring
 
 
 class DecisionEngine:
@@ -73,6 +74,10 @@ class DecisionEngine:
         self._free_stable_streak: int = 0   # consecutive frames where FREE conditions met
         self._free_exit_bad_streak: int = 0
         self._free_exit_bad_frames: int = int(cfg.FREE_EXIT_BAD_FRAMES)
+        self._unsafe_conf_streak_frames: int = int(cfg.UNSAFE_CONF_STREAK_FRAMES)
+        self._low_conf_streak: int = 0
+        self._effective_go_frames: int = self._go_frames_required
+        self._last_non_center_go: str = ""
 
         # Latched True once Arduino reports CENTER reached/at-target.
         # While True and center path remains clear, we suppress GO:CENTER and emit FREE only.
@@ -125,10 +130,42 @@ class DecisionEngine:
             and p20 >= self._free_clear_distance_mm
         )
 
+    def _recenter_side_ref(self, prev_stable: str) -> str:
+        """Lateral GO:* in effect for recenter logic (persists across FREE)."""
+        if prev_stable.startswith("GO:") and prev_stable != "GO:CENTER":
+            return prev_stable
+        if prev_stable == "FREE" and self._last_non_center_go:
+            return self._last_non_center_go
+        return ""
+
+    def _should_recenter(self, analysis: AnalysisResult, side_full_cmd: str) -> bool:
+        """True when center is open again after a side avoidance command."""
+        if (
+            not side_full_cmd
+            or not side_full_cmd.startswith("GO:")
+            or side_full_cmd == "GO:CENTER"
+        ):
+            return False
+        side_zone = side_full_cmd.replace("GO:", "")
+        center = analysis.corridors.get("CENTER")
+        side_m = analysis.corridors.get(side_zone)
+        if center is None or not center.is_clear:
+            return False
+        if center.p20_depth < self.cfg.RECENTER_MIN_P20_MM:
+            return False
+        if side_m is None:
+            return True
+        if center.safety_score + self.cfg.RECENTER_SAFETY_GAP < side_m.safety_score:
+            return False
+        return True
+
     def decide(
         self,
         analysis: AnalysisResult,
         arduino_state: dict,
+        fusion_boost: float = 0.0,
+        lidar_left_mm: float = 0.0,
+        lidar_right_mm: float = 0.0,
     ) -> DecisionResult:
         """Main entry point. Returns a DecisionResult."""
         cfg = self.cfg
@@ -146,7 +183,7 @@ class DecisionEngine:
                 confidence=0.0, chosen_corridor="", chosen_group=None,
                 reason="Not authorized - waiting for RFID",
                 valid_groups=[], center_blocked_reason="",
-                critical_stop=False, stable_count=0,
+                critical_stop=False, stable_count=0, allow_recenter=False,
             )
 
         if not arduino_state.get("ready", False):
@@ -155,7 +192,7 @@ class DecisionEngine:
                 confidence=0.0, chosen_corridor="", chosen_group=None,
                 reason="Arduino not ready (auth sequence in progress)",
                 valid_groups=[], center_blocked_reason="",
-                critical_stop=False, stable_count=0,
+                critical_stop=False, stable_count=0, allow_recenter=False,
             )
 
         if not arduino_state.get("sensor_ok", True):
@@ -165,7 +202,7 @@ class DecisionEngine:
                 confidence=1.0, chosen_corridor="", chosen_group=None,
                 reason="STOP: sensor error",
                 valid_groups=[], center_blocked_reason="",
-                critical_stop=False, stable_count=0,
+                critical_stop=False, stable_count=0, allow_recenter=False,
             )
 
         if not arduino_state.get("calibrated", True):
@@ -175,7 +212,7 @@ class DecisionEngine:
                 confidence=1.0, chosen_corridor="", chosen_group=None,
                 reason="STOP: not calibrated",
                 valid_groups=[], center_blocked_reason="",
-                critical_stop=False, stable_count=0,
+                critical_stop=False, stable_count=0, allow_recenter=False,
             )
 
         # ── 2. No Depth Data ────────────────────────────────
@@ -187,26 +224,44 @@ class DecisionEngine:
                 confidence=0.5, chosen_corridor="", chosen_group=None,
                 reason="No depth data",
                 valid_groups=[], center_blocked_reason="",
-                critical_stop=False, stable_count=0,
+                critical_stop=False, stable_count=0, allow_recenter=False,
             )
 
         # Update lightweight temporal smoothing (EMA). Used only by
         # _center_path_clear() and _is_free_candidate().
         self._update_ema(analysis)
 
+        confidence = self._compute_confidence(analysis, fusion_boost)
+        if confidence < self._unsafe_conf_threshold:
+            self._low_conf_streak += 1
+        else:
+            self._low_conf_streak = 0
+        unsafe_low_conf = self._low_conf_streak >= self._unsafe_conf_streak_frames
+
+        recenter_side = self._recenter_side_ref(prev_stable)
+        recenter_hold = (
+            bool(recenter_side)
+            and self._should_recenter(analysis, recenter_side)
+        )
+
         # ── 3. Choose from Valid Merged Groups ──────────────
         valid = analysis.valid_groups
         locked_left = arduino_state.get("locked_left", False)
         locked_right = arduino_state.get("locked_right", False)
 
+        # Determine LiDAR directional preference for low-confidence frames.
+        lidar_pref = self._lidar_side_preference(
+            confidence, lidar_left_mm, lidar_right_mm
+        )
+
         # For each valid group, pick the safest target zone
         eligible = []
         for g in valid:
-            best = self._pick_safest_target(g, analysis, locked_left, locked_right)
+            best = self._pick_safest_target(
+                g, analysis, locked_left, locked_right, lidar_pref
+            )
             if best is not None:
                 eligible.append((g, best))
-
-        confidence = self._compute_confidence(analysis)
 
         # ── 4. Determine raw mode candidate by priority ──────
         if not eligible:
@@ -239,7 +294,9 @@ class DecisionEngine:
             )
 
             # ── 7. Stickiness: prefer current GO if still valid ──
-            if self._last_stable.startswith("GO:"):
+            # Skip while recentring: side command was for avoidance; once center is
+            # safe again, release stickiness so GO:CENTER can win.
+            if self._last_stable.startswith("GO:") and not recenter_hold:
                 current_zone = self._last_stable.replace("GO:", "")
                 for g, _t in eligible:
                     if current_zone in g.zone_names:
@@ -260,7 +317,7 @@ class DecisionEngine:
             unsafe_condition = (
                 analysis.has_emergency
                 or len(valid) == 0
-                or confidence < self._unsafe_conf_threshold
+                or unsafe_low_conf
             )
 
             # Clear confirmed-centered latch if steering away from center is needed
@@ -333,6 +390,8 @@ class DecisionEngine:
             if side_m is not None and center_m is not None:
                 if (side_m.safety_score - center_m.safety_score) > cfg.SIDE_PREFER_MARGIN:
                     bypass_bad_streak = True
+        elif raw_cmd == "GO:CENTER" and recenter_hold:
+            bypass_bad_streak = True
 
         if raw_cmd == "FREE":
             self._free_exit_bad_streak = 0
@@ -344,6 +403,24 @@ class DecisionEngine:
             else:
                 self._free_exit_bad_streak = 0
         # ── 8. Hysteresis + cooldown ─────────────────────────
+        self._effective_go_frames = self._go_frames_required
+        if raw_cmd.startswith("GO:") and raw_cmd != "GO:CENTER":
+            sn = raw_cmd.replace("GO:", "")
+            sm = analysis.corridors.get(sn)
+            cm = analysis.corridors.get("CENTER")
+            if (
+                sm is not None
+                and cm is not None
+                and (sm.safety_score - cm.safety_score) >= cfg.GO_FAST_MARGIN
+            ):
+                self._effective_go_frames = min(
+                    self._go_frames_required, cfg.GO_FAST_FRAMES_REQUIRED
+                )
+        elif raw_cmd == "GO:CENTER" and recenter_hold:
+            self._effective_go_frames = min(
+                self._go_frames_required, cfg.GO_FAST_FRAMES_REQUIRED
+            )
+
         stable_cmd, stable_count = self._apply_mode_hysteresis(raw_cmd, critical_stop=critical_stop)
 
         # If we exit STOP into a side-steer, treat that as losing confirmed centered state.
@@ -359,6 +436,19 @@ class DecisionEngine:
         if stable_cmd == "STOP":
             self._confirmed_centered = False
 
+        if stable_cmd.startswith("GO:") and stable_cmd != "GO:CENTER":
+            self._last_non_center_go = stable_cmd
+        elif stable_cmd in ("GO:CENTER", "STOP", "NONE"):
+            self._last_non_center_go = ""
+
+        eligible_nonempty = bool(eligible)
+        allow_recenter = (
+            eligible_nonempty
+            and best_target == "CENTER"
+            and recenter_hold
+            and stable_cmd == "GO:CENTER"
+        )
+
         return DecisionResult(
             raw_command=raw_cmd, stable_command=stable_cmd,
             confidence=confidence,
@@ -369,6 +459,7 @@ class DecisionEngine:
             center_blocked_reason=center_blocked_reason,
             critical_stop=critical_stop,
             stable_count=stable_count,
+            allow_recenter=allow_recenter,
         )
 
     def _is_free_candidate(
@@ -483,7 +574,7 @@ class DecisionEngine:
         else:
             self._go_candidate = raw
             self._go_streak = 1
-        if self._go_streak < self._go_frames_required:
+        if self._go_streak < self._effective_go_frames:
             return self._last_stable, self._go_streak
         if (
             self._last_stable != raw
@@ -497,9 +588,35 @@ class DecisionEngine:
 
     # ── Safety-Score Target Selection ────────────────────────
 
+    def _lidar_side_preference(
+        self,
+        confidence: float,
+        lidar_left_mm: float,
+        lidar_right_mm: float,
+    ) -> Optional[str]:
+        """Return 'left', 'right', or None — which physical side LiDAR favours.
+
+        Only applied when OAK-D confidence is below threshold AND the side
+        distance gap is large enough to be actionable (not just noise).
+        """
+        if confidence >= self.cfg.LIDAR_SIDE_BIAS_CONF_THRESHOLD:
+            return None  # OAK-D trusted — no LiDAR nudge needed
+        if lidar_left_mm <= 0.0 and lidar_right_mm <= 0.0:
+            return None  # No LiDAR data available
+        gap = lidar_left_mm - lidar_right_mm
+        if abs(gap) < self.cfg.LIDAR_SIDE_BIAS_MM_MIN_GAP:
+            return None  # Both sides too similar — avoid noise-driven flip
+        pref = "left" if gap > 0 else "right"
+        print(
+            f"[LiDAR-Bias] conf={confidence:.2f} left={lidar_left_mm:.0f}mm "
+            f"right={lidar_right_mm:.0f}mm gap={gap:+.0f}mm → prefer {pref}"
+        )
+        return pref
+
     def _pick_safest_target(
         self, group: FreeSpaceGroup, analysis: AnalysisResult,
         locked_left: bool, locked_right: bool,
+        lidar_pref: Optional[str] = None,
     ) -> Optional[str]:
         """Pick the safest zone in a group using safety_score with soft CENTER bias."""
         cfg = self.cfg
@@ -544,13 +661,28 @@ class DecisionEngine:
                 )
                 return best_side_name
 
-        # Find the zone with the best safety_score
+        # LiDAR side-bias: compute per-zone preference bonus when OAK-D confidence is low.
+        # LEFT/L2/L1 are on the left; R1/R2/RIGHT are on the right.
+        _left_zones = {"LEFT", "L2", "L1"}
+        _right_zones = {"R1", "R2", "RIGHT"}
+
+        def _lidar_bonus(name: str) -> float:
+            if lidar_pref is None:
+                return 0.0
+            if lidar_pref == "left" and name in _left_zones:
+                return cfg.LIDAR_SIDE_BIAS_BONUS
+            if lidar_pref == "right" and name in _right_zones:
+                return cfg.LIDAR_SIDE_BIAS_BONUS
+            return 0.0
+
+        # Find the zone with the best safety_score (+ any LiDAR side bonus)
         best_name = None
         best_effective_score = -1.0
         for name, m in candidates:
             effective = m.safety_score
             if m.zone_index == center_idx:
                 effective += cfg.CENTER_SAFETY_BIAS
+            effective += _lidar_bonus(name)
             if effective > best_effective_score:
                 best_effective_score = effective
                 best_name = name
@@ -594,11 +726,17 @@ class DecisionEngine:
         if not center_m.is_clear:
             parts = []
             if center_m.valid_ratio < cfg.MIN_VALID_RATIO:
-                parts.append(f"low valid {center_m.valid_ratio:.0%}")
+                parts.append(f"low nav {center_m.valid_ratio:.0%}")
             if center_m.p20_depth <= cfg.EMERGENCY_STOP_MM:
                 parts.append(f"p20={int(center_m.p20_depth)}mm too close")
             if center_m.close_obstacle_ratio >= 0.60:
                 parts.append(f"close_obs={center_m.close_obstacle_ratio:.0%}")
+            if center_m.largest_close_blob_px >= cfg.MIN_OBSTACLE_CLUSTER_PX:
+                parts.append(f"blob={center_m.largest_close_blob_px}px")
+            if center_m.vertical_close_run_frac >= cfg.VERTICAL_CLOSE_RUN_FRAC:
+                parts.append(f"vrun={center_m.vertical_close_run_frac:.2f}")
+            if center_m.emergency_ratio >= cfg.SPREAD_EMERGENCY_RATIO:
+                parts.append(f"emerg={center_m.emergency_ratio:.0%}")
             return f"CENTER blocked: {', '.join(parts) if parts else 'unsafe'}"
 
         if chosen_m:
@@ -612,7 +750,7 @@ class DecisionEngine:
 
     # ── Confidence ──────────────────────────────────────────
 
-    def _compute_confidence(self, analysis: AnalysisResult) -> float:
+    def _compute_confidence(self, analysis: AnalysisResult, fusion_boost: float = 0.0) -> float:
         if not analysis.corridors:
             return 0.0
 
@@ -633,7 +771,8 @@ class DecisionEngine:
             + 0.25 * (1.0 - avg_emergency)
             + 0.25 * unanimity
         )
-        return max(0.0, min(1.0, confidence))
+        confidence = max(0.0, min(1.0, confidence + float(fusion_boost or 0.0)))
+        return confidence
 
     def reset(self) -> None:
         self._history.clear()
@@ -649,3 +788,6 @@ class DecisionEngine:
         self._ema_frames_seen = 0
         self._ema_p20.clear()
         self._ema_close.clear()
+        self._low_conf_streak = 0
+        self._last_non_center_go = ""
+        self._effective_go_frames = self._go_frames_required

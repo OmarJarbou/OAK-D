@@ -69,7 +69,8 @@ class CommandPublisher:
     def publish(self, command: str, state: dict, reason: str = "",
             min_p20_depth: float = 0.0,
             stable_count: int = 0,
-            critical_stop: bool = False) -> bool:
+            critical_stop: bool = False,
+            allow_recenter: bool = False) -> bool:
         """
         Attempt to publish a command. Returns True if actually sent.
 
@@ -120,6 +121,7 @@ class CommandPublisher:
             self._last_sent == "FREE"
             and command == "GO:CENTER"
             and held_current < self._free_sticky_seconds
+            and not allow_recenter
         ):
             print(
                 f"[Publisher] STICKY_FREE FREE -> GO:CENTER blocked "

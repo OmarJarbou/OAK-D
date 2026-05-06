@@ -33,6 +33,8 @@ from utils.arduino_serial import ArduinoSerial
 from utils.corridor_analyzer import CorridorAnalyzer
 from utils.decision_engine import DecisionEngine
 from utils.command_publisher import CommandPublisher
+from utils.lidar_analyzer import LidarAnalyzer
+from utils.fusion_layer import FusionLayer
 
 # ── SnapsProducer ─────────────────────────────────────────────
 try:
@@ -187,8 +189,11 @@ TTS_MAP = {
 
 def build_debug_frame(depth_frame, analysis, result, arduino_state,
                       last_sent, cfg_ref):
-    """Build debug visualization showing zones, merged groups, and decision."""
-    # Colorize depth
+    """Build debug visualization showing zones, merged groups, and decision.
+
+    Overlay uses a colormap for human viewing only; corridor logic uses raw mm.
+    """
+    # Colorize raw depth (mm) for display — not used for obstacle classification
     clipped = np.clip(depth_frame, cfg_ref.MIN_DEPTH_MM, cfg_ref.MAX_DEPTH_MM)
     norm = (
         (clipped - cfg_ref.MIN_DEPTH_MM)
@@ -278,6 +283,8 @@ def build_debug_frame(depth_frame, analysis, result, arduino_state,
         lines = [
             name,
             f"p20:{int(m.p20_depth)}",
+            f"cc:{m.largest_close_blob_px}",
+            f"v:{m.vertical_close_run_frac:.2f}",
             f"sf:{m.safety_score:.2f}",
             f"w:{m.zone_width_m:.2f}m",
             f"{'CLR' if m.is_clear else 'BLK'}",
@@ -364,6 +371,25 @@ def main():
     corridor_analyzer = CorridorAnalyzer(cfg)
     decision_engine = DecisionEngine(cfg)
     publisher = CommandPublisher(cfg, arduino)
+    lidar_mock = cfg.LIDAR_PORT.upper() == "MOCK"
+    _lb = cfg.LIDAR_BACKEND.lower().strip()
+    _legacy_baud = (
+        cfg.LIDAR_BAUD if _lb == "legacy" else cfg.LIDAR_LEGACY_BAUD
+    )
+    lidar = LidarAnalyzer(
+        port=cfg.LIDAR_PORT,
+        mock=lidar_mock,
+        backend=cfg.LIDAR_BACKEND,
+        c1_baud=cfg.LIDAR_BAUD,
+        legacy_baud=_legacy_baud,
+        safety_mm=cfg.LIDAR_SAFETY_MM,
+        side_escape_mm=cfg.LIDAR_SIDE_ESCAPE_MM,
+        scan_timeout_s=cfg.LIDAR_SCAN_TIMEOUT_S,
+        front_arc_deg=cfg.LIDAR_FRONT_ARC_DEG,
+        side_arc_start_deg=cfg.LIDAR_SIDE_ARC_START_DEG,
+        side_arc_end_deg=cfg.LIDAR_SIDE_ARC_END_DEG,
+    )
+    fusion = FusionLayer(lidar)
 
     visualizer = None
     if use_visualizer:
@@ -373,6 +399,7 @@ def main():
         print("[Visualizer] Disabled")
 
     arduino.start()
+    lidar.start()
 
     tts_thread = threading.Thread(target=tts_worker, daemon=True)
     tts_thread.start()
@@ -500,9 +527,20 @@ def main():
 
                     # Corridor analysis (merged groups)
                     analysis = corridor_analyzer.analyze(depth_frame)
+                    fused = fusion.fuse(analysis)
+                    # Apply fusion results back to analysis for decision engine
+                    if fused.has_emergency != analysis.has_emergency:
+                        from dataclasses import replace
+                        analysis = replace(analysis, has_emergency=fused.has_emergency)
 
-                    # Decision (uses merged groups)
-                    result = decision_engine.decide(analysis, state)
+                    # Decision (uses merged groups + LiDAR side-distance bias)
+                    result = decision_engine.decide(
+                        analysis,
+                        state,
+                        fusion_boost=fused.confidence_boost,
+                        lidar_left_mm=fused.lidar_left_mm,
+                        lidar_right_mm=fused.lidar_right_mm,
+                    )
 
                     # Compute min p20 depth across ALL zones for critical stop check.
                     # Side escape paths should prevent CRITICAL_STOP from latching.
@@ -518,6 +556,7 @@ def main():
                         min_p20_depth=min_p20,
                         stable_count=result.stable_count,
                         critical_stop=result.critical_stop,
+                        allow_recenter=result.allow_recenter,
                     )
 
                     # TTS on stable command change
@@ -554,6 +593,11 @@ def main():
                     if frame_count % 200 == 0:
                         n_grp = len(analysis.groups)
                         n_val = len(analysis.valid_groups)
+                        lidar_scan = lidar.latest_scan
+                        lidar_str = (
+                            f"lidar_front={lidar_scan.front_min_mm:.0f}mm"
+                            if lidar_scan else "lidar=stale"
+                        )
                         print(
                             f"[Status] f={frame_count} "
                             f"auth={state['authorized']} "
@@ -562,6 +606,7 @@ def main():
                             f"conf={result.confidence:.0%} "
                             f"groups={n_grp}/{n_val} "
                             f"target={result.chosen_corridor or '-'}"
+                            f" {lidar_str}"
                         )
 
                 except KeyboardInterrupt:
@@ -579,6 +624,10 @@ def main():
             arduino.stop()
         except Exception as e:
             print(f"[Shutdown] Arduino stop error: {e}")
+        try:
+            lidar.stop()
+        except Exception as e:
+            print(f"[Shutdown] LiDAR stop error: {e}")
         try:
             tts_queue.put(None)
         except Exception as e:

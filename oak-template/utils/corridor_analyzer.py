@@ -2,14 +2,19 @@
 """
 7-zone corridor analysis with MERGED free-space group width estimation.
 
+All navigation metrics use raw stereo depth in millimeters (uint16 frame from
+stereo.depth). RGB depth colormap previews are never used for classification.
+
 Splits the depth ROI into 7 equal horizontal zones matching Arduino positions.
-After computing per-zone depth metrics, merges adjacent "clear" zones into
-continuous free-space groups and estimates the total physical width of each
-group. A path is valid only if the merged group width >= REQUIRED_CLEAR_WIDTH_M.
+Ground / floor is treated as traversable: obstacles are evaluated on navigable
+pixels (valid range, not classified as floor), using percentile depth, close-pixel
+ratio, connected close-blob size, and vertical close runs — not mean depth.
+Merged group width must be >= REQUIRED_CLEAR_WIDTH_M (walker width + side margins).
 """
 
 import math
 import numpy as np
+import cv2
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
@@ -25,14 +30,17 @@ class CorridorMetrics:
     """Analysis result for a single corridor zone."""
     name: str
     zone_index: int             # 0=LEFT ... 6=RIGHT
-    valid_ratio: float          # Fraction of valid depth pixels
-    p20_depth: float            # 20th percentile depth (mm)
-    p25_depth: float            # 25th percentile depth (mm)
-    p50_depth: float            # Median depth (mm)
-    mean_depth: float           # Mean depth (mm)
-    close_obstacle_ratio: float # Fraction of pixels < CLOSE_OBSTACLE_MM
-    danger_obstacle_ratio: float # Fraction of pixels < EMERGENCY_STOP_MM
-    emergency_ratio: float      # Fraction of pixels < EMERGENCY_STOP_MM
+    valid_ratio: float          # Fraction of navigable pixels (valid depth, not floor)
+    p20_depth: float            # 20th percentile depth on navigable (mm)
+    thin_depth: float           # Low percentile depth (sparse / thin obstacles)
+    p25_depth: float            # 25th percentile depth on navigable (mm)
+    p50_depth: float            # Median depth on navigable (mm)
+    mean_depth: float           # Median navigable depth (mm); legacy field name
+    close_obstacle_ratio: float # On navigable: fraction with depth < CLOSE_OBSTACLE_MM
+    danger_obstacle_ratio: float # On navigable: fraction < EMERGENCY_STOP_MM
+    emergency_ratio: float      # Same as danger_obstacle_ratio (navigable)
+    largest_close_blob_px: int  # Largest 8-connected close-obstacle blob (pixels)
+    vertical_close_run_frac: float  # Max vertical run of emergency-close / zone height
     zone_width_m: float         # Physical width of this single zone (meters)
     is_clear: bool              # True if zone has safe depth (not width-gated)
     score: float                # Depth-based navigation score [0, 1] (includes center bias)
@@ -52,7 +60,7 @@ class FreeSpaceGroup:
     center_index: int = 3       # Index of CENTER zone
 
 
-@dataclass
+@dataclass(slots=False)
 class AnalysisResult:
     """Complete analysis output."""
     corridors: Dict[str, CorridorMetrics]
@@ -115,20 +123,33 @@ class CorridorAnalyzer:
 
             z_depth = roi_depth[:, zx1:zx2]
             z_valid = roi_valid[:, zx1:zx2]
+            z_floor = floor_mask[:, zx1:zx2]
 
-            m = self._compute_zone(name, i, z_depth, z_valid, zone_width_px, roi_w)
+            m = self._compute_zone(
+                name, i, z_depth, z_valid, z_floor, zone_width_px, roi_w,
+            )
             corridors[name] = m
 
         # ── Merge Adjacent Clear Zones ──────────────────────
         groups = self._merge_clear_zones(corridors)
         valid_groups = [g for g in groups if g.is_valid]
 
-        # ── Emergency Detection (smarter) ────────────────
+        # ── Emergency Detection (navigable / non-floor only) ────────────────
         center_zone_names = ("L1", "CENTER", "R1")
         emergency_count = 0
         for cname in center_zone_names:
             m = corridors[cname]
-            if m.emergency_ratio > 0.35 and m.valid_ratio > 0.20:
+            tail_too_close = (
+                m.thin_depth > 0
+                and m.thin_depth <= cfg.EMERGENCY_STOP_MM
+                and m.valid_ratio > cfg.MIN_NAVIGABLE_RATIO
+            )
+            if tail_too_close:
+                emergency_count += 1
+            elif (
+                m.emergency_ratio > cfg.SPREAD_EMERGENCY_RATIO
+                and m.valid_ratio > cfg.MIN_NAVIGABLE_RATIO
+            ):
                 emergency_count += 1
 
         has_emergency = False
@@ -156,62 +177,116 @@ class CorridorAnalyzer:
 
     # ── Per-Zone Computation ─────────────────────────────────
 
+    @staticmethod
+    def _largest_cc_pixel_count(mask: np.ndarray) -> int:
+        if mask is None or mask.size == 0 or not np.any(mask):
+            return 0
+        img = (mask.astype(np.uint8) * 255)
+        n, _, stats, _ = cv2.connectedComponentsWithStats(img, connectivity=8)
+        if n <= 1:
+            return 0
+        areas = stats[1:, cv2.CC_STAT_AREA]
+        return int(np.max(areas))
+
+    @staticmethod
+    def _max_vertical_run_rows(mask: np.ndarray) -> int:
+        """Longest contiguous run of True in any single column."""
+        h, w = mask.shape
+        if h == 0 or w == 0 or not np.any(mask):
+            return 0
+        best = 0
+        for x in range(w):
+            col = mask[:, x]
+            padded = np.concatenate(([False], col, [False]))
+            d = np.diff(padded.astype(np.int8))
+            starts = np.where(d == 1)[0]
+            ends = np.where(d == -1)[0]
+            if starts.size:
+                best = max(best, int((ends - starts).max()))
+        return best
+
     def _compute_zone(
         self,
         name: str,
         zone_index: int,
         z_depth: np.ndarray,
         z_valid: np.ndarray,
+        z_floor: np.ndarray,
         zone_pixel_width: int,
         total_roi_width: int,
     ) -> CorridorMetrics:
         cfg = self.cfg
         total_pixels = max(z_depth.size, 1)
-        valid_values = z_depth[z_valid]
+        navigable = z_valid & (~z_floor)
+        nav_count = int(np.count_nonzero(navigable))
+        nav_values = z_depth[navigable]
 
-        if valid_values.size == 0:
+        if nav_count == 0:
             return CorridorMetrics(
                 name=name, zone_index=zone_index,
-                valid_ratio=0.0, p20_depth=0.0, p25_depth=0.0,
+                valid_ratio=0.0, p20_depth=0.0, thin_depth=0.0, p25_depth=0.0,
                 p50_depth=0.0, mean_depth=0.0,
                 close_obstacle_ratio=1.0, danger_obstacle_ratio=1.0, emergency_ratio=1.0,
+                largest_close_blob_px=0, vertical_close_run_frac=0.0,
                 zone_width_m=0.0, is_clear=False, score=0.0,
                 safety_score=0.0,
             )
 
-        valid_ratio = valid_values.size / total_pixels
-        p20_depth = float(np.percentile(valid_values, 20))
-        p25_depth = float(np.percentile(valid_values, 25))
-        p50_depth = float(np.percentile(valid_values, 50))
-        mean_depth = float(np.mean(valid_values))
-        close_obstacle_ratio = float(np.mean(valid_values < cfg.CLOSE_OBSTACLE_MM))
-        danger_obstacle_ratio = float(np.mean(valid_values < cfg.EMERGENCY_STOP_MM))
+        # Coverage of walker-relevant pixels (excludes large flat floor)
+        valid_ratio = nav_count / total_pixels
+
+        p20_depth = float(np.percentile(nav_values, 20))
+        thin_depth = float(np.percentile(nav_values, cfg.THIN_OBSTACLE_PERCENTILE))
+        p25_depth = float(np.percentile(nav_values, 25))
+        p50_depth = float(np.percentile(nav_values, 50))
+        # Intentionally not using mean depth for decisions; keep robust center depth for debug
+        mean_depth = float(np.median(nav_values))
+
+        close_mask = navigable & (z_depth < cfg.CLOSE_OBSTACLE_MM)
+        emerg_mask = navigable & (z_depth < cfg.EMERGENCY_STOP_MM)
+        close_obstacle_ratio = float(np.count_nonzero(close_mask) / nav_count)
+        danger_obstacle_ratio = float(np.count_nonzero(emerg_mask) / nav_count)
         emergency_ratio = danger_obstacle_ratio
 
-        # Physical width of this single zone at its median depth
+        largest_close_blob_px = self._largest_cc_pixel_count(close_mask)
+        zh = max(z_depth.shape[0], 1)
+        max_v_run = self._max_vertical_run_rows(emerg_mask)
+        vertical_close_run_frac = max_v_run / float(zh)
+
+        compact_obstacle = largest_close_blob_px >= cfg.MIN_OBSTACLE_CLUSTER_PX
+        vertical_obstacle = vertical_close_run_frac >= cfg.VERTICAL_CLOSE_RUN_FRAC
+        spread_emergency = emergency_ratio >= cfg.SPREAD_EMERGENCY_RATIO
+        blocked_obstacle = compact_obstacle or vertical_obstacle or spread_emergency
+
+        # Physical width of this single zone at its median navigable depth
         depth_m = p50_depth / 1000.0
         total_visible_width = 2.0 * depth_m * self._half_fov_tan
         zone_fraction = zone_pixel_width / max(total_roi_width, 1)
         zone_width_m = total_visible_width * zone_fraction
 
-        # A zone is "clear" based on depth, NOT on width
-        # Clear = enough valid data AND obstacles aren't critically close
+        # Clear = enough navigable data, percentiles safe, no compact/vertical/spread threat
         is_clear = (
-            valid_ratio >= cfg.MIN_VALID_RATIO
+            valid_ratio >= max(cfg.MIN_VALID_RATIO, cfg.MIN_NAVIGABLE_RATIO)
+            and not blocked_obstacle
             and p20_depth > cfg.EMERGENCY_STOP_MM
-            and close_obstacle_ratio < 0.60
-            and danger_obstacle_ratio < 0.25
+            and thin_depth > cfg.EMERGENCY_STOP_MM
+            and close_obstacle_ratio < 0.58
+            and danger_obstacle_ratio < max(0.26, cfg.SPREAD_EMERGENCY_RATIO - 0.02)
         )
 
-        # Depth-based score (used for ranking within merged groups)
         depth_score = float(np.clip(
             (p20_depth - cfg.MIN_DEPTH_MM) / (cfg.SAFE_CORRIDOR_MM - cfg.MIN_DEPTH_MM),
             0.0, 1.0,
         ))
         close_penalty = 1.0 - close_obstacle_ratio
         danger_penalty = 1.0 - danger_obstacle_ratio
+        blob_penalty = float(
+            np.clip(
+                1.0 - largest_close_blob_px / float(max(cfg.MIN_OBSTACLE_CLUSTER_PX * 4, 1)),
+                0.0, 1.0,
+            )
+        )
 
-        # Center preference (baked into corridor score, NOT into safety_score)
         center_idx = cfg.NUM_ZONES // 2
         dist_from_center = abs(zone_index - center_idx)
         center_bonus = cfg.CENTER_BIAS if dist_from_center == 0 else (
@@ -221,33 +296,38 @@ class CorridorAnalyzer:
         score = (
             cfg.WEIGHT_DEPTH_P20 * depth_score
             + cfg.WEIGHT_CLOSE_OBS * close_penalty
-            + 0.20 * danger_penalty
+            + 0.18 * danger_penalty
+            + 0.07 * blob_penalty
             + cfg.WEIGHT_VALID_RATIO * valid_ratio
             + center_bonus
         )
 
-        # ── Safety Score (pure safety, NO center bias) ───────
         depth_norm_25 = float(np.clip(
             (p25_depth - cfg.MIN_DEPTH_MM) / (cfg.SAFE_CORRIDOR_MM - cfg.MIN_DEPTH_MM),
             0.0, 1.0,
         ))
         floor_invalid_ratio = 1.0 - valid_ratio
+        vert_penalty = float(np.clip(1.0 - vertical_close_run_frac * 2.5, 0.0, 1.0))
         safety_score = (
             cfg.SAFETY_W_DEPTH * depth_norm_25
             + cfg.SAFETY_W_CLOSE_OBS * close_penalty
             + 0.10 * danger_penalty
+            + 0.08 * blob_penalty
+            + 0.05 * vert_penalty
             + cfg.SAFETY_W_VALID * valid_ratio
             + cfg.SAFETY_W_FLOOR_INV * (1.0 - floor_invalid_ratio)
         )
 
         return CorridorMetrics(
             name=name, zone_index=zone_index,
-            valid_ratio=valid_ratio, p20_depth=p20_depth,
+            valid_ratio=valid_ratio, p20_depth=p20_depth, thin_depth=thin_depth,
             p25_depth=p25_depth,
             p50_depth=p50_depth, mean_depth=mean_depth,
             close_obstacle_ratio=close_obstacle_ratio,
             danger_obstacle_ratio=danger_obstacle_ratio,
             emergency_ratio=emergency_ratio,
+            largest_close_blob_px=largest_close_blob_px,
+            vertical_close_run_frac=vertical_close_run_frac,
             zone_width_m=zone_width_m, is_clear=is_clear,
             score=score, safety_score=safety_score,
         )
@@ -310,6 +390,10 @@ class CorridorAnalyzer:
     def _remove_floor(
         self, roi_depth: np.ndarray, roi_valid: np.ndarray
     ) -> np.ndarray:
+        """
+        Mark floor / ground as traversable: column-wise continuity from the bottom
+        plus morphological fill in the lower band of the ROI (flat floor dominates).
+        """
         cfg = self.cfg
         h, w = roi_depth.shape
         is_floor = np.zeros((h, w), dtype=bool)
@@ -331,6 +415,39 @@ class CorridorAnalyzer:
             )
             is_floor[y, :] = continues
 
+        # Widen floor mask in the lower portion of the ROI (large flat ground plane).
+        y0 = int(h * (1.0 - cfg.GROUND_LOWER_BAND_RATIO))
+        y0 = max(0, min(y0, h - 1))
+        lower = np.zeros((h, w), dtype=np.uint8)
+        lower[y0:, :] = 255
+        sub_h, sub_w = h - y0, w
+        band = (is_floor.astype(np.uint8) * 255)
+        if sub_h >= 3 and sub_w >= 3 and int(cfg.FLOOR_DILATE_ITERATIONS) > 0:
+            kv = max(3, int(cfg.FLOOR_DILATE_KERNEL_V) | 1)
+            kh = max(3, int(cfg.FLOOR_DILATE_KERNEL_H) | 1)
+            if kv > sub_h:
+                kv = sub_h - 1 if sub_h % 2 == 0 else sub_h
+            if kh > sub_w:
+                kh = sub_w - 1 if sub_w % 2 == 0 else sub_w
+            kv = max(3, kv | 1)
+            kh = max(3, kh | 1)
+            k_v = cv2.getStructuringElement(cv2.MORPH_RECT, (1, kv))
+            k_h = cv2.getStructuringElement(cv2.MORPH_RECT, (kh, 1))
+            band[y0:, :] = cv2.dilate(
+                band[y0:, :], k_v, iterations=int(cfg.FLOOR_DILATE_ITERATIONS),
+            )
+            band[y0:, :] = cv2.dilate(
+                band[y0:, :], k_h, iterations=int(cfg.FLOOR_DILATE_ITERATIONS),
+            )
+        grown = band.astype(bool) & lower.astype(bool)
+        # Only treat grown pixels as floor if depth still looks like ground (not a pole).
+        plane_like = (
+            roi_valid
+            & (roi_depth > cfg.FLOOR_MIN_DEPTH)
+            & (roi_depth < cfg.FLOOR_MAX_DEPTH)
+        )
+        is_floor = is_floor | (grown & plane_like)
+
         return is_floor
 
     # ── Empty Fallback ────────────────────────────────────
@@ -339,9 +456,10 @@ class CorridorAnalyzer:
         empty_corridors = {
             name: CorridorMetrics(
                 name=name, zone_index=i,
-                valid_ratio=0.0, p20_depth=0.0, p25_depth=0.0,
+                valid_ratio=0.0, p20_depth=0.0, thin_depth=0.0, p25_depth=0.0,
                 p50_depth=0.0, mean_depth=0.0,
                 close_obstacle_ratio=1.0, danger_obstacle_ratio=1.0, emergency_ratio=1.0,
+                largest_close_blob_px=0, vertical_close_run_frac=0.0,
                 zone_width_m=0.0, is_clear=False, score=0.0,
                 safety_score=0.0,
             )
