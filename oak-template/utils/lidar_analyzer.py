@@ -15,13 +15,55 @@ Backends:
 from __future__ import annotations
 
 import asyncio
+import io
+import sys
 import threading
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Optional
 
 import numpy as np
 import serial
+
+
+# ── Stdout filter for rplidarc1 sync noise ──────────────────────────────────
+# The rplidarc1 library prints sync-failure diagnostics directly to stdout
+# (not via Python's logging).  We suppress only the known noisy patterns so
+# real errors are never swallowed.
+_LIDAR_NOISE_PATTERNS = (
+    "S bit verification failed",
+    "C bit verification failed",
+    "Verification bytes not matching",
+    "Angles should not be >",
+    "calculated angle",
+)
+
+
+class _FilteredStdout(io.TextIOBase):
+    """Proxy that drops known rplidarc1 sync-noise lines."""
+
+    def __init__(self, wrapped: io.TextIOBase) -> None:
+        self._wrapped = wrapped
+
+    def write(self, s: str) -> int:  # type: ignore[override]
+        if any(pat in s for pat in _LIDAR_NOISE_PATTERNS):
+            return len(s)           # silently swallow the noise
+        return self._wrapped.write(s)
+
+    def flush(self) -> None:
+        self._wrapped.flush()
+
+
+@contextmanager
+def _suppress_lidar_noise():
+    """Context manager: replace sys.stdout with a filtered proxy."""
+    original = sys.stdout
+    sys.stdout = _FilteredStdout(original)  # type: ignore[assignment]
+    try:
+        yield
+    finally:
+        sys.stdout = original
 
 try:
     from rplidarc1.scanner import RPLidar as RPLidarC1
@@ -239,13 +281,14 @@ class LidarAnalyzer:
             finally:
                 lidar.stop_event.set()
 
-        try:
-            await asyncio.gather(scan_coro, consume())
-        finally:
+        with _suppress_lidar_noise():
             try:
-                lidar.shutdown()
-            except Exception as e:
-                print(f"[LiDAR] rplidarc1 shutdown: {e!r}")
+                await asyncio.gather(scan_coro, consume())
+            finally:
+                try:
+                    lidar.shutdown()
+                except Exception as e:
+                    print(f"[LiDAR] rplidarc1 shutdown: {e!r}")
 
     def _try_run_legacy(self) -> bool:
         if not RPLIDAR_LEGACY_AVAILABLE or RPLidarLegacy is None:
