@@ -236,7 +236,18 @@ class ArduinoSerial:
         if not msg:
             return
 
-        if not (msg.startswith("STATUS:") or msg.startswith("BANK:")):
+        # Strip any leading non-printable / non-ASCII bytes that can appear
+        # on Serial1 during Arduino power-on or RFID noise (e.g. \x00STATUS:AUTHORIZED).
+        # Scan forward until we find a known protocol prefix.
+        for prefix in ("STATUS:", "BANK:"):
+            idx = msg.find(prefix)
+            if idx > 0:          # garbage bytes before the real message
+                msg = msg[idx:]
+                break
+            elif idx == 0:
+                break            # already clean
+        else:
+            # Neither prefix found anywhere in the line
             print(f"[Serial] Ignoring non-protocol line: {msg}")
             return
 

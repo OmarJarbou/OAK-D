@@ -146,6 +146,8 @@ Adafruit_TCS34725 tcs =
 // ================================================================
 //  SYSTEM STATE
 // ================================================================
+// Bypass mode for testing (ignore RFID)
+bool bypassRFID       = false;
 bool authorized       = false;
 bool tcsFound         = false;
 unsigned long startupTime = 0;
@@ -299,8 +301,30 @@ bool checkUID(byte* readUID, byte* validUID, byte size) {
   return true;
 }
 
+// static unsigned long lastRFID = 0;
+
 void handleRFID() {
-  if (!mfrc522.PICC_IsNewCardPresent() || !mfrc522.PICC_ReadCardSerial()) return;
+  // إذا كان وضع التجاوز مفعلاً، نعطي صلاحية تلقائية دون انتظار بطاقة
+  if (bypassRFID) {
+    if (!authorized) {
+      authorized = true;
+      objectDetected = false;
+      Serial.println("[RFID] BYPASS mode: Authorized automatically");
+      Serial1.println("STATUS:AUTHORIZED");
+      startAuthSequence();
+    }
+    return;  // لا نقرأ الوحدة الفعلية
+  }
+
+  // الوضع العادي: قراءة البطاقة كما كانت (مع التحسينات التي أضفتها)
+  if (!mfrc522.PICC_IsNewCardPresent()) return;
+  
+  int retry = 0;
+  while (!mfrc522.PICC_ReadCardSerial() && retry < 3) {
+    delay(20);
+    retry++;
+  }
+  if (retry == 3) return; // فشل حقيقي
 
   Serial.print("[RFID] UID: ");
   for (byte i = 0; i < mfrc522.uid.size; i++) {
@@ -324,13 +348,13 @@ void handleRFID() {
     if (authSequenceActive || authSequenceOutputOn) {
       stopAuthSequence(false);
     } else {
-      setFreeMode(false);   // release wheel on deauth, no FREE protocol status
+      setFreeMode(false);
     }
   }
 
   mfrc522.PICC_HaltA();
   mfrc522.PCD_StopCrypto1();
-  delay(150);
+  delay(10);
 }
 
 // ================================================================
@@ -801,6 +825,20 @@ void executeCommand(String cmd) {
         return;
       case 'P': printStatus(); return;
       case 'H': printHelp();   return;
+      case 'B':  // toggle bypass mode
+        bypassRFID = !bypassRFID;
+        Serial.print("[BYPASS] Mode = ");
+        Serial.println(bypassRFID ? "ON (always authorized)" : "OFF (RFID required)");
+        if (bypassRFID) {
+          // نجبر الترخيص على الفور
+          authorized = true;
+          startAuthSequence();
+        } else {
+          // نعيد ضبط الحالة
+          authorized = false;
+          stopAuthSequence(false);
+        }
+        return;
     }
   }
 
@@ -892,6 +930,7 @@ void setup() {
   digitalWrite(53, HIGH);
   SPI.begin();
   mfrc522.PCD_Init();
+  mfrc522.PCD_AntennaOn();
   delay(100);
 
   byte v = mfrc522.PCD_ReadRegister(mfrc522.VersionReg);
@@ -934,9 +973,9 @@ void setup() {
 //  LOOP
 // ================================================================
 void loop() {
+  handleRFID();             // always listen for card
   handleLocalSerial();      // USB debug commands
   handlePiSerial();         // Pi/camera commands
-  handleRFID();             // always listen for card
   handleAuthSequence();     // non-blocking brake/motor sequence
   handleBanknoteDetection();// runs after auth, independent
 }
