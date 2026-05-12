@@ -200,8 +200,11 @@ class LidarAnalyzer:
             if RPLIDARC1_AVAILABLE:
                 print("[LiDAR] backend=auto: trying rplidarc1 (RPLIDAR C1)...")
                 ok = self._try_run_c1()
-            if not ok and RPLIDAR_LEGACY_AVAILABLE:
-                print("[LiDAR] C1 path failed or skipped; trying legacy rplidar...")
+            # Only try legacy if rplidarc1 is NOT available.
+            # Legacy driver uses 115200 baud and will always fail against a C1
+            # (which requires 460800), producing 'Descriptor length mismatch'.
+            if not ok and not RPLIDARC1_AVAILABLE and RPLIDAR_LEGACY_AVAILABLE:
+                print("[LiDAR] C1 driver unavailable; trying legacy rplidar...")
                 ok = self._try_run_legacy()
 
         if not ok:
@@ -223,32 +226,45 @@ class LidarAnalyzer:
     def _try_run_c1(self) -> bool:
         if not RPLIDARC1_AVAILABLE or RPLidarC1 is None:
             return False
-        try:
-            print(
-                f"[LiDAR] rplidarc1: port={self.port!r} baud={self._baud_c1}"
-            )
-            asyncio.run(self._c1_async_main())
-            return True
-        except Exception as e:
-            print(f"[LiDAR] rplidarc1 error: {e!r}")
-            return False
+        max_attempts = 3
+        for attempt in range(1, max_attempts + 1):
+            try:
+                print(
+                    f"[LiDAR] rplidarc1: port={self.port!r} baud={self._baud_c1}"
+                    + (f" (attempt {attempt}/{max_attempts})" if attempt > 1 else "")
+                )
+                asyncio.run(self._c1_async_main())
+                return True
+            except Exception as e:
+                print(f"[LiDAR] rplidarc1 error (attempt {attempt}): {e!r}")
+                if attempt < max_attempts:
+                    print("[LiDAR] Retrying in 2 s...")
+                    time.sleep(2.0)
+        return False
 
     async def _c1_async_main(self) -> None:
         assert RPLidarC1 is not None
 
-        # ── Flush stale bytes from the serial buffer before connecting ──
-        # Leftover bytes in the OS buffer (e.g. "In waiting: 3") immediately
-        # desync the packet parser causing the S/C bit verification failures.
+        # ── Flush stale bytes and wait for motor spin-up ─────────────────
+        # On Raspberry Pi the C1 motor takes 2-3 s to reach full speed.
+        # We open the port early, drain all stale bytes for the full wait
+        # period, then hand off to RPLidarC1.
+        SPINUP_S = 3.0
         try:
-            with serial.Serial(self.port, self._baud_c1, timeout=0.1) as _ser:
+            with serial.Serial(self.port, self._baud_c1, timeout=0.05) as _ser:
                 _ser.reset_input_buffer()
-                print(f"[LiDAR] Serial buffer flushed on {self.port!r}")
+                print(
+                    f"[LiDAR] Flushing {self.port!r} and waiting "
+                    f"{SPINUP_S:.0f} s for C1 motor spin-up..."
+                )
+                deadline = time.monotonic() + SPINUP_S
+                while time.monotonic() < deadline:
+                    _ser.read(256)   # drain any bytes arriving during spin-up
+                    await asyncio.sleep(0.05)
         except Exception as _e:
-            print(f"[LiDAR] Buffer flush skipped ({_e!r}) — continuing anyway")
+            print(f"[LiDAR] Flush/spinup skipped ({_e!r}) — continuing anyway")
+            await asyncio.sleep(SPINUP_S)
 
-        # Give the C1 motor ~1 s to reach full speed before we start reading
-        print("[LiDAR] Waiting for C1 motor spin-up (1 s)...")
-        await asyncio.sleep(1.0)
 
         lidar = RPLidarC1(self.port, self._baud_c1)
         scan_coro = lidar.simple_scan()

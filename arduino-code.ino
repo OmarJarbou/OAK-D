@@ -832,6 +832,7 @@ void executeCommand(String cmd) {
         if (bypassRFID) {
           // نجبر الترخيص على الفور
           authorized = true;
+          Serial1.println("STATUS:AUTHORIZED");  // notify Pi immediately
           startAuthSequence();
         } else {
           // نعيد ضبط الحالة
