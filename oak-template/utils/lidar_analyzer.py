@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 import numpy as np
+import serial
 
 try:
     from rplidarc1.scanner import RPLidar as RPLidarC1
@@ -192,6 +193,21 @@ class LidarAnalyzer:
 
     async def _c1_async_main(self) -> None:
         assert RPLidarC1 is not None
+
+        # ── Flush stale bytes from the serial buffer before connecting ──
+        # Leftover bytes in the OS buffer (e.g. "In waiting: 3") immediately
+        # desync the packet parser causing the S/C bit verification failures.
+        try:
+            with serial.Serial(self.port, self._baud_c1, timeout=0.1) as _ser:
+                _ser.reset_input_buffer()
+                print(f"[LiDAR] Serial buffer flushed on {self.port!r}")
+        except Exception as _e:
+            print(f"[LiDAR] Buffer flush skipped ({_e!r}) — continuing anyway")
+
+        # Give the C1 motor ~1 s to reach full speed before we start reading
+        print("[LiDAR] Waiting for C1 motor spin-up (1 s)...")
+        await asyncio.sleep(1.0)
+
         lidar = RPLidarC1(self.port, self._baud_c1)
         scan_coro = lidar.simple_scan()
 
@@ -211,7 +227,10 @@ class LidarAnalyzer:
                         d = item.get("d_mm")
                         if d is None:
                             continue
-                        angles.append(float(item["a_deg"]))
+                        a_deg = float(item["a_deg"])
+                        if a_deg > 360.0 or a_deg < -360.0:
+                            continue  # Ignore out-of-range angles silently
+                        angles.append(a_deg)
                         distances.append(float(d))
                     if angles and distances:
                         a = np.asarray(angles, dtype=np.float32)
