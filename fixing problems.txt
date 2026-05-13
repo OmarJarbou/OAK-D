@@ -1,0 +1,290 @@
+## اوتبوت اخر تشغيل:
+(oak2-env) lama@Lama-pi:~/OAK-D/oak-template $ python main.py
+============================================================
+  Smart Walker - OAK-D Navigation System v3.0
+============================================================
+  Arduino port : /dev/serial0
+  Walker width : 0.64m + 2x0.15m margin = 0.94m
+  Debug display: OFF
+  TTS          : ON
+  Snaps        : OFF
+============================================================
+[Visualizer] Disabled
+[Serial] Connected: /dev/serial0 @ 9600
+[LiDAR] backend=auto: trying direct serial (RPLIDAR C1)...
+[LiDAR] direct-serial: port='/dev/ttyUSB0' baud=460800
+[TTS] Engine ready
+[LiDAR] Flushing '/dev/ttyUSB0' and waiting 3 s for C1 motor spin-up...
+[Pipeline] Creating...
+[LiDAR] direct-serial: descriptor OK - scan running
+[2026-05-13 10:38:29] [depthai-nodes] [WARNING] [depthai-nodes.depthai_nodes.node.parser_generator] Segmentation based model detected with RVC2 device. Parsing will be done on the host machine.
+[Snaps] Disabled
+[Pipeline] Created. Starting...
+[Pipeline] Running. Waiting for RFID authorization...
+[Status] f=200 auth=False ready=False cmd=NONE conf=0% groups=1/1 target=- lidar_front=2508mm
+[Status] f=400 auth=False ready=False cmd=NONE conf=0% groups=1/1 target=- lidar_front=2806mm
+[Arduino -> Pi] STATUS:AUTHORIZED
+[System] [OK] AUTHORIZED - navigation begins when ready
+[TTS worker] saying: System authorized
+[Status] f=600 auth=True ready=False cmd=NONE conf=0% groups=1/1 target=- lidar_front=2804mm
+[Arduino -> Pi] STATUS:FREE
+[Decision] Side zone R1 preferred: safety=1.14 vs CENTER=1.02
+[Publisher] (none) -> STOP | GO:R1: center weak, right safer (conf=0.72) | stable_count=1 | depth_mm=932
+[TTS] speaking: Stop
+[TTS worker] saying: Stop
+[Serial -> Arduino] CMD:STOP
+[Publisher] STOP_HOLD 0.19s / 1.5s stable=1
+[Publisher] STOP_HOLD 0.32s / 1.5s stable=2
+[Publisher] STOP_HOLD 0.47s / 1.5s stable=3
+[Decision] Side zone R1 preferred: safety=1.14 vs CENTER=1.02
+[Publisher] STOP_HOLD 0.58s / 1.5s stable=1
+[Publisher] STOP_HOLD 0.65s / 1.5s stable=1
+[Publisher] STOP_HOLD 0.76s / 1.5s stable=2
+[Publisher] STOP_HOLD 0.84s / 1.5s stable=3
+[Publisher] STOP -> GO:CENTER | GO:CENTER: active recenter needed (p20=1215mm streak=4/6 conf=0.81) | stable_count=4 | depth_mm=934
+[Serial -> Arduino] CMD:GO:CENTER
+[Arduino -> Pi] STATUS:STOPPED
+[Arduino -> Pi] STATUS:MOVING:CENTER
+[Publisher] COOLDOWN GO:CENTER -> FREE held=716ms < 800ms stable=7
+[Publisher] GO:CENTER -> FREE | FREE: clear path (p20=1215mm streak=13/6 conf=0.85) | stable_count=8 | depth_mm=936
+[Serial -> Arduino] CMD:FREE
+[Decision] Side zone R1 preferred: safety=1.14 vs CENTER=1.01
+[Arduino -> Pi] STATUS:REACHED
+[Arduino -> Pi] STATUS:FREE
+[Decision] Side zone R1 preferred: safety=1.14 vs CENTER=1.00
+[Decision] Side zone RIGHT preferred: safety=1.13 vs CENTER=1.01
+[Decision] Side zone R1 preferred: safety=1.13 vs CENTER=1.01
+[TTS] speaking: Free mode
+[TTS worker] saying: Free mode
+[Decision] Side zone R1 preferred: safety=1.14 vs CENTER=1.01
+[Decision] Side zone R1 preferred: safety=1.14 vs CENTER=1.00
+[Decision] Side zone R1 preferred: safety=1.13 vs CENTER=0.99
+[Publisher] FREE -> FREE | GO:R1: center weak, right safer (conf=0.71) | stable_count=1 | depth_mm=937
+[Serial -> Arduino] CMD:FREE
+[Decision] Side zone R1 preferred: safety=1.14 vs CENTER=1.01
+[Arduino -> Pi] STATUS:FREE
+[Publisher] FREE -> STOP reason=CRITICAL_STOP stable=1 (cooldown override)
+[Publisher] FREE -> STOP | CRITICAL_STOP | stable_count=1 | depth_mm=935
+[Serial -> Arduino] CMD:STOP
+[Publisher] STOP_HOLD 0.09s / 1.5s stable=2
+[Publisher] STOP_HOLD 0.17s / 1.5s stable=3
+[Publisher] STOP_HOLD 0.25s / 1.5s stable=4
+[Publisher] STOP_HOLD 0.32s / 1.5s stable=5
+[Publisher] STOP_HOLD 0.40s / 1.5s stable=6
+[Publisher] STOP_HOLD 0.48s / 1.5s stable=7
+[Publisher] STOP_HOLD 0.55s / 1.5s stable=8
+[Publisher] STOP_HOLD 0.63s / 1.5s stable=9
+[Publisher] STOP_HOLD 0.70s / 1.5s stable=10
+[Publisher] STOP_HOLD 0.77s / 1.5s stable=11
+[Publisher] STOP_HOLD 0.91s / 1.5s stable=12
+[Decision] Side zone R1 preferred: safety=1.14 vs CENTER=1.02
+[Publisher] STOP_HOLD 1.10s / 1.5s stable=13
+[Publisher] STOP_HOLD 1.20s / 1.5s stable=14
+[Publisher] STOP_HOLD 1.27s / 1.5s stable=15
+[Publisher] STOP_HOLD 1.35s / 1.5s stable=16
+[Publisher] STOP_HOLD 1.42s / 1.5s stable=17
+[Arduino -> Pi] STATUS:STOPPED
+[Publisher] STOP -> FREE reason=RECOVERY_FREE held=1.51s stable=18
+[Publisher] STOP -> FREE | RECOVERY_FREE | stable_count=18 | depth_mm=938
+[Serial -> Arduino] CMD:FREE
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Decision] Side zone R1 preferred: safety=1.13 vs CENTER=1.00
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Decision] Side zone RIGHT preferred: safety=1.13 vs CENTER=1.01
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Decision] Side zone RIGHT preferred: safety=1.13 vs CENTER=1.01
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Arduino -> Pi] STATUS:FREE
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[TTS] speaking: Stop
+[TTS worker] saying: Stop
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] FREE -> GO:CENTER | GO:CENTER: active recenter needed (p20=1214mm streak=4/6 conf=0.74) | stable_count=4 | depth_mm=936
+[Serial -> Arduino] CMD:GO:CENTER
+[Decision] Side zone R1 preferred: safety=1.14 vs CENTER=1.00
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Arduino -> Pi] STATUS:ASSIST
+[Arduino -> Pi] STATUS:MOVING:CENTER
+[Arduino -> Pi] STATUS:REACHED
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Decision] Side zone R1 preferred: safety=1.14 vs CENTER=1.01
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Decision] Side zone R1 preferred: safety=1.15 vs CENTER=1.02
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Decision] Side zone R1 preferred: safety=1.14 vs CENTER=0.99
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Decision] Side zone R1 preferred: safety=1.15 vs CENTER=1.02
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] GO:CENTER -> FREE | FREE: confirmed centered (suppress GO:CENTER) | stable_count=1 | depth_mm=929
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[Decision] Side zone R1 preferred: safety=1.14 vs CENTER=1.01
+[Decision] Side zone R1 preferred: safety=1.14 vs CENTER=1.01
+[Decision] Side zone R1 preferred: safety=1.14 vs CENTER=1.02
+[Decision] Side zone R1 preferred: safety=1.14 vs CENTER=1.01
+[TTS] speaking: Free mode
+[TTS worker] saying: Free mode
+[Decision] Side zone R1 preferred: safety=1.15 vs CENTER=1.03
+[Decision] Side zone R1 preferred: safety=1.14 vs CENTER=1.02
+[Decision] Side zone R1 preferred: safety=1.14 vs CENTER=1.01
+[Decision] Side zone R1 preferred: safety=1.14 vs CENTER=1.01
+[Decision] Side zone R1 preferred: safety=1.14 vs CENTER=1.00
+[Decision] Side zone R1 preferred: safety=1.13 vs CENTER=1.01
+[Publisher] FREE -> GO:R1 | GO:R1: center weak, right safer (conf=0.74) | stable_count=4 | depth_mm=934
+[Serial -> Arduino] CMD:GO:R1
+[Decision] Side zone R1 preferred: safety=1.15 vs CENTER=1.01
+[Decision] Side zone R1 preferred: safety=1.14 vs CENTER=1.02
+[Arduino -> Pi] STATUS:ASSIST
+[Arduino -> Pi] STATUS:MOVING:R1
+[Decision] Side zone R1 preferred: safety=1.15 vs CENTER=1.02
+[Decision] Side zone R1 preferred: safety=1.15 vs CENTER=1.02
+[Arduino -> Pi] STATUS:REACHED
+[Publisher] GO:R1 -> GO:CENTER | GO:CENTER: active recenter needed (p20=1215mm streak=2/6 conf=0.81) | stable_count=2 | depth_mm=928
+[Serial -> Arduino] CMD:GO:CENTER
+[Arduino -> Pi] STATUS:MOVING:CENTER
+[Arduino -> Pi] STATUS:REACHED
+[Decision] Side zone R1 preferred: safety=1.14 vs CENTER=1.01
+[Decision] Side zone R1 preferred: safety=1.14 vs CENTER=1.00
+[Publisher] GO:CENTER -> FREE | FREE: confirmed centered (suppress GO:CENTER) | stable_count=1 | depth_mm=934
+[Serial -> Arduino] CMD:FREE
+[Publisher] FREE -> STOP reason=CRITICAL_STOP stable=1 (cooldown override)
+[Publisher] FREE -> STOP | CRITICAL_STOP | stable_count=1 | depth_mm=934
+[Serial -> Arduino] CMD:STOP
+[Publisher] STOP_HOLD 0.09s / 1.5s stable=2
+[TTS] speaking: Stop
+[TTS worker] saying: Stop
+[Publisher] STOP_HOLD 0.27s / 1.5s stable=3
+[Arduino -> Pi] STATUS:FREE
+[Publisher] STOP_HOLD 0.47s / 1.5s stable=4
+[Decision] Side zone R1 preferred: safety=1.14 vs CENTER=1.02
+[Publisher] STOP_HOLD 0.59s / 1.5s stable=5
+[Decision] Side zone R1 preferred: safety=1.15 vs CENTER=1.02
+[Publisher] STOP_HOLD 0.68s / 1.5s stable=6
+[Decision] Side zone R1 preferred: safety=1.14 vs CENTER=1.02
+[Publisher] STOP_HOLD 0.81s / 1.5s stable=7
+[Decision] Side zone R1 preferred: safety=1.15 vs CENTER=1.02
+[Publisher] STOP_HOLD 0.90s / 1.5s stable=8
+[Publisher] STOP_HOLD 0.98s / 1.5s stable=9
+[Decision] Side zone R1 preferred: safety=1.14 vs CENTER=1.01
+[Publisher] STOP_HOLD 1.06s / 1.5s stable=10
+[Publisher] STOP_HOLD 1.14s / 1.5s stable=11
+[Publisher] STOP_HOLD 1.22s / 1.5s stable=12
+[Publisher] STOP_HOLD 1.30s / 1.5s stable=13
+[Decision] Side zone R1 preferred: safety=1.14 vs CENTER=1.02
+[Publisher] STOP_HOLD 1.38s / 1.5s stable=1
+[Arduino -> Pi] STATUS:STOPPED
+[Decision] Side zone R1 preferred: safety=1.14 vs CENTER=1.02
+[Publisher] STOP -> FREE reason=RECOVERY_FREE held=1.51s stable=2
+[Publisher] STOP -> FREE | RECOVERY_FREE | stable_count=2 | depth_mm=932
+[Serial -> Arduino] CMD:FREE
+[Decision] Side zone R1 preferred: safety=1.14 vs CENTER=1.02
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Decision] Side zone R1 preferred: safety=1.14 vs CENTER=1.01
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Arduino -> Pi] STATUS:FREE
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] FREE -> GO:CENTER | GO:CENTER: active recenter needed (p20=1213mm streak=4/6 conf=0.74) | stable_count=4 | depth_mm=932
+[Serial -> Arduino] CMD:GO:CENTER
+[Arduino -> Pi] STATUS:ASSIST
+[Arduino -> Pi] STATUS:MOVING:CENTER
+[Arduino -> Pi] STATUS:REACHED
+[Status] f=800 auth=True ready=True cmd=GO:CENTER conf=78% groups=1/1 target=CENTER lidar_front=2802mm
+^CInterrupted.
+[Serial] Read error: 'NoneType' object cannot be interpreted as an integer
+[System] Shutdown complete.
+(oak2-env) lama@Lama-pi:~/OAK-D/oak-template $ 
+--------------------------
+اخيييييرا اشتغل!!
+--------------------------
+## لننتقل الى المشاكل:
+- هل نعمل تخزين الاصوات على الsd card لأداء أسرع في استدعاء الصوت (بدون queue)؟
+- اللايدر لما يعمل ستوب ما بيطلع صوت ستوب.
+- هل بنقدر ندخل اللايدر في قرارات left/right والابتعاد عن العوائق؟ واذا نعم هل يساعد من تطوير دقة النظام؟
+--------------------------
+## سؤال سألتك اياه قبل هيك:
+سؤال, هل يعتمد كود الكاميرا على الAI في تحديد العوائق والابتعاد عنها؟ ام مجرد heat map & depth sensing؟
+فهمني الصورة بشكل كامل.
+وكيف يمكن تطوير جودة ودقة الأوامر (حاليا اقيم الدقة لعملية الابتعاد عن العوائق 50-60% عندما اربط الكاميرا مع نظام الاردوينو مع البريكات والستيبر مطور للتوجيه)
+### جوابك:
+🧠 هل النظام يعتمد على AI؟ — الصورة الكاملة
+النظام مُركَّب من طبقتين مختلفتين جداً:
+📷 طبقة 1: كاميرا OAK-D (الكاميرا الستيريو)
+لا تستخدم AI لتجنب العوائق، بل تستخدم Stereo Depth Sensing + خوارزميات هندسية بحتة:
+
+المكوّن	ما يفعله
+StereoDepth	يحسب خريطة عمق (depth map) بالميليمتر من صورتين ستيريو
+CorridorAnalyzer	يقسّم الإطار إلى 7 مناطق (LEFT, L2, L1, CENTER, R1, R2, RIGHT) ويحسب إحصائيات كل منطقة
+
+DecisionEngine
+يختار المسار الأفضل بناءً على safety score رياضي محسوب يدوياً
+المعادلة الأساسية للـ safety score:
+
+safety_score = 0.35 × (عمق p20 منسوب)
+             + 0.25 × (1 - نسبة العوائق القريبة)
+             + 0.25 × (نسبة البكسلات الصحيحة)
+             + 0.15 × (عكس نسبة الأرضية/غير الصحيح)
+✅ هذا ليس AI — هو منطق قرار هندسي rule-based مع Temporal Smoothing (EMA + voting).
+
+YOLO (yolov8-instance-segmentation-nano) موجود في الكود لكنه فقط للـ SnapsProducer (إرسال لقطات عند رصد أشخاص للسحابة) — لا يُستخدم إطلاقاً في قرارات التوجيه!
+
+📡 طبقة 2: LiDAR (RPLIDAR C1)
+يعمل كـ طبقة أمان مستقلة:
+
+يراقب القطاع الأمامي (±30°) والجانبين (30°–90°)
+يرسل emergency إذا كان عائق أمامي < 600mm
+يُعطي bias خفيف لليسار/اليمين عندما تكون ثقة الكاميرا منخفضة
+⚡ سبب الدقة المنخفضة (50-60%) وكيف تحسّنها
+🔴 المشاكل الأساسية الحالية:
+1. Temporal Smoothing مُقيِّد جداً:
+
+python
+GO_FRAMES_REQUIRED: int = 4       # يحتاج 4 إطارات متتالية قبل أي أمر توجيه
+STOP_FRAMES_REQUIRED: int = 4     # و4 إطارات قبل الوقوف
+FREE_STABLE_FRAMES: int = 6       # و6 إطارات قبل FREE
+هذا يعني تأخر 130-200ms قبل تنفيذ أي قرار → الـ Arduino يتلقى الأمر بعد أن مررت العائق أو اقتربت منه.
+
+2. Depth sensing ضعيف في ظروف معينة:
+
+أضواء مباشرة / سطح لامع → قراءات depth خاطئة
+عوائق رفيعة جداً (أرجل كرسي، قضبان) → p20 يخطؤها أحياناً
+3. الـ Arduino يتأخر في الاستجابة:
+
+MIN_COMMAND_INTERVAL_S = 0.15s + وقت التسلسل serial → latency كافٍ لمشكلة
+✅ تحسينات مقترحة بالأولوية:
+🥇 الأسهل والأسرع: ضبط Config Parameters
+bash
+# في .env — تسريع وقت الاستجابة
+GO_FRAMES_REQUIRED=2          # بدلاً من 4
+STOP_FRAMES_REQUIRED=2        # بدلاً من 4  
+FREE_STABLE_FRAMES=4          # بدلاً من 6
+COMMAND_CHANGE_COOLDOWN_S=0.4 # بدلاً من 0.7
+# تشديد الكشف عن العوائق
+CLOSE_OBSTACLE_MM=1500        # بدلاً من 1200 (يكشف مبكراً)
+SIDE_PREFER_MARGIN=0.10       # بدلاً من 0.15 (أسرع تبديل للجانب)
+🥈 إضافة YOLO للقرار الفعلي
+حالياً YOLO موجود ولكن لا يُغذّي DecisionEngine. يمكن ربطه:
+
+رصد شخص/كرسي → رفع emergency_ratio في المنطقة المقابلة
+هذا يحوّل النظام من depth-only → depth + semantic AI
+🥉 تحسين جانب Arduino
+رفع Baud Rate إلى 115200 بدلاً من 9600 → 12× أسرع استجابة للأوامر
+تأكد أن الـ Stepper يستجيب للأوامر الجزئية (L1/R1) وليس فقط (LEFT/RIGHT)
+🏆 على المدى البعيد: إضافة AI حقيقي
+إضافة MobileNet Depth Estimation أو Semantic Segmentation داخل OAK-D نفسها (تعمل على الـ Myriad X chip):
+
+تمييز أرضية / عائق / ممر بدقة أعلى بكثير من depth thresholds فقط
+الخلاصة: نظامك الحالي هو rule-based geometric system وليس AI — يعمل بشكل جيد للممرات العريضة لكن ضعيف في البيئات المعقدة. الخطوة الأهم والأسهل الآن هي ضبط Config + رفع baud Arduino لتقليل الـ latency.

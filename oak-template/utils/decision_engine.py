@@ -258,7 +258,9 @@ class DecisionEngine:
         eligible = []
         for g in valid:
             best = self._pick_safest_target(
-                g, analysis, locked_left, locked_right, lidar_pref
+                g, analysis, locked_left, locked_right, lidar_pref,
+                lidar_left_mm=lidar_left_mm,
+                lidar_right_mm=lidar_right_mm,
             )
             if best is not None:
                 eligible.append((g, best))
@@ -617,8 +619,16 @@ class DecisionEngine:
         self, group: FreeSpaceGroup, analysis: AnalysisResult,
         locked_left: bool, locked_right: bool,
         lidar_pref: Optional[str] = None,
+        lidar_left_mm: float = 0.0,
+        lidar_right_mm: float = 0.0,
     ) -> Optional[str]:
-        """Pick the safest zone in a group using safety_score with soft CENTER bias."""
+        """Pick the safest zone in a group using safety_score with soft CENTER bias.
+
+        LiDAR distance multipliers (Fix 3) are applied unconditionally:
+          - Side with > LIDAR_BOOST_MM clearance  → +15% on that side's zones
+          - Side with 0 < dist < LIDAR_SAFETY_MM  → -15% on that side's zones
+          (These act on top of the existing LiDAR preference bonus.)
+        """
         cfg = self.cfg
         left_blocked = {"LEFT", "L2", "L1"}
         right_blocked = {"RIGHT", "R2", "R1"}
@@ -637,6 +647,30 @@ class DecisionEngine:
         if not candidates:
             return None
 
+        # ── LiDAR distance-based score multiplier (Fix 3) ────────
+        # Applied regardless of camera confidence.
+        # Thresholds: clear side > 900mm → boost; blocked side < safety_mm → penalty.
+        _LIDAR_BOOST_MM: float = 900.0
+        _LIDAR_BOOST: float = 1.15
+        _LIDAR_PENALTY: float = 0.85
+
+        _left_zones = {"LEFT", "L2", "L1"}
+        _right_zones = {"R1", "R2", "RIGHT"}
+
+        def _lidar_distance_mult(name: str) -> float:
+            mult = 1.0
+            if name in _left_zones and lidar_left_mm > 0.0:
+                if lidar_left_mm > _LIDAR_BOOST_MM:
+                    mult *= _LIDAR_BOOST
+                elif lidar_left_mm < cfg.LIDAR_SAFETY_MM:
+                    mult *= _LIDAR_PENALTY
+            elif name in _right_zones and lidar_right_mm > 0.0:
+                if lidar_right_mm > _LIDAR_BOOST_MM:
+                    mult *= _LIDAR_BOOST
+                elif lidar_right_mm < cfg.LIDAR_SAFETY_MM:
+                    mult *= _LIDAR_PENALTY
+            return mult
+
         # If a side zone clearly beats CENTER by SIDE_PREFER_MARGIN, prefer it
         # unconditionally (ignore CENTER bias and accept-ratio).
         center_name = cfg.ZONE_NAMES[center_idx]
@@ -648,8 +682,9 @@ class DecisionEngine:
             for name, m in candidates:
                 if name == center_name:
                     continue
-                if m.safety_score > best_side_safety:
-                    best_side_safety = m.safety_score
+                adjusted = m.safety_score * _lidar_distance_mult(name)
+                if adjusted > best_side_safety:
+                    best_side_safety = adjusted
                     best_side_name = name
             if (
                 best_side_name is not None
@@ -663,8 +698,6 @@ class DecisionEngine:
 
         # LiDAR side-bias: compute per-zone preference bonus when OAK-D confidence is low.
         # LEFT/L2/L1 are on the left; R1/R2/RIGHT are on the right.
-        _left_zones = {"LEFT", "L2", "L1"}
-        _right_zones = {"R1", "R2", "RIGHT"}
 
         def _lidar_bonus(name: str) -> float:
             if lidar_pref is None:
@@ -675,11 +708,11 @@ class DecisionEngine:
                 return cfg.LIDAR_SIDE_BIAS_BONUS
             return 0.0
 
-        # Find the zone with the best safety_score (+ any LiDAR side bonus)
+        # Find the zone with the best safety_score (+ LiDAR distance mult + side bonus)
         best_name = None
         best_effective_score = -1.0
         for name, m in candidates:
-            effective = m.safety_score
+            effective = m.safety_score * _lidar_distance_mult(name)
             if m.zone_index == center_idx:
                 effective += cfg.CENTER_SAFETY_BIAS
             effective += _lidar_bonus(name)

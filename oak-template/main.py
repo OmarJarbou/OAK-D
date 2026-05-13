@@ -35,6 +35,7 @@ from utils.decision_engine import DecisionEngine
 from utils.command_publisher import CommandPublisher
 from utils.lidar_analyzer import LidarAnalyzer
 from utils.fusion_layer import FusionLayer
+from utils.tts_player import TTSPlayer
 
 # ── SnapsProducer ─────────────────────────────────────────────
 try:
@@ -127,6 +128,9 @@ tts_queue = queue.Queue(maxsize=2)
 last_tts_time = 0
 last_text = None
 
+# Pre-cached WAV player (initialised in main() after cfg is ready)
+_tts_player: TTSPlayer | None = None
+
 
 def tts_worker():
     global last_tts_time, last_text
@@ -152,7 +156,10 @@ def tts_worker():
 
         try:
             print(f"[TTS worker] saying: {text}")
-            os.system(f'espeak-ng -v en+f3 -s 135 "{text}" >/dev/null 2>&1')
+            if _tts_player is not None:
+                _tts_player.play(text)   # ← pre-cached WAV via aplay (~50ms)
+            else:
+                os.system(f'espeak-ng -v en+f3 -s 135 "{text}" >/dev/null 2>&1')
         except Exception as e:
             print(f"[TTS] error: {e}")
             
@@ -367,6 +374,11 @@ def main():
     print("=" * 60)
 
     # ── Components ────────────────────────────────────────
+    global _tts_player
+    _tts_player = TTSPlayer(sounds_dir="/home/lama/OAK-D/sounds")
+    if cfg.USE_TTS:
+        _tts_player.pregenerate()   # generate WAV files once at startup
+
     arduino = ArduinoSerial(port=cfg.ARDUINO_PORT, baud=cfg.ARDUINO_BAUD)
     corridor_analyzer = CorridorAnalyzer(cfg)
     decision_engine = DecisionEngine(cfg)
@@ -532,6 +544,11 @@ def main():
                     if fused.has_emergency != analysis.has_emergency:
                         from dataclasses import replace
                         analysis = replace(analysis, has_emergency=fused.has_emergency)
+
+                    # Fix 2: LiDAR veto → immediate Stop announcement,
+                    # bypassing NAV_TTS_COOLDOWN (LiDAR emergencies are real).
+                    if fused.fusion_reason == "lidar_veto_emergency" and cfg.USE_TTS:
+                        speak("Stop")
 
                     # Decision (uses merged groups + LiDAR side-distance bias)
                     result = decision_engine.decide(
