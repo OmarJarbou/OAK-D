@@ -1,950 +1,134 @@
-## من الاوتبوت لاخر تشغيل:
-[Decision] Side zone RIGHT preferred: safety=1.34 vs CENTER=1.08
-[Decision] Side zone RIGHT preferred: safety=1.34 vs CENTER=1.08
-[Decision] Side zone RIGHT preferred: safety=1.36 vs CENTER=1.08
-[Decision] Side zone RIGHT preferred: safety=1.35 vs CENTER=1.07
-[Decision] Side zone RIGHT preferred: safety=1.36 vs CENTER=1.08
-[Decision] Side zone RIGHT preferred: safety=1.37 vs CENTER=1.09
-[Decision] Side zone RIGHT preferred: safety=1.38 vs CENTER=1.08
-[Decision] Side zone RIGHT preferred: safety=1.37 vs CENTER=1.08
-[Decision] Side zone RIGHT preferred: safety=1.35 vs CENTER=1.07
-[Publisher] FREE -> FREE | FREE: exit-hold bad_streak=1/2 | stable_count=1 | depth_mm=1596
-[Serial -> Arduino] CMD:FREE
-[Decision] Side zone RIGHT preferred: safety=1.35 vs CENTER=1.08
-[Decision] Side zone R2 preferred: safety=1.32 vs CENTER=1.08
-[Decision] Side zone R2 preferred: safety=1.33 vs CENTER=1.09
-[Decision] Side zone R2 preferred: safety=1.34 vs CENTER=1.09
-[Arduino -> Pi] STATUS:FREE
-[Decision] Side zone R2 preferred: safety=1.35 vs CENTER=1.08
-[Decision] Side zone R2 preferred: safety=1.36 vs CENTER=1.08
-[Decision] Side zone R2 preferred: safety=1.37 vs CENTER=1.09
-[Decision] Side zone R2 preferred: safety=1.38 vs CENTER=1.10
-[Decision] Side zone R2 preferred: safety=1.37 vs CENTER=1.10
-[Decision] Side zone R2 preferred: safety=1.36 vs CENTER=1.10
-[Decision] Side zone R2 preferred: safety=1.37 vs CENTER=1.10
-[Decision] Side zone R2 preferred: safety=1.37 vs CENTER=1.13
-[Decision] Side zone R2 preferred: safety=1.36 vs CENTER=1.14
-[Decision] Side zone R1 preferred: safety=1.36 vs CENTER=1.15
-[Decision] Side zone R1 preferred: safety=1.36 vs CENTER=1.17
-[Decision] Side zone R1 preferred: safety=1.36 vs CENTER=1.16
-[Decision] Side zone R1 preferred: safety=1.36 vs CENTER=1.15
-[Decision] Side zone R1 preferred: safety=1.37 vs CENTER=1.15
-[Decision] Side zone R1 preferred: safety=1.37 vs CENTER=1.15
-[Publisher] FREE -> STOP reason=CRITICAL_STOP stable=1 (cooldown override)
+lama@Lama-pi:~/OAK-D/oak-template $ source oak2-env/bin/activate
+(oak2-env) lama@Lama-pi:~/OAK-D/oak-template $ python main.py
+============================================================
+  Smart Walker - OAK-D Navigation System v3.0
+============================================================
+  Arduino port : /dev/serial0
+  Walker width : 0.64m + 2x0.15m margin = 0.94m
+  Debug display: OFF
+  TTS          : ON
+  Snaps        : OFF
+============================================================
+[TTS] Cached: stop.wav
+[TTS] Cached: free_mode.wav
+[TTS] Cached: go_forward.wav
+[TTS] Cached: slight_left.wav
+[TTS] Cached: turn_left.wav
+[TTS] Cached: hard_left.wav
+[TTS] Cached: slight_right.wav
+[TTS] Cached: turn_right.wav
+[TTS] Cached: hard_right.wav
+[TTS] Cached: system_authorized.wav
+[TTS] Cached: system_locked.wav
+[TTS] Pre-cache complete: 11/11 phrases ready
+[Visualizer] Disabled
+[Serial] Connected: /dev/serial0 @ 9600
+[LiDAR] backend=auto: trying direct serial (RPLIDAR C1)...
+[LiDAR] direct-serial: port='/dev/ttyUSB0' baud=460800
+[TTS] Engine ready
+[LiDAR] Flushing '/dev/ttyUSB0' and waiting 3 s for C1 motor spin-up...
+[Pipeline] Creating...
+[LiDAR] direct-serial: descriptor OK - scan running
+[2026-05-13 14:47:23] [depthai-nodes] [WARNING] [depthai-nodes.depthai_nodes.node.parser_generator] Segmentation based model detected with RVC2 device. Parsing will be done on the host machine.
+[Snaps] Disabled
+[Pipeline] Created. Starting...
+[Pipeline] Running. Waiting for RFID authorization...
+[Status] f=200 auth=False ready=False cmd=NONE conf=0% groups=1/1 target=- lidar_front=1048mm
 [TTS worker] saying: Stop
-[Serial -> Arduino] CMD:STOP
-[Publisher] FREE -> STOP | CRITICAL_STOP | stable_count=1 | depth_mm=817
-[TTS] speaking: Stop
-[Decision] Side zone R1 preferred: safety=1.37 vs CENTER=1.15
-[Publisher] STOP_HOLD 0.10s / 1.5s stable=2
-[Decision] Side zone R1 preferred: safety=1.37 vs CENTER=1.16
-[Publisher] STOP_HOLD 0.18s / 1.5s stable=3
-[Decision] Side zone R1 preferred: safety=1.37 vs CENTER=1.17
-[Publisher] STOP_HOLD 0.28s / 1.5s stable=4
-[Decision] Side zone R1 preferred: safety=1.37 vs CENTER=1.16
-[Publisher] STOP_HOLD 0.36s / 1.5s stable=5
-[Decision] Side zone R1 preferred: safety=1.36 vs CENTER=1.17
-[Publisher] STOP_HOLD 0.47s / 1.5s stable=6
-[Decision] Side zone R1 preferred: safety=1.36 vs CENTER=1.17
-[Publisher] STOP_HOLD 0.56s / 1.5s stable=7
-[Decision] Side zone R1 preferred: safety=1.36 vs CENTER=1.17
-[Publisher] STOP_HOLD 0.64s / 1.5s stable=8
-[Decision] Side zone R1 preferred: safety=1.36 vs CENTER=1.17
-[Publisher] STOP_HOLD 0.72s / 1.5s stable=9
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.16
-[Publisher] STOP_HOLD 0.82s / 1.5s stable=10
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.16
-[Publisher] STOP_HOLD 0.91s / 1.5s stable=11
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] STOP_HOLD 1.00s / 1.5s stable=12
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] STOP_HOLD 1.07s / 1.5s stable=13
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] STOP_HOLD 1.16s / 1.5s stable=14
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] STOP_HOLD 1.23s / 1.5s stable=15
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] STOP_HOLD 1.31s / 1.5s stable=16
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] STOP_HOLD 1.40s / 1.5s stable=17
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] STOP_HOLD 1.48s / 1.5s stable=18
-[Arduino -> Pi] STATUS:STOPPED
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] STOP -> FREE reason=RECOVERY_FREE held=1.58s stable=19
-[Publisher] STOP -> FREE | RECOVERY_FREE | stable_count=19 | depth_mm=659
-[Serial -> Arduino] CMD:FREE
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Arduino -> Pi] STATUS:FREE
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.34 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.34 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.34 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.34 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.34 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.34 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.34 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.34 vs CENTER=1.15
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[Status] f=400 auth=False ready=False cmd=NONE conf=0% groups=1/1 target=- lidar_front=658mm
 [TTS worker] saying: Stop
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.34 vs CENTER=1.14
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.34 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] FREE -> STOP reason=CRITICAL_STOP stable=54 (cooldown override)
-[Publisher] FREE -> STOP | CRITICAL_STOP | stable_count=54 | depth_mm=656
-[Serial -> Arduino] CMD:STOP
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] STOP_HOLD 0.09s / 1.5s stable=55
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] STOP_HOLD 0.19s / 1.5s stable=56
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] STOP_HOLD 0.27s / 1.5s stable=57
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] STOP_HOLD 0.36s / 1.5s stable=58
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] STOP_HOLD 0.45s / 1.5s stable=59
-[Decision] Side zone R1 preferred: safety=1.34 vs CENTER=1.15
-[Publisher] STOP_HOLD 0.54s / 1.5s stable=60
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] STOP_HOLD 0.63s / 1.5s stable=61
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] STOP_HOLD 0.73s / 1.5s stable=62
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] STOP_HOLD 0.83s / 1.5s stable=63
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] STOP_HOLD 0.90s / 1.5s stable=64
-[Decision] Side zone R1 preferred: safety=1.34 vs CENTER=1.15
-[Publisher] STOP_HOLD 0.98s / 1.5s stable=65
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] STOP_HOLD 1.07s / 1.5s stable=66
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] STOP_HOLD 1.16s / 1.5s stable=67
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] STOP_HOLD 1.24s / 1.5s stable=68
-[Decision] Side zone R1 preferred: safety=1.36 vs CENTER=1.15
-[Publisher] STOP_HOLD 1.32s / 1.5s stable=69
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] STOP_HOLD 1.40s / 1.5s stable=70
-[Arduino -> Pi] STATUS:STOPPED
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] STOP_HOLD 1.50s / 1.5s stable=71
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
 [TTS worker] saying: Stop
-[Decision] Side zone R1 preferred: safety=1.34 vs CENTER=1.15
-[Publisher] STOP -> FREE reason=RECOVERY_FREE held=1.59s stable=72
-[Publisher] STOP -> FREE | RECOVERY_FREE | stable_count=72 | depth_mm=656
-[Serial -> Arduino] CMD:FREE
-[Decision] Side zone R1 preferred: safety=1.34 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.34 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.34 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Arduino -> Pi] STATUS:FREE
-[Decision] Side zone R1 preferred: safety=1.34 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Status] f=1200 auth=True ready=True cmd=STOP conf=82% groups=1/1 target=R1 lidar_front=431mm
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.34 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.34 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.34 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.34 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.36 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.36 vs CENTER=1.16
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.16
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.36 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.36 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.36 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.36 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.34 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.34 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.34 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.34 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.34 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.16
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R1 preferred: safety=1.36 vs CENTER=1.16
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] FREE -> GO:R1 | GO:R1: center weak, right safer (conf=0.78) | stable_count=4 | depth_mm=644
-[TTS] speaking: Slight right
-[Serial -> Arduino] CMD:GO:R1
-[TTS worker] saying: Slight right
-[Arduino -> Pi] STATUS:ASSIST
-[Arduino -> Pi] STATUS:MOVING:R1
-[Decision] Side zone R1 preferred: safety=1.36 vs CENTER=1.14
-[Decision] Side zone R1 preferred: safety=1.35 vs CENTER=1.13
-[Decision] Side zone R2 preferred: safety=1.36 vs CENTER=1.15
-[Decision] Side zone R2 preferred: safety=1.36 vs CENTER=1.14
-[Decision] Side zone R2 preferred: safety=1.35 vs CENTER=1.13
-[Decision] Side zone R2 preferred: safety=1.35 vs CENTER=1.10
-[Decision] Side zone RIGHT preferred: safety=1.35 vs CENTER=1.09
-[Decision] Side zone R2 preferred: safety=1.34 vs CENTER=1.08
-[Decision] Side zone RIGHT preferred: safety=1.36 vs CENTER=1.08
-[Decision] Side zone RIGHT preferred: safety=1.35 vs CENTER=1.08
-[Decision] Side zone RIGHT preferred: safety=1.34 vs CENTER=1.09
-[Decision] Side zone RIGHT preferred: safety=1.34 vs CENTER=1.10
-[Publisher] GO:R1 -> GO:RIGHT | GO:RIGHT: center weak, right safer (conf=0.79) | stable_count=4 | depth_mm=1551
-[Serial -> Arduino] CMD:GO:RIGHT
-[Decision] Side zone RIGHT preferred: safety=1.34 vs CENTER=1.12
-[Decision] Side zone RIGHT preferred: safety=1.34 vs CENTER=1.13
-[Decision] Side zone RIGHT preferred: safety=1.34 vs CENTER=1.12
-[Decision] Side zone R2 preferred: safety=1.33 vs CENTER=1.14
-[Decision] Side zone R2 preferred: safety=1.33 vs CENTER=1.13
-[Decision] Side zone R2 preferred: safety=1.33 vs CENTER=1.11
-[Decision] Side zone R2 preferred: safety=1.33 vs CENTER=1.09
-[Decision] Side zone RIGHT preferred: safety=1.33 vs CENTER=1.08
-[Arduino -> Pi] STATUS:REACHED
-[Arduino -> Pi] STATUS:MOVING:RIGHT
-[Decision] Side zone RIGHT preferred: safety=1.32 vs CENTER=1.08
-[Decision] Side zone RIGHT preferred: safety=1.35 vs CENTER=1.08
-[Decision] Side zone RIGHT preferred: safety=1.33 vs CENTER=1.08
-[Decision] Side zone RIGHT preferred: safety=1.31 vs CENTER=1.08
-[Decision] Side zone RIGHT preferred: safety=1.33 vs CENTER=1.08
-[Decision] Side zone RIGHT preferred: safety=1.31 vs CENTER=1.08
-[Arduino -> Pi] STATUS:REACHED
-[Decision] Side zone RIGHT preferred: safety=1.34 vs CENTER=1.07
-[Decision] Side zone RIGHT preferred: safety=1.33 vs CENTER=1.09
-[Decision] Side zone R1 preferred: safety=1.32 vs CENTER=1.09
-[Decision] Side zone R2 preferred: safety=1.33 vs CENTER=1.10
-[Decision] Side zone R2 preferred: safety=1.34 vs CENTER=1.10
-[Decision] Side zone R2 preferred: safety=1.33 vs CENTER=1.09
-[Decision] Side zone R2 preferred: safety=1.34 vs CENTER=1.10
-[Publisher] GO:RIGHT -> GO:R2 | GO:R2: center weak, right safer (conf=0.74) | stable_count=4 | depth_mm=1489
-[Serial -> Arduino] CMD:GO:R2
-[Arduino -> Pi] STATUS:MOVING:R2
-[Decision] Side zone R2 preferred: safety=1.33 vs CENTER=1.11
-[Decision] Side zone R2 preferred: safety=1.31 vs CENTER=1.13
-[Decision] Side zone R2 preferred: safety=1.31 vs CENTER=1.13
-[Decision] Side zone R2 preferred: safety=1.31 vs CENTER=1.14
-[Decision] Side zone RIGHT preferred: safety=1.32 vs CENTER=1.13
-[Decision] Side zone R2 preferred: safety=1.31 vs CENTER=1.12
-[TTS] speaking: Turn right
-[TTS worker] saying: Turn right
-[Arduino -> Pi] STATUS:REACHED
-[Decision] Side zone R2 preferred: safety=1.31 vs CENTER=1.11
-[Publisher] COOLDOWN GO:R2 -> GO:CENTER held=704ms < 800ms stable=2
-[Publisher] COOLDOWN GO:R2 -> GO:CENTER held=775ms < 800ms stable=3
-[Publisher] GO:R2 -> GO:CENTER | GO:CENTER: active recenter needed (p20=1536mm streak=4/6 conf=0.74) | stable_count=4 | depth_mm=1506
-[Serial -> Arduino] CMD:GO:CENTER
-[Decision] Side zone R2 preferred: safety=1.33 vs CENTER=1.12
-[Arduino -> Pi] STATUS:MOVING:CENTER
-[Decision] Side zone RIGHT preferred: safety=1.32 vs CENTER=1.13
-[Decision] Side zone RIGHT preferred: safety=1.33 vs CENTER=1.12
-[Decision] Side zone RIGHT preferred: safety=1.33 vs CENTER=1.13
-[Decision] Side zone R2 preferred: safety=1.33 vs CENTER=1.11
-[Decision] Side zone R2 preferred: safety=1.33 vs CENTER=1.10
-[Decision] Side zone R2 preferred: safety=1.32 vs CENTER=1.10
-[Publisher] COOLDOWN GO:CENTER -> FREE held=598ms < 800ms stable=7
-[Decision] Side zone RIGHT preferred: safety=1.32 vs CENTER=1.09
-[Publisher] COOLDOWN GO:CENTER -> FREE held=699ms < 800ms stable=8
-[Arduino -> Pi] STATUS:REACHED
-[Decision] Side zone R2 preferred: safety=1.32 vs CENTER=1.10
-[Publisher] COOLDOWN GO:CENTER -> FREE held=799ms < 800ms stable=1
-[Decision] Side zone R2 preferred: safety=1.31 vs CENTER=1.10
-[Publisher] GO:CENTER -> FREE | FREE: exit-hold bad_streak=1/2 | stable_count=1 | depth_mm=1504
-[Serial -> Arduino] CMD:FREE
-[Decision] Side zone R2 preferred: safety=1.30 vs CENTER=1.09
-[Decision] Side zone RIGHT preferred: safety=1.31 vs CENTER=1.09
-[Decision] Side zone R2 preferred: safety=1.30 vs CENTER=1.09
-[Decision] Side zone R2 preferred: safety=1.33 vs CENTER=1.10
-[Arduino -> Pi] STATUS:FREE
-[Decision] Side zone RIGHT preferred: safety=1.32 vs CENTER=1.09
-[Decision] Side zone R2 preferred: safety=1.31 vs CENTER=1.09
-[Decision] Side zone R2 preferred: safety=1.33 vs CENTER=1.10
-[Decision] Side zone R2 preferred: safety=1.32 vs CENTER=1.09
-[Decision] Side zone R2 preferred: safety=1.32 vs CENTER=1.10
-[Decision] Side zone R2 preferred: safety=1.33 vs CENTER=1.10
-[Decision] Side zone R2 preferred: safety=1.34 vs CENTER=1.09
-[Decision] Side zone RIGHT preferred: safety=1.35 vs CENTER=1.09
-[Decision] Side zone R2 preferred: safety=1.34 vs CENTER=1.09
-[Decision] Side zone R2 preferred: safety=1.33 vs CENTER=1.09
-[Decision] Side zone R2 preferred: safety=1.34 vs CENTER=1.09
-[Decision] Side zone R2 preferred: safety=1.34 vs CENTER=1.10
-[Decision] Side zone R2 preferred: safety=1.34 vs CENTER=1.09
-[Decision] Side zone R2 preferred: safety=1.34 vs CENTER=1.09
-[Decision] Side zone RIGHT preferred: safety=1.33 vs CENTER=1.08
-[Decision] Side zone RIGHT preferred: safety=1.34 vs CENTER=1.07
-[Decision] Side zone RIGHT preferred: safety=1.33 vs CENTER=1.08
-[Decision] Side zone RIGHT preferred: safety=1.34 vs CENTER=1.08
-[Decision] Side zone RIGHT preferred: safety=1.34 vs CENTER=1.08
-[Decision] Side zone R2 preferred: safety=1.33 vs CENTER=1.08
-[Decision] Side zone RIGHT preferred: safety=1.33 vs CENTER=1.08
-[TTS] speaking: Free mode
-[TTS worker] saying: Free mode
-[Decision] Side zone R2 preferred: safety=1.33 vs CENTER=1.08
-[Decision] Side zone R2 preferred: safety=1.32 vs CENTER=1.08
-[Decision] Side zone RIGHT preferred: safety=1.30 vs CENTER=1.08
-[Publisher] FREE -> FREE | FREE: exit-hold bad_streak=1/2 | stable_count=1 | depth_mm=1532
-[Serial -> Arduino] CMD:FREE
-[Decision] Side zone RIGHT preferred: safety=1.32 vs CENTER=1.09
-[Decision] Side zone RIGHT preferred: safety=1.33 vs CENTER=1.08
-[Decision] Side zone RIGHT preferred: safety=1.30 vs CENTER=1.08
-[Decision] Side zone RIGHT preferred: safety=1.30 vs CENTER=1.09
-[Arduino -> Pi] STATUS:FREE
-[Decision] Side zone RIGHT preferred: safety=1.25 vs CENTER=1.09
-[Decision] Side zone LEFT preferred: safety=1.36 vs CENTER=1.10
-[Decision] Side zone LEFT preferred: safety=1.36 vs CENTER=1.11
-[Decision] Side zone LEFT preferred: safety=1.35 vs CENTER=1.10
-[Decision] Side zone L2 preferred: safety=1.35 vs CENTER=1.10
-[Decision] Side zone LEFT preferred: safety=1.35 vs CENTER=1.11
-[Decision] Side zone LEFT preferred: safety=1.35 vs CENTER=1.11
-[Decision] Side zone LEFT preferred: safety=1.34 vs CENTER=1.10
-[Decision] Side zone LEFT preferred: safety=1.34 vs CENTER=1.10
-[Decision] Side zone LEFT preferred: safety=1.36 vs CENTER=1.09
-[Decision] Side zone LEFT preferred: safety=1.35 vs CENTER=1.10
-[Decision] Side zone LEFT preferred: safety=1.34 vs CENTER=1.10
-[Decision] Side zone LEFT preferred: safety=1.36 vs CENTER=1.09
-[Decision] Side zone LEFT preferred: safety=1.36 vs CENTER=1.08
-[Decision] Side zone LEFT preferred: safety=1.35 vs CENTER=1.08
-[Decision] Side zone LEFT preferred: safety=1.35 vs CENTER=1.08
-[Decision] Side zone LEFT preferred: safety=1.35 vs CENTER=1.08
-[Decision] Side zone LEFT preferred: safety=1.34 vs CENTER=1.08
-[Decision] Side zone LEFT preferred: safety=1.33 vs CENTER=1.08
-[Decision] Side zone LEFT preferred: safety=1.35 vs CENTER=1.08
-[Decision] Side zone LEFT preferred: safety=1.34 vs CENTER=1.08
-[Decision] Side zone LEFT preferred: safety=1.34 vs CENTER=1.08
-[Decision] Side zone LEFT preferred: safety=1.36 vs CENTER=1.09
-[Decision] Side zone LEFT preferred: safety=1.35 vs CENTER=1.08
-[Publisher] FREE -> FREE | FREE: exit-hold bad_streak=1/2 | stable_count=1 | depth_mm=1509
-[Serial -> Arduino] CMD:FREE
-[Decision] Side zone LEFT preferred: safety=1.35 vs CENTER=1.08
-[Decision] Side zone LEFT preferred: safety=1.36 vs CENTER=1.08
-[Decision] Side zone LEFT preferred: safety=1.35 vs CENTER=1.08
-[Arduino -> Pi] STATUS:FREE
-[Decision] Side zone LEFT preferred: safety=1.36 vs CENTER=1.08
-[Decision] Side zone LEFT preferred: safety=1.36 vs CENTER=1.08
-[Decision] Side zone LEFT preferred: safety=1.34 vs CENTER=1.08
-[Decision] Side zone LEFT preferred: safety=1.36 vs CENTER=1.08
-[Decision] Side zone LEFT preferred: safety=1.35 vs CENTER=1.08
-[Decision] Side zone LEFT preferred: safety=1.35 vs CENTER=1.08
-[Decision] Side zone LEFT preferred: safety=1.33 vs CENTER=1.08
-[Decision] Side zone L2 preferred: safety=1.30 vs CENTER=1.08
-[Decision] Side zone L2 preferred: safety=1.30 vs CENTER=1.08
-[Decision] Side zone L2 preferred: safety=1.29 vs CENTER=1.08
-[Decision] Side zone L2 preferred: safety=1.30 vs CENTER=1.08
-[Decision] Side zone L2 preferred: safety=1.30 vs CENTER=1.08
-[Decision] Side zone L2 preferred: safety=1.29 vs CENTER=1.08
-[Decision] Side zone R2 preferred: safety=1.29 vs CENTER=1.09
-[Decision] Side zone L2 preferred: safety=1.28 vs CENTER=1.09
-[Decision] Side zone L2 preferred: safety=1.28 vs CENTER=1.09
-[Decision] Side zone L2 preferred: safety=1.29 vs CENTER=1.09
-[Decision] Side zone L2 preferred: safety=1.29 vs CENTER=1.10
-[Decision] Side zone L2 preferred: safety=1.30 vs CENTER=1.09
-[Decision] Side zone RIGHT preferred: safety=1.31 vs CENTER=1.08
-[Decision] Side zone RIGHT preferred: safety=1.33 vs CENTER=1.09
-[Decision] Side zone LEFT preferred: safety=1.36 vs CENTER=1.10
-[Decision] Side zone LEFT preferred: safety=1.37 vs CENTER=1.10
-[Decision] Side zone LEFT preferred: safety=1.36 vs CENTER=1.11
-[Decision] Side zone LEFT preferred: safety=1.36 vs CENTER=1.12
-[Decision] Side zone LEFT preferred: safety=1.35 vs CENTER=1.13
-[Publisher] FREE -> FREE | GO:LEFT: center weak, left safer (conf=0.78) | stable_count=1 | depth_mm=1524
-[Serial -> Arduino] CMD:FREE
-[Decision] Side zone L2 preferred: safety=1.35 vs CENTER=1.14
-[Decision] Side zone L2 preferred: safety=1.37 vs CENTER=1.12
-[Arduino -> Pi] STATUS:FREE
-[Decision] Side zone L2 preferred: safety=1.37 vs CENTER=1.11
-[Decision] Side zone L2 preferred: safety=1.37 vs CENTER=1.11
-[Decision] Side zone L2 preferred: safety=1.36 vs CENTER=1.10
-[Decision] Side zone L2 preferred: safety=1.36 vs CENTER=1.08
-[Decision] Side zone L2 preferred: safety=1.37 vs CENTER=1.08
-[Decision] Side zone L2 preferred: safety=1.37 vs CENTER=1.08
-[Decision] Side zone L2 preferred: safety=1.37 vs CENTER=1.07
-[Decision] Side zone L2 preferred: safety=1.36 vs CENTER=1.05
-[Decision] Side zone L2 preferred: safety=1.36 vs CENTER=1.07
-[Decision] Side zone L2 preferred: safety=1.35 vs CENTER=1.07
-[Decision] Side zone L2 preferred: safety=1.34 vs CENTER=1.06
-[Decision] Side zone L2 preferred: safety=1.34 vs CENTER=1.07
-[Decision] Side zone L2 preferred: safety=1.34 vs CENTER=1.05
-[Decision] Side zone L2 preferred: safety=1.33 vs CENTER=1.03
-[Decision] Side zone L2 preferred: safety=1.33 vs CENTER=1.03
-[Decision] Side zone L2 preferred: safety=1.33 vs CENTER=1.04
-[Decision] Side zone LEFT preferred: safety=1.32 vs CENTER=1.02
-[Decision] Side zone RIGHT preferred: safety=1.31 vs CENTER=1.03
-[Decision] Side zone R2 preferred: safety=1.31 vs CENTER=1.02
-[Decision] Side zone R2 preferred: safety=1.31 vs CENTER=1.02
-[Decision] Side zone R2 preferred: safety=1.31 vs CENTER=0.99
-[Decision] Side zone RIGHT preferred: safety=1.30 vs CENTER=0.92
-[Decision] Side zone R2 preferred: safety=1.30 vs CENTER=0.92
-[Decision] Side zone R2 preferred: safety=1.30 vs CENTER=0.92
-[Decision] Side zone RIGHT preferred: safety=1.30 vs CENTER=0.90
-[Publisher] FREE -> FREE | GO:RIGHT: center weak, right safer (conf=0.80) | stable_count=1 | depth_mm=1068
-[Serial -> Arduino] CMD:FREE
-[Decision] Side zone RIGHT preferred: safety=1.30 vs CENTER=0.92
-[Decision] Side zone R2 preferred: safety=1.30 vs CENTER=0.94
-[Arduino -> Pi] STATUS:FREE
-[Decision] Side zone RIGHT preferred: safety=1.30 vs CENTER=0.94
-[Decision] Side zone R2 preferred: safety=1.29 vs CENTER=0.92
-[Decision] Side zone RIGHT preferred: safety=1.31 vs CENTER=0.93
-[Decision] Side zone RIGHT preferred: safety=1.30 vs CENTER=0.88
-[Publisher] COOLDOWN FREE -> GO:RIGHT held=446ms < 800ms stable=2
-[TTS] speaking: Hard right
-[Status] f=1400 auth=True ready=True cmd=GO:RIGHT conf=75% groups=1/1 target=RIGHT lidar_front=890mm
-[TTS worker] saying: Hard right
-[Decision] Side zone RIGHT preferred: safety=1.31 vs CENTER=0.87
-[Publisher] COOLDOWN FREE -> GO:RIGHT held=546ms < 800ms stable=3
-[Decision] Side zone R2 preferred: safety=1.30 vs CENTER=0.86
-[Publisher] COOLDOWN FREE -> GO:RIGHT held=611ms < 800ms stable=4
-[Decision] Side zone RIGHT preferred: safety=1.31 vs CENTER=0.85
-[Publisher] COOLDOWN FREE -> GO:RIGHT held=696ms < 800ms stable=5
-[Publisher] COOLDOWN FREE -> GO:RIGHT held=759ms < 800ms stable=1
-[Decision] Side zone RIGHT preferred: safety=1.29 vs CENTER=0.85
-[Publisher] FREE -> GO:RIGHT | GO:RIGHT: center weak, right safer (conf=0.76) | stable_count=1 | depth_mm=723
-[Serial -> Arduino] CMD:GO:RIGHT
-[Decision] Side zone RIGHT preferred: safety=1.31 vs CENTER=0.88
-[Decision] Side zone RIGHT preferred: safety=1.29 vs CENTER=0.87
-[Decision] Side zone RIGHT preferred: safety=1.29 vs CENTER=0.88
-[Arduino -> Pi] STATUS:ASSIST
-[Arduino -> Pi] STATUS:MOVING:RIGHT
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
 [TTS worker] saying: Stop
-[Decision] Side zone RIGHT preferred: safety=1.31 vs CENTER=1.00
-[Publisher] GO:RIGHT -> STOP reason=CRITICAL_STOP stable=3 (cooldown override)
-[Publisher] GO:RIGHT -> STOP | CRITICAL_STOP | stable_count=3 | depth_mm=522
-[Serial -> Arduino] CMD:STOP
-[Decision] Side zone RIGHT preferred: safety=1.29 vs CENTER=0.93
-[Publisher] CRITICAL_STOP held=0.09s depth=522mm stable=4
-[Decision] Side zone RIGHT preferred: safety=1.13 vs CENTER=0.96
-[Publisher] CRITICAL_STOP held=0.18s depth=493mm stable=5
-[Arduino -> Pi] STATUS:REACHED
-[Decision] Side zone RIGHT preferred: safety=1.16 vs CENTER=0.80
-[Publisher] STOP_HOLD 0.30s / 1.5s stable=6
-[Decision] Side zone RIGHT preferred: safety=1.16 vs CENTER=0.52
-[Publisher] STOP_HOLD 0.39s / 1.5s stable=7
-[Publisher] STOP_HOLD 0.47s / 1.5s stable=8
-[Decision] Side zone R2 preferred: safety=0.97 vs CENTER=0.33
-[Publisher] CRITICAL_STOP held=0.55s depth=599mm stable=9
-[Decision] Side zone R2 preferred: safety=0.97 vs CENTER=0.39
-[Publisher] CRITICAL_STOP held=0.61s depth=578mm stable=10
-[Decision] Side zone R2 preferred: safety=0.97 vs CENTER=0.50
-[Publisher] CRITICAL_STOP held=0.70s depth=557mm stable=11
-[Publisher] CRITICAL_STOP held=0.78s depth=543mm stable=12
-[Publisher] CRITICAL_STOP held=0.85s depth=523mm stable=13
-[Publisher] CRITICAL_STOP held=0.92s depth=514mm stable=14
-[Publisher] CRITICAL_STOP held=0.99s depth=509mm stable=15
-[Publisher] CRITICAL_STOP held=1.06s depth=507mm stable=16
-[Publisher] CRITICAL_STOP held=1.13s depth=506mm stable=17
-[Publisher] CRITICAL_STOP held=1.21s depth=503mm stable=18
-[Arduino -> Pi] STATUS:STOPPED
-[Publisher] CRITICAL_STOP held=1.29s depth=507mm stable=19
-[Publisher] CRITICAL_STOP held=1.37s depth=508mm stable=20
-[Publisher] CRITICAL_STOP held=1.45s depth=507mm stable=21
-[Publisher] CRITICAL_STOP held=1.52s depth=508mm stable=22
-[Publisher] CRITICAL_STOP held=1.59s depth=504mm stable=23
-[Publisher] CRITICAL_STOP held=1.66s depth=504mm stable=24
-[Publisher] CRITICAL_STOP held=1.74s depth=506mm stable=25
-[Publisher] CRITICAL_STOP held=1.81s depth=501mm stable=26
-[Publisher] CRITICAL_STOP held=1.88s depth=502mm stable=27
-[Publisher] CRITICAL_STOP held=1.95s depth=506mm stable=28
-[Publisher] CRITICAL_STOP held=2.02s depth=502mm stable=29
-[TTS] speaking: Stop
-[Publisher] CRITICAL_STOP held=2.09s depth=504mm stable=30
-[Publisher] CRITICAL_STOP held=2.16s depth=506mm stable=31
-[Publisher] CRITICAL_STOP held=2.24s depth=506mm stable=32
-[Publisher] CRITICAL_STOP held=2.31s depth=507mm stable=33
-[Publisher] CRITICAL_STOP held=2.39s depth=509mm stable=34
-[Publisher] CRITICAL_STOP held=2.47s depth=507mm stable=35
-[Publisher] CRITICAL_STOP held=2.54s depth=506mm stable=36
-[Publisher] CRITICAL_STOP held=2.61s depth=505mm stable=37
-[Publisher] CRITICAL_STOP held=2.69s depth=505mm stable=38
-[Publisher] CRITICAL_STOP held=2.76s depth=508mm stable=39
-[Publisher] CRITICAL_STOP held=2.83s depth=508mm stable=40
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[Status] f=600 auth=False ready=False cmd=NONE conf=0% groups=1/1 target=- lidar_front=547mm
 [TTS worker] saying: Stop
-[Publisher] CRITICAL_STOP held=2.91s depth=507mm stable=41
-[Publisher] CRITICAL_STOP held=2.99s depth=508mm stable=42
-[Publisher] CRITICAL_STOP held=3.06s depth=508mm stable=43
-[Publisher] CRITICAL_STOP held=3.13s depth=507mm stable=44
-[Publisher] CRITICAL_STOP held=3.22s depth=508mm stable=45
-[Publisher] CRITICAL_STOP held=3.30s depth=506mm stable=46
-[Publisher] CRITICAL_STOP held=3.37s depth=505mm stable=47
-[Publisher] CRITICAL_STOP held=3.44s depth=509mm stable=48
-[Publisher] CRITICAL_STOP held=3.51s depth=508mm stable=49
-[Publisher] CRITICAL_STOP held=3.59s depth=505mm stable=50
-[Publisher] CRITICAL_STOP held=3.66s depth=507mm stable=51
-[Publisher] CRITICAL_STOP held=3.73s depth=508mm stable=52
-[Publisher] CRITICAL_STOP held=3.81s depth=505mm stable=53
-[Publisher] CRITICAL_STOP held=3.88s depth=509mm stable=54
-[Publisher] CRITICAL_STOP held=3.95s depth=505mm stable=55
-[Publisher] CRITICAL_STOP held=4.03s depth=502mm stable=56
-[Publisher] CRITICAL_STOP held=4.10s depth=502mm stable=57
-[Publisher] CRITICAL_STOP held=4.17s depth=505mm stable=58
-[Publisher] CRITICAL_STOP held=4.25s depth=505mm stable=59
-[Publisher] CRITICAL_STOP held=4.32s depth=506mm stable=60
-[Publisher] CRITICAL_STOP held=4.39s depth=506mm stable=61
-[Publisher] CRITICAL_STOP held=4.46s depth=508mm stable=62
-[Publisher] CRITICAL_STOP held=4.53s depth=509mm stable=1
-[Publisher] CRITICAL_STOP held=4.60s depth=506mm stable=2
-[Publisher] CRITICAL_STOP held=4.67s depth=502mm stable=1
-[Publisher] CRITICAL_STOP held=4.74s depth=505mm stable=2
-[Publisher] CRITICAL_STOP held=4.81s depth=506mm stable=3
-[Publisher] CRITICAL_STOP held=4.88s depth=503mm stable=1
-[Publisher] CRITICAL_STOP held=4.95s depth=502mm stable=2
-[Publisher] CRITICAL_STOP held=5.02s depth=504mm stable=1
-[Publisher] CRITICAL_STOP held=5.08s depth=506mm stable=2
-[Publisher] CRITICAL_STOP held=5.15s depth=505mm stable=3
-[Publisher] CRITICAL_STOP held=5.22s depth=502mm stable=4
-[Publisher] CRITICAL_STOP held=5.29s depth=507mm stable=5
-[Publisher] CRITICAL_STOP held=5.36s depth=502mm stable=6
-[Publisher] CRITICAL_STOP held=5.43s depth=502mm stable=7
-[Publisher] CRITICAL_STOP held=5.50s depth=504mm stable=8
-[Publisher] CRITICAL_STOP held=5.57s depth=506mm stable=9
-[Publisher] CRITICAL_STOP held=5.64s depth=505mm stable=10
-[Publisher] CRITICAL_STOP held=5.71s depth=503mm stable=11
-[Publisher] CRITICAL_STOP held=5.77s depth=501mm stable=12
-[Publisher] CRITICAL_STOP held=5.84s depth=502mm stable=13
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
 [TTS worker] saying: Stop
-[Publisher] CRITICAL_STOP held=5.92s depth=493mm stable=14
-[Publisher] CRITICAL_STOP held=5.99s depth=485mm stable=15
-[Publisher] CRITICAL_STOP held=6.06s depth=474mm stable=16
-[Publisher] CRITICAL_STOP held=6.14s depth=470mm stable=17
-[Publisher] CRITICAL_STOP held=6.21s depth=460mm stable=18
-[Publisher] CRITICAL_STOP held=6.28s depth=460mm stable=19
-[Publisher] CRITICAL_STOP held=6.35s depth=457mm stable=20
-[Publisher] CRITICAL_STOP held=6.43s depth=459mm stable=21
-[Publisher] CRITICAL_STOP held=6.50s depth=454mm stable=22
-[Publisher] CRITICAL_STOP held=6.57s depth=457mm stable=23
-[Publisher] CRITICAL_STOP held=6.65s depth=455mm stable=24
-[Publisher] CRITICAL_STOP held=6.72s depth=457mm stable=25
-[Publisher] CRITICAL_STOP held=6.79s depth=457mm stable=26
-[Publisher] CRITICAL_STOP held=6.86s depth=457mm stable=27
-[Publisher] CRITICAL_STOP held=6.91s depth=455mm stable=28
-[Publisher] CRITICAL_STOP held=6.98s depth=455mm stable=29
-[Publisher] CRITICAL_STOP held=7.05s depth=458mm stable=30
-[Publisher] CRITICAL_STOP held=7.11s depth=457mm stable=31
-[Publisher] CRITICAL_STOP held=7.18s depth=456mm stable=32
-[Publisher] CRITICAL_STOP held=7.25s depth=455mm stable=33
-[Publisher] CRITICAL_STOP held=7.31s depth=458mm stable=34
-[Publisher] CRITICAL_STOP held=7.39s depth=457mm stable=35
-[Publisher] CRITICAL_STOP held=7.46s depth=458mm stable=36
-[Publisher] CRITICAL_STOP held=7.53s depth=458mm stable=37
-[Publisher] CRITICAL_STOP held=7.61s depth=456mm stable=38
-[Publisher] CRITICAL_STOP held=7.67s depth=455mm stable=39
-[Publisher] CRITICAL_STOP held=7.74s depth=465mm stable=40
-[Publisher] CRITICAL_STOP held=7.82s depth=463mm stable=41
-[Publisher] CRITICAL_STOP held=7.89s depth=455mm stable=42
-[Publisher] CRITICAL_STOP held=7.95s depth=464mm stable=43
-[Publisher] CRITICAL_STOP held=8.02s depth=463mm stable=44
-[Publisher] CRITICAL_STOP held=8.09s depth=455mm stable=45
-[Publisher] CRITICAL_STOP held=8.16s depth=462mm stable=46
-[Publisher] CRITICAL_STOP held=8.24s depth=455mm stable=47
-[Publisher] CRITICAL_STOP held=8.31s depth=453mm stable=48
-[Publisher] CRITICAL_STOP held=8.39s depth=458mm stable=49
-[Publisher] CRITICAL_STOP held=8.46s depth=463mm stable=50
-[Publisher] CRITICAL_STOP held=8.54s depth=458mm stable=51
-[Publisher] CRITICAL_STOP held=8.60s depth=463mm stable=52
-[Publisher] CRITICAL_STOP held=8.67s depth=460mm stable=53
-[Publisher] CRITICAL_STOP held=8.75s depth=460mm stable=54
-[Publisher] CRITICAL_STOP held=8.81s depth=458mm stable=55
-[Publisher] CRITICAL_STOP held=8.88s depth=459mm stable=56
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
 [TTS worker] saying: Stop
-[Publisher] CRITICAL_STOP held=8.96s depth=465mm stable=57
-[Publisher] CRITICAL_STOP held=9.04s depth=456mm stable=58
-[Publisher] CRITICAL_STOP held=9.11s depth=466mm stable=59
-[Publisher] CRITICAL_STOP held=9.18s depth=465mm stable=60
-[Publisher] CRITICAL_STOP held=9.27s depth=459mm stable=61
-[Publisher] CRITICAL_STOP held=9.34s depth=459mm stable=62
-[Publisher] CRITICAL_STOP held=9.41s depth=459mm stable=63
-[Publisher] CRITICAL_STOP held=9.48s depth=461mm stable=64
-[Publisher] CRITICAL_STOP held=9.55s depth=459mm stable=65
-[Publisher] CRITICAL_STOP held=9.62s depth=454mm stable=66
-[Publisher] CRITICAL_STOP held=9.69s depth=460mm stable=67
-[Publisher] CRITICAL_STOP held=9.75s depth=457mm stable=68
-[Publisher] CRITICAL_STOP held=9.82s depth=453mm stable=69
-[Publisher] CRITICAL_STOP held=9.89s depth=463mm stable=70
-[Publisher] CRITICAL_STOP held=9.97s depth=458mm stable=71
-[Publisher] CRITICAL_STOP held=10.04s depth=451mm stable=72
-[Publisher] CRITICAL_STOP held=10.11s depth=458mm stable=73
-[Publisher] CRITICAL_STOP held=10.18s depth=461mm stable=74
-[Publisher] CRITICAL_STOP held=10.27s depth=466mm stable=75
-[Publisher] CRITICAL_STOP held=10.34s depth=466mm stable=76
-[Publisher] CRITICAL_STOP held=10.43s depth=453mm stable=77
-[Publisher] CRITICAL_STOP held=10.49s depth=456mm stable=78
-[Publisher] CRITICAL_STOP held=10.56s depth=457mm stable=79
-[Publisher] CRITICAL_STOP held=10.63s depth=457mm stable=80
-[Publisher] CRITICAL_STOP held=10.69s depth=455mm stable=81
-[Publisher] CRITICAL_STOP held=10.75s depth=456mm stable=82
-[Publisher] CRITICAL_STOP held=10.82s depth=451mm stable=83
-[Publisher] CRITICAL_STOP held=10.89s depth=453mm stable=84
-[Publisher] CRITICAL_STOP held=10.96s depth=456mm stable=85
-[Publisher] CRITICAL_STOP held=11.03s depth=455mm stable=86
-[Publisher] CRITICAL_STOP held=11.11s depth=456mm stable=87
-[Publisher] CRITICAL_STOP held=11.18s depth=455mm stable=88
-[Publisher] CRITICAL_STOP held=11.27s depth=455mm stable=89
-[Publisher] CRITICAL_STOP held=11.34s depth=455mm stable=90
-[Publisher] CRITICAL_STOP held=11.42s depth=456mm stable=91
-[Publisher] CRITICAL_STOP held=11.49s depth=455mm stable=92
-[Publisher] CRITICAL_STOP held=11.57s depth=454mm stable=93
-[Decision] Side zone L1 preferred: safety=1.26 vs CENTER=1.13
-[Publisher] CRITICAL_STOP held=11.64s depth=456mm stable=94
-[Decision] Side zone L1 preferred: safety=1.27 vs CENTER=1.12
-[Publisher] CRITICAL_STOP held=11.72s depth=451mm stable=95
-[Decision] Side zone L1 preferred: safety=1.31 vs CENTER=1.14
-[Publisher] CRITICAL_STOP held=11.81s depth=448mm stable=96
-[Decision] Side zone L1 preferred: safety=1.34 vs CENTER=1.12
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[Status] f=800 auth=False ready=False cmd=NONE conf=0% groups=1/1 target=- lidar_front=1336mm
 [TTS worker] saying: Stop
-[Publisher] CRITICAL_STOP held=11.91s depth=443mm stable=97
-[Decision] Side zone L1 preferred: safety=1.35 vs CENTER=1.12
-[Publisher] CRITICAL_STOP held=12.00s depth=430mm stable=98
-[Decision] Side zone L1 preferred: safety=1.34 vs CENTER=1.13
-[Publisher] CRITICAL_STOP held=12.07s depth=443mm stable=99
-[Decision] Side zone L1 preferred: safety=1.34 vs CENTER=1.13
-[Publisher] STOP -> FREE reason=RECOVERY_FREE held=12.15s stable=100
-[Publisher] STOP -> FREE | RECOVERY_FREE | stable_count=100 | depth_mm=1537
-[Serial -> Arduino] CMD:FREE
-[Decision] Side zone L1 preferred: safety=1.33 vs CENTER=1.13
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone L1 preferred: safety=1.33 vs CENTER=1.13
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Arduino -> Pi] STATUS:FREE
-[Decision] Side zone L2 preferred: safety=1.31 vs CENTER=1.14
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone L2 preferred: safety=1.34 vs CENTER=1.16
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone L2 preferred: safety=1.33 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone L1 preferred: safety=1.30 vs CENTER=1.13
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.12
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone LEFT preferred: safety=1.36 vs CENTER=1.12
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone LEFT preferred: safety=1.33 vs CENTER=1.12
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone L1 preferred: safety=1.34 vs CENTER=1.13
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone L1 preferred: safety=1.34 vs CENTER=1.14
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone L1 preferred: safety=1.33 vs CENTER=1.15
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.14
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] FREE -> GO:L1 | GO:L1: center weak, left safer (conf=0.83) | stable_count=4 | depth_mm=1539
-[TTS] speaking: Slight left
-[Serial -> Arduino] CMD:GO:L1
-[TTS worker] saying: Slight left
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.17
-[Arduino -> Pi] STATUS:ASSIST
-[Arduino -> Pi] STATUS:MOVING:L1
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.16
-[Decision] Side zone L2 preferred: safety=1.32 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.31 vs CENTER=1.17
-[Decision] Side zone L2 preferred: safety=1.32 vs CENTER=1.16
-[Decision] Side zone L2 preferred: safety=1.33 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.13
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.13
-[Status] f=1600 auth=True ready=True cmd=GO:L1 conf=79% groups=1/1 target=L1 lidar_front=2604mm
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.13
-[Decision] Side zone L1 preferred: safety=1.33 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.33 vs CENTER=1.16
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.31 vs CENTER=1.14
-[Decision] Side zone L2 preferred: safety=1.32 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.13
-[Decision] Side zone L1 preferred: safety=1.34 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.31 vs CENTER=1.13
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.13
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.13
-[Decision] Side zone L1 preferred: safety=1.33 vs CENTER=1.15
-[Publisher] GO:L1 -> GO:L1 | GO:L1: center weak, left safer (conf=0.90) | stable_count=13 | depth_mm=1540
-[Serial -> Arduino] CMD:GO:L1
-[Decision] Side zone L1 preferred: safety=1.33 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.33 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.33 vs CENTER=1.16
-[Decision] Side zone L1 preferred: safety=1.33 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.15
-[Arduino -> Pi] STATUS:LOCKED_RIGHT
-[Arduino -> Pi] STATUS:MOVING:L1
-[Decision] Side zone L2 preferred: safety=1.32 vs CENTER=1.13
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.13
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.13
-[Decision] Side zone L1 preferred: safety=1.33 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.31 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.31 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.31 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.31 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.33 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.16
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.33 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.33 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.16
-[Decision] Side zone L1 preferred: safety=1.33 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.33 vs CENTER=1.15
-[Publisher] GO:L1 -> GO:L1 | GO:L1: center weak, left safer (conf=0.90) | stable_count=20 | depth_mm=1546
-[Serial -> Arduino] CMD:GO:L1
-[Decision] Side zone L1 preferred: safety=1.33 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.16
-[Decision] Side zone L1 preferred: safety=1.31 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.16
-[Decision] Side zone L1 preferred: safety=1.33 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.33 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.33 vs CENTER=1.16
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.34 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.33 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.33 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.33 vs CENTER=1.14
-[Arduino -> Pi] STATUS:REACHED
-[Arduino -> Pi] STATUS:MOVING:L1
-[Arduino -> Pi] STATUS:AT_TARGET
-[Decision] Side zone L1 preferred: safety=1.34 vs CENTER=1.13
-[Decision] Side zone L1 preferred: safety=1.33 vs CENTER=1.12
-[Decision] Side zone L1 preferred: safety=1.34 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.34 vs CENTER=1.13
-[Decision] Side zone L1 preferred: safety=1.35 vs CENTER=1.13
-[Decision] Side zone L1 preferred: safety=1.34 vs CENTER=1.13
-[Decision] Side zone L1 preferred: safety=1.33 vs CENTER=1.13
-[Decision] Side zone L1 preferred: safety=1.34 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.33 vs CENTER=1.13
-[Decision] Side zone L1 preferred: safety=1.33 vs CENTER=1.13
-[Decision] Side zone L1 preferred: safety=1.34 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.34 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.34 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.34 vs CENTER=1.14
-[Publisher] GO:L1 -> GO:L1 | GO:L1: center weak, left safer (conf=0.90) | stable_count=48 | depth_mm=1555
-[Serial -> Arduino] CMD:GO:L1
-[Decision] Side zone L1 preferred: safety=1.34 vs CENTER=1.13
-[Decision] Side zone L1 preferred: safety=1.34 vs CENTER=1.12
-[Decision] Side zone L1 preferred: safety=1.35 vs CENTER=1.12
-[Decision] Side zone L1 preferred: safety=1.34 vs CENTER=1.12
-[Decision] Side zone L1 preferred: safety=1.34 vs CENTER=1.12
-[Decision] Side zone L1 preferred: safety=1.33 vs CENTER=1.12
-[Decision] Side zone L1 preferred: safety=1.33 vs CENTER=1.12
-[Arduino -> Pi] STATUS:MOVING:L1
-[Arduino -> Pi] STATUS:AT_TARGET
-[Decision] Side zone L1 preferred: safety=1.33 vs CENTER=1.12
-[Decision] Side zone L1 preferred: safety=1.33 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.33 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.34 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.35 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.34 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.34 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.33 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.34 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.34 vs CENTER=1.13
-[Decision] Side zone L1 preferred: safety=1.34 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.34 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.34 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.34 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.34 vs CENTER=1.13
-[Decision] Side zone L1 preferred: safety=1.33 vs CENTER=1.13
-[Decision] Side zone L1 preferred: safety=1.33 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.13
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.13
-[Decision] Side zone L1 preferred: safety=1.33 vs CENTER=1.13
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.13
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.14
-[Publisher] GO:L1 -> GO:L1 | GO:L1: center weak, left safer (conf=0.90) | stable_count=77 | depth_mm=1560
-[Serial -> Arduino] CMD:GO:L1
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.13
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.31 vs CENTER=1.14
-[Arduino -> Pi] STATUS:MOVING:L1
-[Arduino -> Pi] STATUS:AT_TARGET
-[Decision] Side zone L1 preferred: safety=1.31 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.30 vs CENTER=1.14
-[Decision] Side zone L1 preferred: safety=1.30 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.30 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.30 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.30 vs CENTER=1.16
-[Decision] Side zone L1 preferred: safety=1.30 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.30 vs CENTER=1.17
-[Decision] Side zone L1 preferred: safety=1.28 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.29 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.30 vs CENTER=1.17
-[Decision] Side zone L1 preferred: safety=1.30 vs CENTER=1.16
-[Decision] Side zone L2 preferred: safety=1.31 vs CENTER=1.16
-[Decision] Side zone L2 preferred: safety=1.30 vs CENTER=1.16
-[Decision] Side zone L2 preferred: safety=1.31 vs CENTER=1.16
-[Decision] Side zone L1 preferred: safety=1.28 vs CENTER=1.16
-[Decision] Side zone L2 preferred: safety=1.31 vs CENTER=1.16
-[Decision] Side zone L2 preferred: safety=1.29 vs CENTER=1.15
-[Decision] Side zone L1 preferred: safety=1.30 vs CENTER=1.18
-[Decision] Side zone L2 preferred: safety=1.29 vs CENTER=1.16
-[Decision] Side zone L2 preferred: safety=1.31 vs CENTER=1.16
-[Decision] Side zone L2 preferred: safety=1.31 vs CENTER=1.15
-[Publisher] GO:L1 -> GO:L1 | GO:L2: center weak, left safer (conf=0.83) | stable_count=3 | depth_mm=1553
-[Serial -> Arduino] CMD:GO:L1
-[Decision] Side zone L1 preferred: safety=1.30 vs CENTER=1.16
-[Decision] Side zone L2 preferred: safety=1.31 vs CENTER=1.15
-[Decision] Side zone L2 preferred: safety=1.31 vs CENTER=1.16
-[Decision] Side zone L2 preferred: safety=1.33 vs CENTER=1.15
-[Decision] Side zone L2 preferred: safety=1.33 vs CENTER=1.15
-[Publisher] COOLDOWN GO:L1 -> GO:L2 held=349ms < 800ms stable=4
-[TTS] speaking: Turn left
-[TTS worker] saying: Turn left
-[Decision] Side zone L2 preferred: safety=1.33 vs CENTER=1.15
-[Publisher] COOLDOWN GO:L1 -> GO:L2 held=444ms < 800ms stable=5
-[Arduino -> Pi] STATUS:MOVING:L1
-[Arduino -> Pi] STATUS:REACHED
-[Decision] Side zone L2 preferred: safety=1.34 vs CENTER=1.16
-[Publisher] COOLDOWN GO:L1 -> GO:L2 held=528ms < 800ms stable=6
-[Decision] Side zone L2 preferred: safety=1.33 vs CENTER=1.16
-[Publisher] COOLDOWN GO:L1 -> GO:L2 held=608ms < 800ms stable=7
-[Decision] Side zone L2 preferred: safety=1.34 vs CENTER=1.17
-[Publisher] COOLDOWN GO:L1 -> GO:L2 held=692ms < 800ms stable=8
-[Decision] Side zone L2 preferred: safety=1.33 vs CENTER=1.16
-[Publisher] COOLDOWN GO:L1 -> GO:L2 held=768ms < 800ms stable=9
-[Decision] Side zone L2 preferred: safety=1.32 vs CENTER=1.17
-[Publisher] GO:L1 -> GO:L2 | GO:L2: center weak, left safer (conf=0.90) | stable_count=10 | depth_mm=1532
-[Serial -> Arduino] CMD:GO:L2
-[Decision] Side zone L2 preferred: safety=1.32 vs CENTER=1.17
-[Decision] Side zone L2 preferred: safety=1.30 vs CENTER=1.16
-[Arduino -> Pi] STATUS:MOVING:L2
-[Decision] Side zone L2 preferred: safety=1.31 vs CENTER=1.17
-[Decision] Side zone L2 preferred: safety=1.31 vs CENTER=1.17
-[Decision] Side zone L2 preferred: safety=1.31 vs CENTER=1.18
-[Decision] Side zone L2 preferred: safety=1.32 vs CENTER=1.17
-[Decision] Side zone L2 preferred: safety=1.32 vs CENTER=1.17
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.17
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.16
-[Arduino -> Pi] STATUS:REACHED
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.16
-[Decision] Side zone L2 preferred: safety=1.33 vs CENTER=1.17
-[Decision] Side zone L2 preferred: safety=1.33 vs CENTER=1.17
-[Decision] Side zone L2 preferred: safety=1.32 vs CENTER=1.16
-[Decision] Side zone L1 preferred: safety=1.32 vs CENTER=1.17
-[Decision] Side zone L1 preferred: safety=1.31 vs CENTER=1.17
-[Decision] Side zone L1 preferred: safety=1.31 vs CENTER=1.18
-[Decision] Side zone L1 preferred: safety=1.30 vs CENTER=1.18
-[Decision] Side zone L1 preferred: safety=1.31 vs CENTER=1.18
-[Decision] Side zone LEFT preferred: safety=1.32 vs CENTER=1.18
-[Decision] Side zone LEFT preferred: safety=1.34 vs CENTER=1.18
-[Decision] Side zone LEFT preferred: safety=1.35 vs CENTER=1.18
-[Publisher] GO:L2 -> GO:CENTER | GO:CENTER: active recenter needed (p20=1638mm streak=2/6 conf=0.76) | stable_count=2 | depth_mm=1580
-[Serial -> Arduino] CMD:GO:CENTER
-[Publisher] COOLDOWN GO:CENTER -> FREE held=740ms < 800ms stable=11
-[Publisher] GO:CENTER -> FREE | FREE: clear path (p20=1584mm streak=17/6 conf=0.91) | stable_count=12 | depth_mm=1561
-[Serial -> Arduino] CMD:FREE
-[TTS] speaking: Free mode
-[TTS worker] saying: Free mode
-[Publisher] FREE -> STOP reason=CRITICAL_STOP stable=1 (cooldown override)
-[Publisher] FREE -> STOP | CRITICAL_STOP | stable_count=1 | depth_mm=1573
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[Status] f=1000 auth=False ready=False cmd=NONE conf=0% groups=2/0 target=- lidar_front=394mm
 [TTS worker] saying: Stop
-[Serial -> Arduino] CMD:STOP
-[Publisher] STOP_HOLD 0.08s / 1.5s stable=2
-[Publisher] STOP_HOLD 0.14s / 1.5s stable=3
-[Publisher] STOP_HOLD 0.22s / 1.5s stable=4
-[Publisher] STOP_HOLD 0.31s / 1.5s stable=5
-[Publisher] STOP_HOLD 0.37s / 1.5s stable=6
-[Publisher] STOP_HOLD 0.45s / 1.5s stable=7
-[Publisher] STOP_HOLD 0.52s / 1.5s stable=8
-[Publisher] CRITICAL_STOP held=0.60s depth=418mm stable=9
-[Publisher] CRITICAL_STOP held=0.68s depth=385mm stable=10
-[Publisher] CRITICAL_STOP held=0.76s depth=339mm stable=11
-[Publisher] CRITICAL_STOP held=0.85s depth=339mm stable=12
------------------------------
-## المشاكل:
-- ما في صوت بطلع من السماعات
-- شكله قرارات الlider تتعارض شوي مع قرارات الكاميرا: مثلا كان في جسم وقف مع انه كان في مجال يروح يمين.
-- حلل الاوتبوت وشوف شو ممكن يكون سبب المشاكل + شو المشاكل اللي ظاهرة وانا مش عارف عنها.
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[TTS worker] saying: Stop
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[TTS worker] saying: Stop
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[Status] f=1200 auth=False ready=False cmd=NONE conf=0% groups=1/1 target=- lidar_front=2263mm
+[TTS worker] saying: Stop
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[TTS worker] saying: Stop
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[Status] f=1400 auth=False ready=False cmd=NONE conf=0% groups=1/1 target=- lidar_front=733mm
+[TTS worker] saying: Stop
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[TTS worker] saying: Stop
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[Status] f=1400 auth=False ready=False cmd=NONE conf=0% groups=1/1 target=- lidar_front=733mm
+[TTS worker] saying: Stop
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[TTS worker] saying: Stop
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[TTS worker] saying: Stop
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+c[TTS worker] saying: Stop
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+c[Status] f=1600 auth=False ready=False cmd=NONE conf=0% groups=0/0 target=- lidar_front=132mm
+ccc[TTS worker] saying: Stop
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[TTS worker] saying: Stop
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[Status] f=1800 auth=False ready=False cmd=NONE conf=0% groups=0/0 target=- lidar_front=154mm
+[TTS worker] saying: Stop
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+ccc[TTS worker] saying: Stop
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+cccx[TTS worker] saying: Stop
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+c[Status] f=2000 auth=False ready=False cmd=NONE conf=0% groups=0/0 target=- lidar_front=145mm
+ccc[TTS worker] saying: Stop
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[TTS worker] saying: Stop
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[TTS worker] saying: Stop
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[Status] f=2200 auth=False ready=False cmd=NONE conf=0% groups=0/0 target=- lidar_front=195mm
+[TTS worker] saying: Stop
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[TTS worker] saying: Stop
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop

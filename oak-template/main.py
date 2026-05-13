@@ -548,11 +548,13 @@ def main():
 
                     # Fix 2: LiDAR veto → immediate Stop announcement,
                     # Cooldown added to prevent spamming every frame.
-                    if fused.fusion_reason == "lidar_veto_emergency" and cfg.USE_TTS:
-                        now_t = time.time()
-                        if now_t - getattr(main, "last_lidar_stop_time", 0.0) >= NAV_TTS_COOLDOWN:
-                            speak("Stop")
-                            main.last_lidar_stop_time = now_t
+                    # Only announce if the system is actually authorized and ready to move.
+                    if state.get("authorized") and state.get("ready"):
+                        if fused.fusion_reason == "lidar_veto_emergency" and cfg.USE_TTS:
+                            now_t = time.time()
+                            if now_t - getattr(main, "last_lidar_stop_time", 0.0) >= NAV_TTS_COOLDOWN:
+                                speak("Stop")
+                                main.last_lidar_stop_time = now_t
 
                     # Decision (uses merged groups + LiDAR side-distance bias)
                     result = decision_engine.decide(
