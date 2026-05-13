@@ -193,12 +193,18 @@ class LidarAnalyzer:
 
         ok = False
         if self._backend == "c1":
-            ok = self._try_run_c1()
+            # Try direct serial first (more robust on Python 3.13), then library
+            ok = self._try_run_direct_serial()
+            if not ok:
+                ok = self._try_run_c1()
         elif self._backend == "legacy":
             ok = self._try_run_legacy()
-        else:
-            if RPLIDARC1_AVAILABLE:
-                print("[LiDAR] backend=auto: trying rplidarc1 (RPLIDAR C1)...")
+        else:  # auto
+            # Direct serial: works on all Python versions, no library needed
+            print("[LiDAR] backend=auto: trying direct serial (RPLIDAR C1)...")
+            ok = self._try_run_direct_serial()
+            if not ok and RPLIDARC1_AVAILABLE:
+                print("[LiDAR] Direct serial failed; trying rplidarc1 library...")
                 ok = self._try_run_c1()
             # Only try legacy if rplidarc1 is NOT available.
             # Legacy driver uses 115200 baud and will always fail against a C1
@@ -223,6 +229,133 @@ class LidarAnalyzer:
                 "Set LIDAR_PORT=MOCK to test without hardware."
             )
 
+    def _try_run_direct_serial(self) -> bool:
+        """
+        Direct RPLIDAR C1 serial backend — bypasses the rplidarc1 library.
+
+        Sends raw protocol commands and parses standard 5-byte compact scan
+        packets directly. Robust on all Python versions including 3.13.
+
+        Packet format (5 bytes each):
+          Byte 0 : quality[7:2] | start_flag[1] | ~start_flag[0]
+          Byte 1 : angle[7:1] | checkbit[0]  (checkbit must be 1)
+          Byte 2 : angle[14:8]
+          Byte 3 : distance_q2[7:0]          (distance in mm*4)
+          Byte 4 : distance_q2[15:8]
+        """
+        CMD_STOP = b'\xA5\x25'
+        CMD_SCAN = b'\xA5\x20'
+        SYNC1, SYNC2 = 0xA5, 0x5A
+        DESC_LEN = 7   # response descriptor is 7 bytes
+        PACKET_LEN = 5
+        SPINUP_S = 3.0
+
+        ser: Optional[serial.Serial] = None
+        try:
+            print(
+                f"[LiDAR] direct-serial: port={self.port!r} baud={self._baud_c1}"
+            )
+            ser = serial.Serial(
+                self.port, self._baud_c1,
+                timeout=1.0, write_timeout=1.0,
+            )
+
+            # ── Stop any ongoing scan & flush ────────────────────────────
+            ser.write(CMD_STOP)
+            time.sleep(0.1)
+            ser.reset_input_buffer()
+
+            # ── Wait for motor spin-up ───────────────────────────────────
+            print(
+                f"[LiDAR] Flushing {self.port!r} and waiting "
+                f"{SPINUP_S:.0f} s for C1 motor spin-up..."
+            )
+            deadline = time.monotonic() + SPINUP_S
+            while time.monotonic() < deadline:
+                ser.read(ser.in_waiting or 1)
+                time.sleep(0.05)
+            ser.reset_input_buffer()
+
+            # ── Send scan start ─────────────────────────────────────────
+            ser.write(CMD_SCAN)
+
+            # ── Read & verify response descriptor (7 bytes) ─────────────
+            desc = ser.read(DESC_LEN)
+            if len(desc) < DESC_LEN:
+                print(f"[LiDAR] direct-serial: descriptor timeout (got {len(desc)}B)")
+                return False
+            if desc[0] != SYNC1 or desc[1] != SYNC2:
+                print(
+                    f"[LiDAR] direct-serial: bad descriptor sync "
+                    f"{desc[0]:02x} {desc[1]:02x} (expected a5 5a)"
+                )
+                return False
+            print("[LiDAR] direct-serial: descriptor OK — scan running")
+
+            # ── Continuous scan loop ─────────────────────────────────────
+            buf = bytearray()
+            angles: list[float] = []
+            distances: list[float] = []
+            t_publish = time.monotonic() + 0.12
+
+            while not self._stop_evt.is_set():
+                chunk = ser.read(256)
+                if chunk:
+                    buf.extend(chunk)
+
+                # Parse complete 5-byte packets from the buffer
+                while len(buf) >= PACKET_LEN:
+                    b0, b1, b2, b3, b4 = buf[0], buf[1], buf[2], buf[3], buf[4]
+
+                    # Validate start-flag complement (bit0 = ~bit1 of byte0)
+                    if (b0 & 0x01) == ((b0 >> 1) & 0x01):
+                        # Bad alignment — discard one byte and resync
+                        buf = buf[1:]
+                        continue
+
+                    # Check bit in angle byte must be 1
+                    if not (b1 & 0x01):
+                        buf = buf[1:]
+                        continue
+
+                    angle_q6 = ((b2 << 7) | (b1 >> 1))
+                    angle_deg = angle_q6 / 64.0
+                    distance_mm = ((b4 << 8) | b3) / 4.0
+
+                    if 0.0 <= angle_deg <= 360.0 and distance_mm > 0.0:
+                        angles.append(angle_deg)
+                        distances.append(distance_mm)
+
+                    buf = buf[PACKET_LEN:]
+
+                # Publish a batch every ~120 ms
+                now = time.monotonic()
+                if now >= t_publish:
+                    if angles and distances:
+                        a = np.asarray(angles, dtype=np.float32)
+                        d = np.asarray(distances, dtype=np.float32)
+                        self._publish_scan(self._process_scan(a, d))
+                    angles.clear()
+                    distances.clear()
+                    t_publish = now + 0.12
+
+            return True
+
+        except Exception as e:
+            print(f"[LiDAR] direct-serial error: {e!r}")
+            return False
+        finally:
+            if ser is not None and ser.is_open:
+                try:
+                    ser.write(CMD_STOP)
+                    time.sleep(0.05)
+                except Exception:
+                    pass
+                try:
+                    ser.close()
+                except Exception:
+                    pass
+
     def _try_run_c1(self) -> bool:
         if not RPLIDARC1_AVAILABLE or RPLidarC1 is None:
             return False
@@ -246,9 +379,6 @@ class LidarAnalyzer:
         assert RPLidarC1 is not None
 
         # ── Flush stale bytes and wait for motor spin-up ─────────────────
-        # On Raspberry Pi the C1 motor takes 2-3 s to reach full speed.
-        # We open the port early, drain all stale bytes for the full wait
-        # period, then hand off to RPLidarC1.
         SPINUP_S = 3.0
         try:
             with serial.Serial(self.port, self._baud_c1, timeout=0.05) as _ser:
@@ -259,12 +389,11 @@ class LidarAnalyzer:
                 )
                 deadline = time.monotonic() + SPINUP_S
                 while time.monotonic() < deadline:
-                    _ser.read(256)   # drain any bytes arriving during spin-up
+                    _ser.read(256)
                     await asyncio.sleep(0.05)
         except Exception as _e:
             print(f"[LiDAR] Flush/spinup skipped ({_e!r}) — continuing anyway")
             await asyncio.sleep(SPINUP_S)
-
 
         lidar = RPLidarC1(self.port, self._baud_c1)
         scan_coro = lidar.simple_scan()
@@ -287,7 +416,7 @@ class LidarAnalyzer:
                             continue
                         a_deg = float(item["a_deg"])
                         if a_deg > 360.0 or a_deg < -360.0:
-                            continue  # Ignore out-of-range angles silently
+                            continue
                         angles.append(a_deg)
                         distances.append(float(d))
                     if angles and distances:
