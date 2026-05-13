@@ -316,8 +316,18 @@ class DecisionEngine:
 
             go_cmd = cfg.ZONE_TO_CMD.get(best_target, "GO:CENTER")
             critical_stop = bool(analysis.has_emergency)
+            
+            # Allow turning left/right even if front is blocked (has_emergency),
+            # so the walker can pivot and escape the obstacle.
+            can_side_escape = (
+                analysis.has_emergency 
+                and len(valid) > 0 
+                and not unsafe_low_conf 
+                and best_target not in ("", "CENTER")
+            )
+            
             unsafe_condition = (
-                analysis.has_emergency
+                (analysis.has_emergency and not can_side_escape)
                 or len(valid) == 0
                 or unsafe_low_conf
             )
@@ -331,7 +341,7 @@ class DecisionEngine:
                 raw_cmd = "STOP"
                 # STOP clears confirmed centering.
                 self._confirmed_centered = False
-                if analysis.has_emergency:
+                if analysis.has_emergency and not can_side_escape:
                     reason = "STOP: danger close ratio high"
                 elif len(valid) == 0:
                     reason = "STOP: no valid group width"
@@ -651,8 +661,8 @@ class DecisionEngine:
         # Applied regardless of camera confidence.
         # Thresholds: clear side > 900mm → boost; blocked side < safety_mm → penalty.
         _LIDAR_BOOST_MM: float = 900.0
-        _LIDAR_BOOST: float = 1.15
-        _LIDAR_PENALTY: float = 0.85
+        _LIDAR_BOOST: float = 1.08   # Trimmed from 1.15 to avoid massive score flips
+        _LIDAR_PENALTY: float = 0.90 # Trimmed from 0.85
 
         _left_zones = {"LEFT", "L2", "L1"}
         _right_zones = {"R1", "R2", "RIGHT"}

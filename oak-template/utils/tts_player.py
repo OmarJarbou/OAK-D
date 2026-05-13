@@ -15,7 +15,7 @@ Usage:
 
 from __future__ import annotations
 
-import os
+
 import subprocess
 import threading
 from pathlib import Path
@@ -101,69 +101,65 @@ class TTSPlayer:
 
         print(f"[TTS] Pre-cache complete: {len(self._cache)}/{len(PHRASE_MAP)} phrases ready")
 
-    def play(self, text: str) -> None:
+    def play_blocking(self, text: str) -> None:
         """
-        Play audio for `text`. Non-blocking.
-        - Uses pre-cached WAV via `aplay` if available (~50ms latency).
-        - Falls back to espeak-ng directly otherwise (~300-500ms latency).
+        Blocking version — for use inside tts_worker thread.
+        tts_worker is already a background thread, so blocking is fine here.
+        Uses pre-cached WAV via aplay if available, else falls back to espeak-ng.
+        Errors are printed so audio issues are visible in logs.
         """
         wav_path = self._cache.get(text)
 
         if wav_path is not None and wav_path.exists():
-            self._play_wav(wav_path)
-        else:
-            self._play_espeak(text)
-
-    def _play_wav(self, wav_path: Path) -> None:
-        """Play a WAV file with aplay in a daemon thread (non-blocking)."""
-        def _run() -> None:
             try:
-                # Kill any previously playing clip so we never queue up sounds
-                with self._lock:
-                    if self._current_proc is not None:
-                        try:
-                            self._current_proc.terminate()
-                        except Exception:
-                            pass
-                    proc = subprocess.Popen(
-                        ["aplay", "-q", str(wav_path)],
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL,
-                    )
-                    self._current_proc = proc
-                proc.wait()
-                with self._lock:
-                    if self._current_proc is proc:
-                        self._current_proc = None
-            except FileNotFoundError:
-                # aplay not available — fall back
-                self._play_espeak_sync(str(wav_path))
-            except Exception as e:
-                print(f"[TTS] aplay error: {e}")
-
-        t = threading.Thread(target=_run, daemon=True)
-        t.start()
-
-    def _play_espeak(self, text: str) -> None:
-        """Fallback: play via espeak-ng directly in a daemon thread."""
-        def _run() -> None:
-            try:
-                os.system(
-                    f'espeak-ng -v {_ESPEAK_VOICE} -s {_ESPEAK_SPEED} '
-                    f'"{text}" >/dev/null 2>&1'
+                result = subprocess.run(
+                    ["aplay", "-q", str(wav_path)],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.PIPE,
+                    timeout=5.0,
                 )
+                if result.returncode != 0:
+                    err = result.stderr.decode(errors="replace").strip()
+                    print(f"[TTS] aplay failed ({result.returncode}): {err}")
+                    print(f"[TTS] falling back to espeak-ng for: {text}")
+                    self._espeak_sync(text)
+                return
+            except FileNotFoundError:
+                print("[TTS] aplay not found — falling back to espeak-ng")
+            except subprocess.TimeoutExpired:
+                print("[TTS] aplay timeout — falling back to espeak-ng")
             except Exception as e:
-                print(f"[TTS] espeak-ng error: {e}")
+                print(f"[TTS] aplay error: {e} — falling back to espeak-ng")
 
-        t = threading.Thread(target=_run, daemon=True)
+        # WAV not available or aplay failed → espeak-ng directly
+        self._espeak_sync(text)
+
+    def play(self, text: str) -> None:
+        """
+        Non-blocking version (async daemon thread).
+        Kept for optional non-blocking use; prefer play_blocking() in tts_worker.
+        """
+        t = threading.Thread(target=self.play_blocking, args=(text,), daemon=True)
         t.start()
 
-    def _play_espeak_sync(self, text: str) -> None:
-        """Synchronous espeak-ng fallback (used inside _play_wav thread only)."""
+    def _espeak_sync(self, text: str) -> None:
+        """Synchronous espeak-ng call. Errors are printed."""
         try:
-            os.system(
-                f'espeak-ng -v {_ESPEAK_VOICE} -s {_ESPEAK_SPEED} '
-                f'"{text}" >/dev/null 2>&1'
+            result = subprocess.run(
+                [
+                    "espeak-ng",
+                    "-v", _ESPEAK_VOICE,
+                    "-s", _ESPEAK_SPEED,
+                    text,
+                ],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                timeout=10.0,
             )
+            if result.returncode != 0:
+                err = result.stderr.decode(errors="replace").strip()
+                print(f"[TTS] espeak-ng error: {err}")
+        except FileNotFoundError:
+            print("[TTS] espeak-ng not found — no audio output")
         except Exception as e:
-            print(f"[TTS] espeak-ng fallback error: {e}")
+            print(f"[TTS] espeak-ng exception: {e}")

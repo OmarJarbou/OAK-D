@@ -157,8 +157,9 @@ def tts_worker():
         try:
             print(f"[TTS worker] saying: {text}")
             if _tts_player is not None:
-                _tts_player.play(text)   # ← pre-cached WAV via aplay (~50ms)
+                _tts_player.play_blocking(text)   # ← synchronous: WAV via aplay or espeak fallback
             else:
+                import os
                 os.system(f'espeak-ng -v en+f3 -s 135 "{text}" >/dev/null 2>&1')
         except Exception as e:
             print(f"[TTS] error: {e}")
@@ -546,9 +547,12 @@ def main():
                         analysis = replace(analysis, has_emergency=fused.has_emergency)
 
                     # Fix 2: LiDAR veto → immediate Stop announcement,
-                    # bypassing NAV_TTS_COOLDOWN (LiDAR emergencies are real).
+                    # Cooldown added to prevent spamming every frame.
                     if fused.fusion_reason == "lidar_veto_emergency" and cfg.USE_TTS:
-                        speak("Stop")
+                        now_t = time.time()
+                        if now_t - getattr(main, "last_lidar_stop_time", 0.0) >= NAV_TTS_COOLDOWN:
+                            speak("Stop")
+                            main.last_lidar_stop_time = now_t
 
                     # Decision (uses merged groups + LiDAR side-distance bias)
                     result = decision_engine.decide(
