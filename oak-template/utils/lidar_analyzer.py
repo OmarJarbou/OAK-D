@@ -290,7 +290,7 @@ class LidarAnalyzer:
                     f"{desc[0]:02x} {desc[1]:02x} (expected a5 5a)"
                 )
                 return False
-            print("[LiDAR] direct-serial: descriptor OK — scan running")
+            print("[LiDAR] direct-serial: descriptor OK - scan running")
 
             # ── Continuous scan loop ─────────────────────────────────────
             buf = bytearray()
