@@ -84,6 +84,13 @@ class DecisionEngine:
         # Cleared on STOP, side-steer need, or obstacle/center degradation.
         self._confirmed_centered: bool = False
 
+        # LiDAR side-escape direction latch.
+        # Once a side is chosen ("left" / "right" / ""), stick with it until the
+        # front arc is no longer in lidar_veto_side_escape mode.
+        # This prevents the walker from flip-flopping between left and right
+        # mid-escape when sensor noise shifts the apparent clearance.
+        self._escape_latch_side: str = ""
+
         # Lightweight temporal smoothing (EMA) for stability without vision changes.
         self._ema_alpha: float = float(cfg.TEMP_EMA_ALPHA)
         self._ema_warmup_frames: int = int(cfg.TEMP_EMA_WARMUP_FRAMES)
@@ -252,19 +259,31 @@ class DecisionEngine:
         locked_left = arduino_state.get("locked_left", False)
         locked_right = arduino_state.get("locked_right", False)
 
-        # ── LiDAR Side-Escape Fast Path ──────────────────────────────────
+        # -- LiDAR Side-Escape Fast Path --------------------------------------------------
         # When fusion reports a LiDAR front obstacle with a side escape
         # available, bypass normal group scoring and steer directly toward
-        # the open side. This avoids the STOP→FREE→STOP infinite loop.
+        # the open side. This avoids the STOP->FREE->STOP infinite loop.
         if fusion_reason == "lidar_veto_side_escape":
-            # Pick the side with the greater LiDAR clearance.
-            force_side = None
-            if side_escape_left and side_escape_right:
-                force_side = "left" if lidar_left_mm >= lidar_right_mm else "right"
-            elif side_escape_left and not locked_left:
-                force_side = "left"
-            elif side_escape_right and not locked_right:
-                force_side = "right"
+            # Use latched direction if already committed; pick fresh only if none.
+            if self._escape_latch_side == "left" and locked_left:
+                self._escape_latch_side = ""   # locked out — reset latch
+            if self._escape_latch_side == "right" and locked_right:
+                self._escape_latch_side = ""   # locked out — reset latch
+
+            if self._escape_latch_side:
+                # Already committed — keep same direction regardless of noise.
+                force_side = self._escape_latch_side
+            else:
+                # First frame in this escape: pick the side with greater clearance.
+                force_side = None
+                if side_escape_left and side_escape_right:
+                    force_side = "left" if lidar_left_mm >= lidar_right_mm else "right"
+                elif side_escape_left and not locked_left:
+                    force_side = "left"
+                elif side_escape_right and not locked_right:
+                    force_side = "right"
+                if force_side:
+                    self._escape_latch_side = force_side  # lock in direction
 
             if force_side is not None:
                 # Map to the closest named zone (L1 or R1 for gentle steer).
@@ -277,7 +296,7 @@ class DecisionEngine:
                 zone_name = zone_cmd.replace("GO:", "")
                 print(
                     f"[Decision] LiDAR side-escape -> {zone_cmd} "
-                    f"(L={lidar_left_mm:.0f}mm R={lidar_right_mm:.0f}mm)"
+                    f"(L={lidar_left_mm:.0f}mm R={lidar_right_mm:.0f}mm latch={force_side})"
                 )
                 stable_cmd, stable_count = self._apply_mode_hysteresis(
                     zone_cmd, critical_stop=False
@@ -294,6 +313,9 @@ class DecisionEngine:
                     stable_count=stable_count,
                     allow_recenter=False,
                 )
+        else:
+            # Not in side-escape mode: clear the latch so next escape starts fresh.
+            self._escape_latch_side = ""
 
         # Determine LiDAR directional preference for low-confidence frames.
         lidar_pref = self._lidar_side_preference(
@@ -667,7 +689,7 @@ class DecisionEngine:
         pref = "left" if gap > 0 else "right"
         print(
             f"[LiDAR-Bias] conf={confidence:.2f} left={lidar_left_mm:.0f}mm "
-            f"right={lidar_right_mm:.0f}mm gap={gap:+.0f}mm → prefer {pref}"
+            f"right={lidar_right_mm:.0f}mm gap={gap:+.0f}mm -> prefer {pref}"
         )
         return pref
 
@@ -880,3 +902,4 @@ class DecisionEngine:
         self._low_conf_streak = 0
         self._last_non_center_go = ""
         self._effective_go_frames = self._go_frames_required
+        self._escape_latch_side = ""
