@@ -166,6 +166,9 @@ class DecisionEngine:
         fusion_boost: float = 0.0,
         lidar_left_mm: float = 0.0,
         lidar_right_mm: float = 0.0,
+        side_escape_left: bool = False,
+        side_escape_right: bool = False,
+        fusion_reason: str = "",
     ) -> DecisionResult:
         """Main entry point. Returns a DecisionResult."""
         cfg = self.cfg
@@ -248,6 +251,49 @@ class DecisionEngine:
         valid = analysis.valid_groups
         locked_left = arduino_state.get("locked_left", False)
         locked_right = arduino_state.get("locked_right", False)
+
+        # ── LiDAR Side-Escape Fast Path ──────────────────────────────────
+        # When fusion reports a LiDAR front obstacle with a side escape
+        # available, bypass normal group scoring and steer directly toward
+        # the open side. This avoids the STOP→FREE→STOP infinite loop.
+        if fusion_reason == "lidar_veto_side_escape":
+            # Pick the side with the greater LiDAR clearance.
+            force_side = None
+            if side_escape_left and side_escape_right:
+                force_side = "left" if lidar_left_mm >= lidar_right_mm else "right"
+            elif side_escape_left and not locked_left:
+                force_side = "left"
+            elif side_escape_right and not locked_right:
+                force_side = "right"
+
+            if force_side is not None:
+                # Map to the closest named zone (L1 or R1 for gentle steer).
+                zone_cmd = "GO:L1" if force_side == "left" else "GO:R1"
+                # Use L2/R2 if clearance warrants a sharper turn (< 900mm).
+                if force_side == "left" and lidar_left_mm < 900:
+                    zone_cmd = "GO:L2"
+                elif force_side == "right" and lidar_right_mm < 900:
+                    zone_cmd = "GO:R2"
+                zone_name = zone_cmd.replace("GO:", "")
+                print(
+                    f"[Decision] LiDAR side-escape → {zone_cmd} "
+                    f"(L={lidar_left_mm:.0f}mm R={lidar_right_mm:.0f}mm)"
+                )
+                stable_cmd, stable_count = self._apply_mode_hysteresis(
+                    zone_cmd, critical_stop=False
+                )
+                return DecisionResult(
+                    raw_command=zone_cmd, stable_command=stable_cmd,
+                    confidence=confidence,
+                    chosen_corridor=zone_name,
+                    chosen_group=None,
+                    reason=f"{zone_cmd}: LiDAR side-escape (front blocked, {force_side} open)",
+                    valid_groups=valid,
+                    center_blocked_reason="LiDAR front obstacle - side escape active",
+                    critical_stop=False,
+                    stable_count=stable_count,
+                    allow_recenter=False,
+                )
 
         # Determine LiDAR directional preference for low-confidence frames.
         lidar_pref = self._lidar_side_preference(

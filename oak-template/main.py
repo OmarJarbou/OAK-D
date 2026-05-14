@@ -563,6 +563,9 @@ def main():
                         fusion_boost=fused.confidence_boost,
                         lidar_left_mm=fused.lidar_left_mm,
                         lidar_right_mm=fused.lidar_right_mm,
+                        side_escape_left=fused.side_escape_left,
+                        side_escape_right=fused.side_escape_right,
+                        fusion_reason=fused.fusion_reason,
                     )
 
                     # Compute min p20 depth across ALL zones for critical stop check.

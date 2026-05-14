@@ -1,0 +1,357 @@
+[Decision] Side zone LEFT preferred: safety=1.12 vs CENTER=0.96
+[Decision] Side zone LEFT preferred: safety=1.12 vs CENTER=0.93
+[Publisher] COOLDOWN FREE -> GO:LEFT held=732ms < 800ms stable=4
+[TTS] speaking: Hard left
+[TTS worker] saying: Hard left
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Hard left
+[Decision] Side zone LEFT preferred: safety=1.12 vs CENTER=0.93
+[Publisher] FREE -> GO:LEFT | GO:LEFT: center weak, left safer (conf=0.76) | stable_count=5 | depth_mm=815
+[Serial -> Arduino] CMD:GO:LEFT
+[Decision] Side zone LEFT preferred: safety=1.11 vs CENTER=0.95
+[Arduino -> Pi] STATUS:ASSIST
+[Arduino -> Pi] STATUS:MOVING:LEFT
+[Publisher] COOLDOWN GO:LEFT -> GO:CENTER held=545ms < 800ms stable=2
+[Publisher] COOLDOWN GO:LEFT -> GO:CENTER held=610ms < 800ms stable=3
+[Publisher] COOLDOWN GO:LEFT -> GO:CENTER held=685ms < 800ms stable=4
+[Publisher] COOLDOWN GO:LEFT -> GO:CENTER held=761ms < 800ms stable=5
+[Publisher] GO:LEFT -> FREE | FREE: clear path (p20=1507mm streak=6/6 conf=0.80) | stable_count=1 | depth_mm=792
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:REACHED
+[Arduino -> Pi] STATUS:FREE
+[Publisher] FREE -> FREE | FREE: clear path (p20=1477mm streak=38/6 conf=0.89) | stable_count=33 | depth_mm=667
+[TTS] speaking: Free mode
+[Serial -> Arduino] CMD:FREE
+[TTS worker] saying: Free mode
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Free mode
+[Decision] Side zone LEFT preferred: safety=1.25 vs CENTER=1.09
+[Arduino -> Pi] STATUS:FREE
+[Publisher] FREE -> FREE | FREE: clear path (p20=1492mm streak=25/6 conf=0.90) | stable_count=20 | depth_mm=1320
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[Status] f=1400 auth=True ready=True cmd=FREE conf=90% groups=1/1 target=CENTER lidar_front=1405mm
+[Decision] Side zone L1 preferred: safety=1.25 vs CENTER=1.13
+[Publisher] FREE -> FREE | FREE: clear path (p20=1483mm streak=9/6 conf=0.83) | stable_count=4 | depth_mm=1465
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[Decision] Side zone L1 preferred: safety=1.25 vs CENTER=1.13
+[Decision] Side zone L1 preferred: safety=1.24 vs CENTER=1.12
+[Decision] Side zone L1 preferred: safety=1.25 vs CENTER=1.12
+[Decision] Side zone L1 preferred: safety=1.25 vs CENTER=1.12
+[Decision] Side zone L1 preferred: safety=1.26 vs CENTER=1.13
+[Decision] Side zone L1 preferred: safety=1.25 vs CENTER=1.13
+[Publisher] FREE -> FREE | FREE: clear path (p20=1538mm streak=9/6 conf=0.83) | stable_count=5 | depth_mm=1413
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[Publisher] FREE -> FREE | FREE: clear path (p20=1489mm streak=43/6 conf=0.90) | stable_count=39 | depth_mm=1021
+[Serial -> Arduino] CMD:FREE
+[Decision] Side zone L1 preferred: safety=1.23 vs CENTER=1.11
+[Decision] Side zone L1 preferred: safety=1.24 vs CENTER=1.11
+[Arduino -> Pi] STATUS:FREE
+[Decision] Side zone L1 preferred: safety=1.24 vs CENTER=1.11
+[Decision] Side zone L1 preferred: safety=1.24 vs CENTER=1.11
+[Decision] Side zone L1 preferred: safety=1.24 vs CENTER=1.12
+[Decision] Side zone L1 preferred: safety=1.24 vs CENTER=1.11
+[Decision] Side zone L1 preferred: safety=1.24 vs CENTER=1.11
+[Decision] Side zone L1 preferred: safety=1.24 vs CENTER=1.12
+[Decision] Side zone L1 preferred: safety=1.24 vs CENTER=1.11
+[Decision] Side zone L1 preferred: safety=1.24 vs CENTER=1.11
+[Publisher] FREE -> FREE | GO:CENTER: active recenter needed (p20=1468mm streak=4/6 conf=0.78) | stable_count=1 | depth_mm=782
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[Publisher] FREE -> FREE | FREE: clear path (p20=1470mm streak=38/6 conf=0.88) | stable_count=34 | depth_mm=615
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[Publisher] FREE -> STOP reason=CRITICAL_STOP stable=1 (cooldown override)
+[TTS worker] saying: Stop
+[Publisher] FREE -> STOP | CRITICAL_STOP | stable_count=1 | depth_mm=548
+[Serial -> Arduino] CMD:STOP
+[TTS] speaking: Stop
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[Publisher] CRITICAL_STOP held=0.11s depth=543mm stable=2
+[Publisher] CRITICAL_STOP held=0.26s depth=535mm stable=3
+[Publisher] CRITICAL_STOP held=0.41s depth=520mm stable=4
+[Publisher] CRITICAL_STOP held=0.49s depth=504mm stable=5
+[Publisher] CRITICAL_STOP held=0.57s depth=502mm stable=6
+[Publisher] CRITICAL_STOP held=0.64s depth=499mm stable=7
+[Publisher] CRITICAL_STOP held=0.72s depth=498mm stable=8
+[Publisher] CRITICAL_STOP held=0.79s depth=499mm stable=9
+[Publisher] CRITICAL_STOP held=0.86s depth=498mm stable=10
+[Publisher] CRITICAL_STOP held=0.95s depth=499mm stable=11
+[Publisher] CRITICAL_STOP held=1.02s depth=499mm stable=12
+[Publisher] CRITICAL_STOP held=1.12s depth=499mm stable=13
+[Arduino -> Pi] STATUS:STOPPED
+[Publisher] CRITICAL_STOP held=1.20s depth=498mm stable=14
+[Publisher] CRITICAL_STOP held=1.29s depth=498mm stable=15
+[Publisher] CRITICAL_STOP held=1.38s depth=499mm stable=16
+[Publisher] CRITICAL_STOP held=1.52s depth=499mm stable=17
+[Publisher] CRITICAL_STOP held=1.67s depth=500mm stable=18
+[Publisher] CRITICAL_STOP held=1.76s depth=499mm stable=19
+[Publisher] CRITICAL_STOP held=1.83s depth=498mm stable=20
+[Publisher] CRITICAL_STOP held=1.90s depth=498mm stable=21
+[Publisher] CRITICAL_STOP held=1.97s depth=499mm stable=22
+[Publisher] CRITICAL_STOP held=2.06s depth=499mm stable=23
+[Publisher] CRITICAL_STOP held=2.14s depth=500mm stable=24
+[Publisher] CRITICAL_STOP held=2.21s depth=498mm stable=25
+[Publisher] CRITICAL_STOP held=2.30s depth=498mm stable=26
+[Publisher] CRITICAL_STOP held=2.39s depth=500mm stable=27
+[Publisher] CRITICAL_STOP held=2.47s depth=499mm stable=28
+[Publisher] CRITICAL_STOP held=2.54s depth=499mm stable=29
+[Publisher] CRITICAL_STOP held=2.63s depth=500mm stable=30
+[Publisher] CRITICAL_STOP held=2.70s depth=500mm stable=31
+[Publisher] CRITICAL_STOP held=2.78s depth=499mm stable=32
+[Publisher] CRITICAL_STOP held=2.85s depth=500mm stable=33
+[Status] f=1600 auth=True ready=True cmd=STOP conf=78% groups=1/1 target=CENTER lidar_front=560mm
+[Publisher] CRITICAL_STOP held=2.95s depth=502mm stable=34
+[Publisher] CRITICAL_STOP held=3.02s depth=501mm stable=35
+[TTS worker] saying: Stop
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[Publisher] CRITICAL_STOP held=3.18s depth=500mm stable=36
+[Publisher] CRITICAL_STOP held=3.37s depth=505mm stable=37
+[Publisher] CRITICAL_STOP held=3.48s depth=505mm stable=38
+[Publisher] CRITICAL_STOP held=3.56s depth=504mm stable=39
+[Publisher] CRITICAL_STOP held=3.64s depth=503mm stable=40
+[Publisher] CRITICAL_STOP held=3.72s depth=505mm stable=41
+[Publisher] CRITICAL_STOP held=3.79s depth=503mm stable=42
+[Publisher] CRITICAL_STOP held=3.87s depth=503mm stable=43
+[Publisher] CRITICAL_STOP held=3.95s depth=505mm stable=44
+[Publisher] CRITICAL_STOP held=4.02s depth=503mm stable=45
+[Publisher] CRITICAL_STOP held=4.11s depth=502mm stable=46
+[Publisher] CRITICAL_STOP held=4.19s depth=504mm stable=47
+[Publisher] CRITICAL_STOP held=4.28s depth=506mm stable=48
+[Publisher] CRITICAL_STOP held=4.36s depth=505mm stable=49
+[Publisher] CRITICAL_STOP held=4.53s depth=506mm stable=50
+[Publisher] CRITICAL_STOP held=4.64s depth=505mm stable=51
+[Publisher] CRITICAL_STOP held=4.72s depth=507mm stable=52
+[Publisher] CRITICAL_STOP held=4.80s depth=506mm stable=53
+[Publisher] CRITICAL_STOP held=4.87s depth=507mm stable=54
+[Publisher] CRITICAL_STOP held=4.94s depth=507mm stable=55
+[Publisher] CRITICAL_STOP held=5.02s depth=508mm stable=56
+[Publisher] CRITICAL_STOP held=5.10s depth=507mm stable=57
+[Publisher] CRITICAL_STOP held=5.17s depth=507mm stable=58
+[Publisher] CRITICAL_STOP held=5.26s depth=507mm stable=59
+[Publisher] CRITICAL_STOP held=5.34s depth=507mm stable=60
+[Publisher] CRITICAL_STOP held=5.42s depth=509mm stable=61
+[Publisher] CRITICAL_STOP held=5.50s depth=509mm stable=62
+[Publisher] CRITICAL_STOP held=5.58s depth=510mm stable=63
+[Publisher] CRITICAL_STOP held=5.66s depth=514mm stable=64
+[Publisher] CRITICAL_STOP held=5.74s depth=514mm stable=65
+[Publisher] CRITICAL_STOP held=5.82s depth=516mm stable=66
+[Publisher] CRITICAL_STOP held=5.90s depth=521mm stable=67
+[Publisher] CRITICAL_STOP held=5.98s depth=523mm stable=68
+[Publisher] CRITICAL_STOP held=6.06s depth=525mm stable=69
+[TTS worker] saying: Stop
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[Publisher] CRITICAL_STOP held=6.21s depth=526mm stable=70
+[Publisher] CRITICAL_STOP held=6.40s depth=530mm stable=71
+[Publisher] CRITICAL_STOP held=6.54s depth=533mm stable=72
+[Publisher] CRITICAL_STOP held=6.62s depth=533mm stable=73
+[Publisher] CRITICAL_STOP held=6.69s depth=534mm stable=74
+[Publisher] CRITICAL_STOP held=6.77s depth=536mm stable=75
+[Publisher] CRITICAL_STOP held=6.85s depth=539mm stable=76
+[Publisher] STOP -> FREE | FREE: clear path (p20=1466mm streak=67/6 conf=0.84) | stable_count=1 | depth_mm=539
+[Serial -> Arduino] CMD:FREE
+[TTS] speaking: Free mode
+[Arduino -> Pi] STATUS:FREE
+[TTS worker] saying: Free mode
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Free mode
+[Publisher] FREE -> FREE | FREE: clear path (p20=1448mm streak=95/6 conf=0.86) | stable_count=29 | depth_mm=588
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[Publisher] FREE -> FREE | FREE: clear path (p20=1458mm streak=127/6 conf=0.89) | stable_count=61 | depth_mm=1282
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[Publisher] FREE -> STOP reason=CRITICAL_STOP stable=1 (cooldown override)
+[Publisher] FREE -> STOP | CRITICAL_STOP | stable_count=1 | depth_mm=1397
+[TTS] speaking: Stop
+[TTS worker] saying: Stop
+[Serial -> Arduino] CMD:STOP
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[Publisher] STOP_HOLD 0.12s / 1.5s stable=2
+[Publisher] STOP_HOLD 0.26s / 1.5s stable=3
+[Publisher] STOP_HOLD 0.43s / 1.5s stable=4
+[Publisher] STOP_HOLD 0.51s / 1.5s stable=5
+[Publisher] STOP_HOLD 0.57s / 1.5s stable=6
+[Publisher] STOP_HOLD 0.65s / 1.5s stable=7
+[Publisher] STOP_HOLD 0.72s / 1.5s stable=8
+[Publisher] STOP_HOLD 0.81s / 1.5s stable=9
+[Publisher] STOP_HOLD 0.88s / 1.5s stable=10
+[Publisher] STOP_HOLD 0.96s / 1.5s stable=11
+[Publisher] STOP_HOLD 1.03s / 1.5s stable=12
+[Publisher] STOP_HOLD 1.11s / 1.5s stable=13
+[Publisher] STOP_HOLD 1.18s / 1.5s stable=14
+[Publisher] STOP_HOLD 1.26s / 1.5s stable=15
+[Arduino -> Pi] STATUS:STOPPED
+[Publisher] STOP_HOLD 1.35s / 1.5s stable=16
+[Publisher] STOP -> FREE reason=RECOVERY_FREE held=1.52s stable=17
+[Publisher] STOP -> FREE | RECOVERY_FREE | stable_count=17 | depth_mm=1383
+[Serial -> Arduino] CMD:FREE
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Arduino -> Pi] STATUS:FREE
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] FREE -> STOP reason=CRITICAL_STOP stable=28 (cooldown override)
+[Publisher] FREE -> STOP | CRITICAL_STOP | stable_count=28 | depth_mm=1378
+[Serial -> Arduino] CMD:STOP
+[Publisher] STOP_HOLD 0.08s / 1.5s stable=29
+[Publisher] STOP_HOLD 0.16s / 1.5s stable=30
+[Publisher] STOP_HOLD 0.23s / 1.5s stable=31
+[Publisher] STOP_HOLD 0.31s / 1.5s stable=32
+[Publisher] STOP_HOLD 0.38s / 1.5s stable=33
+[Publisher] STOP_HOLD 0.45s / 1.5s stable=34
+[Publisher] STOP_HOLD 0.53s / 1.5s stable=35
+[Publisher] STOP_HOLD 0.60s / 1.5s stable=36
+[Publisher] STOP_HOLD 0.67s / 1.5s stable=37
+[TTS worker] saying: Stop
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[Publisher] STOP_HOLD 0.80s / 1.5s stable=38
+[Publisher] STOP_HOLD 0.97s / 1.5s stable=39
+[Publisher] STOP_HOLD 1.07s / 1.5s stable=40
+[Publisher] STOP_HOLD 1.15s / 1.5s stable=41
+[Publisher] STOP_HOLD 1.22s / 1.5s stable=42
+[Publisher] STOP_HOLD 1.29s / 1.5s stable=43
+[Publisher] STOP_HOLD 1.38s / 1.5s stable=44
+[Arduino -> Pi] STATUS:STOPPED
+[Publisher] STOP_HOLD 1.47s / 1.5s stable=45
+[Publisher] STOP -> FREE reason=RECOVERY_FREE held=1.54s stable=46
+[Publisher] STOP -> FREE | RECOVERY_FREE | stable_count=46 | depth_mm=1377
+[Serial -> Arduino] CMD:FREE
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Arduino -> Pi] STATUS:FREE
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] FREE -> STOP reason=CRITICAL_STOP stable=56 (cooldown override)
+[Publisher] FREE -> STOP | CRITICAL_STOP | stable_count=56 | depth_mm=1372
+[Serial -> Arduino] CMD:STOP
+[Publisher] STOP_HOLD 0.09s / 1.5s stable=57
+[Publisher] STOP_HOLD 0.16s / 1.5s stable=58
+[Publisher] STOP_HOLD 0.23s / 1.5s stable=59
+[Publisher] STOP_HOLD 0.30s / 1.5s stable=60
+[Publisher] STOP_HOLD 0.36s / 1.5s stable=61
+[Publisher] STOP_HOLD 0.44s / 1.5s stable=62
+[Publisher] STOP_HOLD 0.51s / 1.5s stable=63
+[Publisher] STOP_HOLD 0.58s / 1.5s stable=64
+[Publisher] STOP_HOLD 0.65s / 1.5s stable=65
+[Publisher] STOP_HOLD 0.72s / 1.5s stable=66
+[Publisher] STOP_HOLD 0.79s / 1.5s stable=67
+[Publisher] STOP_HOLD 0.86s / 1.5s stable=68
+[Publisher] STOP_HOLD 0.93s / 1.5s stable=69
+[Publisher] STOP_HOLD 1.01s / 1.5s stable=70
+[Publisher] STOP_HOLD 1.09s / 1.5s stable=71
+[Publisher] STOP_HOLD 1.16s / 1.5s stable=72
+[Publisher] STOP_HOLD 1.23s / 1.5s stable=73
+[Publisher] STOP_HOLD 1.30s / 1.5s stable=74
+[TTS worker] saying: Stop
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[Publisher] STOP_HOLD 1.42s / 1.5s stable=75
+[Arduino -> Pi] STATUS:STOPPED
+[Publisher] STOP -> FREE reason=RECOVERY_FREE held=1.54s stable=76
+[Publisher] STOP -> FREE | RECOVERY_FREE | stable_count=76 | depth_mm=1367
+[Serial -> Arduino] CMD:FREE
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Arduino -> Pi] STATUS:FREE
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] FREE -> STOP reason=CRITICAL_STOP stable=86 (cooldown override)
+[Publisher] FREE -> STOP | CRITICAL_STOP | stable_count=86 | depth_mm=1367
+[Serial -> Arduino] CMD:STOP
+[Publisher] STOP_HOLD 0.09s / 1.5s stable=87
+[Publisher] STOP_HOLD 0.16s / 1.5s stable=88
+[Publisher] STOP_HOLD 0.23s / 1.5s stable=89
+[Status] f=1800 auth=True ready=True cmd=STOP conf=84% groups=1/1 target=CENTER lidar_front=555mm
+[Publisher] STOP_HOLD 0.34s / 1.5s stable=90
+[Publisher] STOP_HOLD 0.45s / 1.5s stable=91
+[Publisher] STOP_HOLD 0.55s / 1.5s stable=92
+[Publisher] STOP_HOLD 0.62s / 1.5s stable=93
+[Publisher] STOP_HOLD 0.69s / 1.5s stable=94
+[Publisher] STOP_HOLD 0.76s / 1.5s stable=95
+[Publisher] STOP_HOLD 0.83s / 1.5s stable=96
+[Publisher] STOP_HOLD 0.89s / 1.5s stable=97
+-------------------------------------------
+المشاكل الموجودة من بعد التجربة
+اولا اتخاذ القرار بطيء يجب اخذ بعين الاعتبار ان الكاميرا على مجسم يتحرك ليس بسرعة بطيءة جدا بل متوسطة
+ثانيا عندما يرى جسم على اليسار مثلا يعمل stop مع انه لو عمل right سيكون المسار مثاليا للمرور 
+كيف يمكن تحسين تجربة المستخدم الحقيقية 
+وهل يمكن الاخذ بعين الاعتبار او تنبؤ قيمة مستقبلية ولكن لا تظهر نتيجتها بسرعة الا عند تحقيقها 
+يرجى التحليل بدقة عمل lidar مع الكاميرا لعمل تجربة حقيقية للمستخدم وليس فقط stop 
+لانه احيانا يمكن عند الحركة يمين او يسار تحل المشكلة ويبقى المسار بدون مشاكل
+علما انه عرض المجسم كامل 65 سم وانت تعلم 
+ولكن متل ما حكيتلك احيانا يمكن تجنب العائق ان تحركنا يمين او يسار قليلا وليس stop نهائي 
+وايضا بعد ما تعمل مثلا تصحيح ويذهب right 
+هل يمكنك اتخاذ قرار بان يرجع forward ثم يكمل 
+وذلك طبعا ان كان المسار يسمح بذلك
+يرجى ربط كل المشاكل مع بعض وحلها وتذكر ان الهدف هو اعطاء تجربة حقيقية للكفيف 
+-------------------
+هي ال.env:
+OAK_API_KEY="..."
+DEPTHAI_HUB_API_KEY="..."
+ARDUINO_PORT=/dev/serial0
+LIDAR_PORT=/dev/ttyUSB0
+ARDUINO_BAUD=9600
+DEBUG_DISPLAY=0
+USE_VISUALIZER=0
+USE_TTS=1
+ENABLE_SNAPS=0
+WALKER_WIDTH_M=0.64
+SIDE_MARGIN_M=0.15
+STOP_FRAMES_REQUIRED=4
+FREE_FRAMES_REQUIRED=6
+GO_FRAMES_REQUIRED=4
+FREE_STABLE_FRAMES=6
+FREE_CLEAR_DISTANCE_MM=1200.0
+FREE_EXIT_BAD_FRAMES=2
+COMMAND_CHANGE_COOLDOWN_S=0.3 #0.7
+UNSAFE_CONF_THRESHOLD=0.35
+FREE_CONF_THRESHOLD=0.62
+FREE_CENTER_CLOSE_OBS_MAX=0.10
+FREE_CENTER_MIN_VALID_RATIO=0.40
+FREE_CENTER_MIN_P20_MM=1600.0
+
+# Fusion
+FUSION_DISAGREEMENT_THRESHOLD_MM=800.0
+LIDAR_SAFETY_MM=600.0
+LIDAR_SIDE_ESCAPE_MM=800.0
+
+#--------------------------------------
+# Side-steer behavior
+SIDE_PREFER_MARGIN=0.12
+CENTER_SAFETY_BIAS=0.06
+CENTER_ACCEPT_RATIO=0.80
+
+# FREE behavior
+FREE_STICKY_SECONDS=0.6 #2.5
+
+# STOP recovery behavior
+POST_RECOVERY_GRACE_S=0.8 #3.0
+STOP_HOLD_SECONDS=1.5
+CRITICAL_STOP_DISTANCE_MM=600.0
+
+TEMP_EMA_ALPHA=0.25
+TEMP_EMA_WARMUP_FRAMES=4
