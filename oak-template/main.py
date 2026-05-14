@@ -557,14 +557,24 @@ def main():
                                 main.last_lidar_stop_time = now_t
 
                     # Decision (uses merged groups + LiDAR side-distance bias)
+                    # When FLIP_LR=True, mirror LiDAR side distances to match
+                    # the camera's flipped perspective.
+                    _ll = fused.lidar_left_mm
+                    _lr = fused.lidar_right_mm
+                    _sel = fused.side_escape_left
+                    _ser = fused.side_escape_right
+                    if cfg.FLIP_LR:
+                        _ll, _lr = _lr, _ll
+                        _sel, _ser = _ser, _sel
+
                     result = decision_engine.decide(
                         analysis,
                         state,
                         fusion_boost=fused.confidence_boost,
-                        lidar_left_mm=fused.lidar_left_mm,
-                        lidar_right_mm=fused.lidar_right_mm,
-                        side_escape_left=fused.side_escape_left,
-                        side_escape_right=fused.side_escape_right,
+                        lidar_left_mm=_ll,
+                        lidar_right_mm=_lr,
+                        side_escape_left=_sel,
+                        side_escape_right=_ser,
                         fusion_reason=fused.fusion_reason,
                     )
 

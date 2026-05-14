@@ -51,7 +51,7 @@ class WalkerConfig:
     ZONE_NAMES: List[str] = field(
         default_factory=lambda: ["LEFT", "L2", "L1", "CENTER", "R1", "R2", "RIGHT"]
     )
-    # Maps zone name → Arduino GO command suffix
+    # Maps zone name -> Arduino GO command suffix
     ZONE_TO_CMD: dict = field(
         default_factory=lambda: {
             "LEFT": "GO:LEFT",
@@ -63,6 +63,10 @@ class WalkerConfig:
             "RIGHT": "GO:RIGHT",
         }
     )
+
+    # Set FLIP_LR=True when the camera is mounted so its image-left = walker's right.
+    # Swaps all LEFT<->RIGHT zone commands and mirrors the LiDAR side distances.
+    FLIP_LR: bool = False
 
     # ── Corridor Scoring Weights ─────────────────────────────
     WEIGHT_DEPTH_P20: float = 0.30  # 20th percentile depth score
@@ -262,4 +266,19 @@ class WalkerConfig:
             UNSAFE_CONF_STREAK_FRAMES=int(os.getenv("UNSAFE_CONF_STREAK_FRAMES", "3")),
             GO_FAST_MARGIN=float(os.getenv("GO_FAST_MARGIN", "0.22")),
             GO_FAST_FRAMES_REQUIRED=int(os.getenv("GO_FAST_FRAMES_REQUIRED", "2")),
+            FLIP_LR=os.getenv("FLIP_LR", "0") == "1",
         )
+
+    def __post_init__(self) -> None:
+        """Apply FLIP_LR: mirror all left<->right zone commands."""
+        if self.FLIP_LR:
+            flipped = {
+                "LEFT":   "GO:RIGHT",
+                "L2":     "GO:R2",
+                "L1":     "GO:R1",
+                "CENTER": "GO:CENTER",
+                "R1":     "GO:L1",
+                "R2":     "GO:L2",
+                "RIGHT":  "GO:LEFT",
+            }
+            self.ZONE_TO_CMD = flipped
