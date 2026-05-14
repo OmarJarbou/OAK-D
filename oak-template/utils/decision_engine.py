@@ -276,7 +276,7 @@ class DecisionEngine:
                     zone_cmd = "GO:R2"
                 zone_name = zone_cmd.replace("GO:", "")
                 print(
-                    f"[Decision] LiDAR side-escape → {zone_cmd} "
+                    f"[Decision] LiDAR side-escape -> {zone_cmd} "
                     f"(L={lidar_left_mm:.0f}mm R={lidar_right_mm:.0f}mm)"
                 )
                 stable_cmd, stable_count = self._apply_mode_hysteresis(
