@@ -286,14 +286,15 @@ class DecisionEngine:
                     self._escape_latch_side = force_side  # lock in direction
 
             if force_side is not None:
-                # Map to the closest named zone (L1 or R1 for gentle steer).
-                zone_cmd = "GO:L1" if force_side == "left" else "GO:R1"
-                # Use L2/R2 if clearance warrants a sharper turn (< 900mm).
-                if force_side == "left" and lidar_left_mm < 900:
-                    zone_cmd = "GO:L2"
-                elif force_side == "right" and lidar_right_mm < 900:
-                    zone_cmd = "GO:R2"
-                zone_name = zone_cmd.replace("GO:", "")
+                # Determine zone key (L1/L2/R1/R2) then translate via
+                # ZONE_TO_CMD so FLIP_LR is automatically applied.
+                # < 900mm = tighter space → sharper turn (L2/R2)
+                if force_side == "left":
+                    zone_key = "L2" if lidar_left_mm < 900 else "L1"
+                else:
+                    zone_key = "R2" if lidar_right_mm < 900 else "R1"
+                zone_cmd = self.cfg.ZONE_TO_CMD.get(zone_key, f"GO:{zone_key}")
+                zone_name = zone_key
                 print(
                     f"[Decision] LiDAR side-escape -> {zone_cmd} "
                     f"(L={lidar_left_mm:.0f}mm R={lidar_right_mm:.0f}mm latch={force_side})"
