@@ -181,10 +181,11 @@ class DecisionEngine:
         cfg = self.cfg
         prev_stable = self._last_stable
 
-        # Track whether Arduino confirmed CENTER reached/at-target (latched).
-        # Prefer explicit center_confirmed if present; also tolerate alternate fields safely.
+        # Fix 2: Ignore center_confirmed from Arduino entirely.
+        # Previously this latched _confirmed_centered=True and suppressed GO:CENTER,
+        # causing the system to miss steering corrections after the user moved.
         if arduino_state.get("center_confirmed", False):
-            self._confirmed_centered = True
+            pass  # intentionally ignored — do not latch confirmed_centered
 
         # ── 1. Safety Gates ─────────────────────────────────
         if not arduino_state.get("authorized", False):
@@ -374,7 +375,7 @@ class DecisionEngine:
                         current_m = analysis.corridors.get(current_zone)
                         best_m = analysis.corridors.get(best_target)
                         if current_m and best_m:
-                            if current_m.safety_score >= best_m.safety_score * 0.80:
+                            if current_m.safety_score >= best_m.safety_score * 0.70:  # Fix 3: was 0.80
                                 best_group = g
                                 best_target = current_zone
                                 center_blocked_reason = self._why_not_center(
@@ -638,9 +639,12 @@ class DecisionEngine:
             # FREE streak is already guaranteed by _is_free_candidate's
             # FREE_STABLE_FRAMES check — don't double-gate here.
             # Only enforce cooldown.
+            # Fix 7: FREE cooldown is halved — FREE is safer than GO so
+            # it should engage faster once conditions are stable.
+            free_cooldown = self._command_change_cooldown_s * 0.5
             if (
                 self._last_stable != "FREE"
-                and now - self._last_change_time < self._command_change_cooldown_s
+                and now - self._last_change_time < free_cooldown
             ):
                 return self._last_stable, self._free_streak
             if self._last_stable != "FREE":

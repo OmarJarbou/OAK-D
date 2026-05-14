@@ -42,14 +42,26 @@ class CommandPublisher:
         self._current_cmd_entered_time: float = 0.0
         self._last_depth_mm: float = 0.0
         self._last_stable_count: int = 0
+        # Fix 1: FLIP_LR — when camera is physically flipped, GO:LEFT is
+        # actually walker-right, so locked_left/right must be swapped.
+        self._flip_lr: bool = bool(cfg.FLIP_LR)
 
-    @staticmethod
-    def _is_left_command(command: str) -> bool:
-        return command in {"GO:LEFT", "GO:L2", "GO:L1"}
+    def _is_left_command(self, command: str) -> bool:
+        """Return True when command steers to the *physical* left.
+        When FLIP_LR=1 the camera image is mirrored, so GO:LEFT in image
+        space is actually walker-right physically — and vice-versa.
+        """
+        if not self._flip_lr:
+            return command in {"GO:LEFT", "GO:L2", "GO:L1"}
+        else:
+            return command in {"GO:RIGHT", "GO:R2", "GO:R1"}
 
-    @staticmethod
-    def _is_right_command(command: str) -> bool:
-        return command in {"GO:RIGHT", "GO:R2", "GO:R1"}
+    def _is_right_command(self, command: str) -> bool:
+        """Return True when command steers to the *physical* right."""
+        if not self._flip_lr:
+            return command in {"GO:RIGHT", "GO:R2", "GO:R1"}
+        else:
+            return command in {"GO:LEFT", "GO:L2", "GO:L1"}
 
     def _is_allowed(self, command: str, state: dict) -> tuple[bool, str]:
         """Validate command against Arduino readiness and lock/safety state."""

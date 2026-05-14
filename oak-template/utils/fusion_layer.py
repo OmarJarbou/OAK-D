@@ -154,19 +154,22 @@ class FusionLayer:
 
     @staticmethod
     def _oak_front_mm(analysis: AnalysisResult) -> float:
+        # Fix 5: Return 9999 when no valid data so we don't falsely trigger
+        # emergency stops (0 was interpreted as "obstacle at 0mm").
+        # Also require valid_ratio >= 0.14 to filter zones with near-zero depth pixels.
         zones = analysis.corridors
         vals = []
         for k in ("L1", "CENTER", "R1"):
             m = zones.get(k)
             if m is not None:
                 try:
-                    v = float(m.p20_depth)
+                    v = float(m.p20_depth or 0.0)
                 except Exception:
                     v = 0.0
-                if v > 0.0:
+                if v > 0.0 and float(m.valid_ratio or 0.0) >= 0.14:
                     vals.append(v)
         if not vals:
-            return 0.0
+            return 9999.0  # No data → assume path clear, don't stop
         return float(min(vals))
 
     @staticmethod
