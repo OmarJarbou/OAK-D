@@ -730,8 +730,8 @@ class DecisionEngine:
         # Applied regardless of camera confidence.
         # Thresholds: clear side > 900mm → boost; blocked side < safety_mm → penalty.
         _LIDAR_BOOST_MM: float = 900.0
-        _LIDAR_BOOST: float = 1.08   # Trimmed from 1.15 to avoid massive score flips
-        _LIDAR_PENALTY: float = 0.90 # Trimmed from 0.85
+        _LIDAR_BOOST: float = 1.15   # Clear side: boost score significantly
+        _LIDAR_PENALTY: float = 0.65 # Blocked side: heavy penalty so chairs/obstacles lose
 
         _left_zones = {"LEFT", "L2", "L1"}
         _right_zones = {"R1", "R2", "RIGHT"}
