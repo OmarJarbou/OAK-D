@@ -372,6 +372,10 @@ def main():
     print(f"  Debug display: {'ON' if cfg.DEBUG_DISPLAY else 'OFF'}")
     print(f"  TTS          : {'ON' if cfg.USE_TTS else 'OFF'}")
     print(f"  Snaps        : {'ON' if cfg.ENABLE_SNAPS else 'OFF'}")
+    print(
+        f"  LiDAR role   : "
+        f"{'stop + L/R steering' if cfg.LIDAR_STEERING_ENABLED else 'STOP/front only (camera steers)'}"
+    )
     print("=" * 60)
 
     # ── Components ────────────────────────────────────────
@@ -556,16 +560,17 @@ def main():
                                 speak("Stop")
                                 main.last_lidar_stop_time = now_t
 
-                    # Decision (uses merged groups + LiDAR side-distance bias)
-                    # When FLIP_LR=True, mirror LiDAR side distances to match
-                    # the camera's flipped perspective.
-                    _ll = fused.lidar_left_mm
-                    _lr = fused.lidar_right_mm
-                    _sel = fused.side_escape_left
-                    _ser = fused.side_escape_right
-                    if cfg.FLIP_LR:
-                        _ll, _lr = _lr, _ll
-                        _sel, _ser = _ser, _sel
+                    # Decision: camera 7-zone scoring for L/R; LiDAR optional side bias.
+                    _ll = _lr = 0.0
+                    _sel = _ser = False
+                    if cfg.LIDAR_STEERING_ENABLED:
+                        _ll = fused.lidar_left_mm
+                        _lr = fused.lidar_right_mm
+                        _sel = fused.side_escape_left
+                        _ser = fused.side_escape_right
+                        if cfg.FLIP_LR:
+                            _ll, _lr = _lr, _ll
+                            _sel, _ser = _ser, _sel
 
                     result = decision_engine.decide(
                         analysis,

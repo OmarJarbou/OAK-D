@@ -154,6 +154,9 @@ class WalkerConfig:
     ARDUINO_BAUD: int = 9600
 
     # ── LiDAR Configuration ───────────────────────────────────
+    # When False, LiDAR only contributes front distance + emergency STOP.
+    # Left/right steering uses OAK-D depth zones only (recommended).
+    LIDAR_STEERING_ENABLED: bool = False
     LIDAR_PORT: str = "MOCK"
     # 460800 = RPLIDAR C1 (rplidarc1). Legacy A-series often uses 115200.
     LIDAR_BAUD: int = 460800
@@ -212,6 +215,7 @@ class WalkerConfig:
             SIDE_MARGIN_M=float(os.getenv("SIDE_MARGIN_M", "0.15")),
             ARDUINO_PORT=os.getenv("ARDUINO_PORT", "MOCK"),
             ARDUINO_BAUD=int(os.getenv("ARDUINO_BAUD", "9600")),
+            LIDAR_STEERING_ENABLED=os.getenv("LIDAR_STEERING_ENABLED", "0") == "1",
             LIDAR_PORT=os.getenv("LIDAR_PORT", "MOCK"),
             LIDAR_BAUD=int(os.getenv("LIDAR_BAUD", "460800")),
             LIDAR_LEGACY_BAUD=int(os.getenv("LIDAR_LEGACY_BAUD", "115200")),

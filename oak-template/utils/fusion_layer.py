@@ -29,8 +29,14 @@ class FusionLayer:
         self._lidar = lidar
         self._cfg = cfg
 
+    def _steering_enabled(self) -> bool:
+        if self._cfg is None:
+            return False
+        return bool(getattr(self._cfg, "LIDAR_STEERING_ENABLED", False))
+
     def fuse(self, oak_analysis: AnalysisResult) -> FusedAnalysis:
         oak_front_mm = self._oak_front_mm(oak_analysis)
+        lidar_steering = self._steering_enabled()
 
         scan: LidarScan | None = self._lidar.latest_scan
         if scan is None:
@@ -101,24 +107,27 @@ class FusionLayer:
                 )
 
             # Camera agrees obstacle is close → LiDAR veto is real.
-            has_side_escape = bool(scan.side_escape_left) or bool(scan.side_escape_right)
-            if has_side_escape:
-                # Keep OAK analysis unchanged (no emergency) but carry LiDAR
-                # side distances so DecisionEngine can pick the open side.
-                return FusedAnalysis(
-                    oak_analysis=oak_analysis,
-                    has_emergency=False,
-                    front_clear_mm=float(lidar_front_mm),
-                    side_escape_left=bool(scan.side_escape_left),
-                    side_escape_right=bool(scan.side_escape_right),
-                    lidar_active=True,
-                    confidence_boost=+0.05,
-                    fusion_reason="lidar_veto_side_escape",
-                    lidar_left_mm=float(scan.left_min_mm),
-                    lidar_right_mm=float(scan.right_min_mm),
+            if lidar_steering:
+                has_side_escape = bool(scan.side_escape_left) or bool(
+                    scan.side_escape_right
                 )
+                if has_side_escape:
+                    # Keep OAK analysis unchanged (no emergency) but carry LiDAR
+                    # side distances so DecisionEngine can pick the open side.
+                    return FusedAnalysis(
+                        oak_analysis=oak_analysis,
+                        has_emergency=False,
+                        front_clear_mm=float(lidar_front_mm),
+                        side_escape_left=bool(scan.side_escape_left),
+                        side_escape_right=bool(scan.side_escape_right),
+                        lidar_active=True,
+                        confidence_boost=+0.05,
+                        fusion_reason="lidar_veto_side_escape",
+                        lidar_left_mm=float(scan.left_min_mm),
+                        lidar_right_mm=float(scan.right_min_mm),
+                    )
 
-            # No side escape available → true emergency, stop the walker.
+            # Stop-only mode (or no side escape): emergency STOP; camera steers later.
             fused_oak = self._override_emergency(oak_analysis, True)
             return FusedAnalysis(
                 oak_analysis=fused_oak,

@@ -271,14 +271,14 @@ class DecisionEngine:
         # Release when LiDAR front is genuinely clear again.
         # Uses lidar_front_mm (passed from fused.front_clear_mm) — not
         # lidar_left/right_mm which are side arcs (30-90°), not front.
-        if self._escape_latch_side and lidar_front_mm > cfg.LIDAR_SAFETY_MM:
+        if cfg.LIDAR_STEERING_ENABLED and self._escape_latch_side and lidar_front_mm > cfg.LIDAR_SAFETY_MM:
             print(
                 f"[Decision] Escape latch RELEASED (front clear): "
                 f"lidar_front={lidar_front_mm:.0f}mm > {cfg.LIDAR_SAFETY_MM:.0f}mm"
             )
             self._escape_latch_side = ""
 
-        if fusion_reason == "lidar_veto_side_escape":
+        if cfg.LIDAR_STEERING_ENABLED and fusion_reason == "lidar_veto_side_escape":
             # Use latched direction if already committed; pick fresh only if none.
             if self._escape_latch_side == "left" and locked_left:
                 self._escape_latch_side = ""   # locked out — reset latch
@@ -330,7 +330,7 @@ class DecisionEngine:
                     stable_count=stable_count,
                     allow_recenter=False,
                 )
-        else:
+        elif cfg.LIDAR_STEERING_ENABLED:
             # Not in side-escape mode: require N consecutive non-escape frames
             # before clearing latch (prevents single-frame noise from resetting).
             self._escape_latch_clear_streak += 1
@@ -339,8 +339,10 @@ class DecisionEngine:
                 self._escape_latch_clear_streak = 0
 
         # Determine LiDAR directional preference for low-confidence frames.
-        lidar_pref = self._lidar_side_preference(
-            confidence, lidar_left_mm, lidar_right_mm
+        lidar_pref = (
+            self._lidar_side_preference(confidence, lidar_left_mm, lidar_right_mm)
+            if cfg.LIDAR_STEERING_ENABLED
+            else None
         )
 
         # For each valid group, pick the safest target zone
@@ -703,6 +705,8 @@ class DecisionEngine:
         Only applied when OAK-D confidence is below threshold AND the side
         distance gap is large enough to be actionable (not just noise).
         """
+        if not self.cfg.LIDAR_STEERING_ENABLED:
+            return None
         if confidence >= self.cfg.LIDAR_SIDE_BIAS_CONF_THRESHOLD:
             return None  # OAK-D trusted — no LiDAR nudge needed
         if lidar_left_mm <= 0.0 and lidar_right_mm <= 0.0:
@@ -760,6 +764,8 @@ class DecisionEngine:
         _right_zones = {"R1", "R2", "RIGHT"}
 
         def _lidar_distance_mult(name: str) -> float:
+            if not cfg.LIDAR_STEERING_ENABLED:
+                return 1.0
             mult = 1.0
             if name in _left_zones and lidar_left_mm > 0.0:
                 if lidar_left_mm > _LIDAR_BOOST_MM:
