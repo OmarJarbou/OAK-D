@@ -29,14 +29,28 @@ class FusionLayer:
         self._lidar = lidar
         self._cfg = cfg
 
+    # ── OAK-FIRST POLICY ─────────────────────────────────────────────────
+    # OAK camera is the SOLE authority on obstacle avoidance.
+    # LiDAR contributes side-distance data for directional bias ONLY.
+    # LiDAR never overrides OAK's emergency/clear decision.
+    # ─────────────────────────────────────────────────────────────────────
+
     def fuse(self, oak_analysis: AnalysisResult) -> FusedAnalysis:
+        """
+        OAK-FIRST fusion:
+          - OAK camera ALWAYS decides has_emergency and front_clear_mm.
+          - LiDAR contributes side distances (left/right) for directional bias only.
+          - LiDAR never triggers or suppresses an emergency stop.
+        """
         oak_front_mm = self._oak_front_mm(oak_analysis)
+        oak_emergency = bool(oak_analysis.has_emergency)
 
         scan: LidarScan | None = self._lidar.latest_scan
         if scan is None:
+            # No LiDAR data — OAK decides everything, small confidence penalty.
             return FusedAnalysis(
                 oak_analysis=oak_analysis,
-                has_emergency=bool(oak_analysis.has_emergency),
+                has_emergency=oak_emergency,
                 front_clear_mm=float(oak_front_mm),
                 side_escape_left=False,
                 side_escape_right=False,
@@ -47,133 +61,33 @@ class FusionLayer:
                 lidar_right_mm=0.0,
             )
 
+        # LiDAR is active — OAK still owns has_emergency / front_clear_mm.
+        # LiDAR only provides: side escape flags and side distances.
+        # Confidence boost when LiDAR agrees with OAK's front assessment.
         lidar_emergency = not bool(scan.front_clear)
-        oak_emergency = bool(oak_analysis.has_emergency)
-        lidar_front_mm = float(scan.front_min_mm)
-
-        # 2) Agreement: boost confidence, tighten clearance estimate.
         if oak_emergency == lidar_emergency:
-            fused_emergency = oak_emergency
-            fused_front_mm = min(float(oak_front_mm), lidar_front_mm)
-            fused_oak = self._override_emergency(oak_analysis, fused_emergency)
-            return FusedAnalysis(
-                oak_analysis=fused_oak,
-                has_emergency=fused_emergency,
-                front_clear_mm=float(fused_front_mm),
-                side_escape_left=bool(scan.side_escape_left),
-                side_escape_right=bool(scan.side_escape_right),
-                lidar_active=True,
-                confidence_boost=+0.10,
-                fusion_reason="oak_lidar_agree",
-                lidar_left_mm=float(scan.left_min_mm),
-                lidar_right_mm=float(scan.right_min_mm),
-            )
+            confidence_boost = +0.10
+            fusion_reason = "oak_lidar_agree"
+        elif lidar_emergency and not oak_emergency:
+            # LiDAR sees front obstacle, OAK says clear.
+            # OAK wins — LiDAR may be detecting a low/floor-level obstacle.
+            confidence_boost = +0.03
+            fusion_reason = "oak_clear_lidar_ignored"
+        else:
+            # OAK sees obstacle, LiDAR says clear.
+            # OAK wins — trust the camera that's at head/chest height.
+            confidence_boost = 0.0
+            fusion_reason = "oak_emergency_lidar_clear"
 
-        # 3) LiDAR veto: LiDAR says emergency, OAK says clear.
-        if lidar_emergency and (not oak_emergency):
-            oak_front = self._oak_front_mm(oak_analysis)
-
-            # Height compensation: LiDAR (30cm) sees low obstacles camera (70cm)
-            # ignores. Only trust LiDAR veto when camera also sees something close.
-            # LIDAR_CAMERA_AGREE_MM threshold: if camera front > this, LiDAR is
-            # likely seeing a low obstacle (chair leg, threshold, etc.) — ignore.
-            _agree_mm = (
-                float(self._cfg.LIDAR_CAMERA_AGREE_MM)
-                if self._cfg is not None
-                else 1200.0
-            )
-            camera_agrees = float(oak_front) < _agree_mm
-
-            if not camera_agrees:
-                # Camera sees clear path — LiDAR likely hitting low obstacle.
-                # Ignore veto entirely; pass through LiDAR side data for bias.
-                return FusedAnalysis(
-                    oak_analysis=oak_analysis,
-                    has_emergency=False,
-                    front_clear_mm=float(oak_front),
-                    side_escape_left=bool(scan.side_escape_left),
-                    side_escape_right=bool(scan.side_escape_right),
-                    lidar_active=True,
-                    confidence_boost=+0.03,
-                    fusion_reason="lidar_low_obstacle_ignored",
-                    lidar_left_mm=float(scan.left_min_mm),
-                    lidar_right_mm=float(scan.right_min_mm),
-                )
-
-            # Camera agrees obstacle is close → LiDAR veto is real.
-            has_side_escape = bool(scan.side_escape_left) or bool(scan.side_escape_right)
-            if has_side_escape:
-                # Keep OAK analysis unchanged (no emergency) but carry LiDAR
-                # side distances so DecisionEngine can pick the open side.
-                return FusedAnalysis(
-                    oak_analysis=oak_analysis,
-                    has_emergency=False,
-                    front_clear_mm=float(lidar_front_mm),
-                    side_escape_left=bool(scan.side_escape_left),
-                    side_escape_right=bool(scan.side_escape_right),
-                    lidar_active=True,
-                    confidence_boost=+0.05,
-                    fusion_reason="lidar_veto_side_escape",
-                    lidar_left_mm=float(scan.left_min_mm),
-                    lidar_right_mm=float(scan.right_min_mm),
-                )
-
-            # No side escape available → true emergency, stop the walker.
-            fused_oak = self._override_emergency(oak_analysis, True)
-            return FusedAnalysis(
-                oak_analysis=fused_oak,
-                has_emergency=True,
-                front_clear_mm=float(lidar_front_mm),
-                side_escape_left=False,
-                side_escape_right=False,
-                lidar_active=True,
-                confidence_boost=+0.05,
-                fusion_reason="lidar_veto_emergency",
-                lidar_left_mm=float(scan.left_min_mm),
-                lidar_right_mm=float(scan.right_min_mm),
-            )
-
-        # 4) OAK says emergency, LiDAR says clear.
-        if (not lidar_emergency) and oak_emergency:
-            if float(oak_front_mm) < self.DISAGREEMENT_TRUST_THRESHOLD_MM:
-                fused_oak = self._override_emergency(oak_analysis, True)
-                return FusedAnalysis(
-                    oak_analysis=fused_oak,
-                    has_emergency=True,
-                    front_clear_mm=min(float(oak_front_mm), lidar_front_mm),
-                    side_escape_left=bool(scan.side_escape_left),
-                    side_escape_right=bool(scan.side_escape_right),
-                    lidar_active=True,
-                    confidence_boost=0.0,
-                    fusion_reason="oak_trusted_close_obstacle",
-                    lidar_left_mm=float(scan.left_min_mm),
-                    lidar_right_mm=float(scan.right_min_mm),
-                )
-
-            fused_oak = self._override_emergency(oak_analysis, False)
-            return FusedAnalysis(
-                oak_analysis=fused_oak,
-                has_emergency=False,
-                front_clear_mm=min(float(oak_front_mm), lidar_front_mm),
-                side_escape_left=bool(scan.side_escape_left),
-                side_escape_right=bool(scan.side_escape_right),
-                lidar_active=True,
-                confidence_boost=+0.08,
-                fusion_reason="oak_suppressed_false_stop",
-                lidar_left_mm=float(scan.left_min_mm),
-                lidar_right_mm=float(scan.right_min_mm),
-            )
-
-        # Defensive fallback: should be unreachable.
         return FusedAnalysis(
-            oak_analysis=oak_analysis,
-            has_emergency=bool(oak_analysis.has_emergency),
-            front_clear_mm=float(oak_front_mm),
+            oak_analysis=oak_analysis,          # unmodified — OAK owns this
+            has_emergency=oak_emergency,         # OAK decides
+            front_clear_mm=float(oak_front_mm), # OAK decides
             side_escape_left=bool(scan.side_escape_left),
             side_escape_right=bool(scan.side_escape_right),
             lidar_active=True,
-            confidence_boost=0.0,
-            fusion_reason="fallback",
+            confidence_boost=confidence_boost,
+            fusion_reason=fusion_reason,
             lidar_left_mm=float(scan.left_min_mm),
             lidar_right_mm=float(scan.right_min_mm),
         )

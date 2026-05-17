@@ -263,80 +263,14 @@ class DecisionEngine:
         locked_left = arduino_state.get("locked_left", False)
         locked_right = arduino_state.get("locked_right", False)
 
-        # -- LiDAR Side-Escape Fast Path --------------------------------------------------
-        # When fusion reports a LiDAR front obstacle with a side escape
-        # available, bypass normal group scoring and steer directly toward
-        # the open side. This avoids the STOP->FREE->STOP infinite loop.
-        # ── Proactive escape latch release ───────────────────────────────────────
-        # Release when LiDAR front is genuinely clear again.
-        # Uses lidar_front_mm (passed from fused.front_clear_mm) — not
-        # lidar_left/right_mm which are side arcs (30-90°), not front.
-        if self._escape_latch_side and lidar_front_mm > cfg.LIDAR_SAFETY_MM:
-            print(
-                f"[Decision] Escape latch RELEASED (front clear): "
-                f"lidar_front={lidar_front_mm:.0f}mm > {cfg.LIDAR_SAFETY_MM:.0f}mm"
-            )
-            self._escape_latch_side = ""
-
-        if fusion_reason == "lidar_veto_side_escape":
-            # Use latched direction if already committed; pick fresh only if none.
-            if self._escape_latch_side == "left" and locked_left:
-                self._escape_latch_side = ""   # locked out — reset latch
-            if self._escape_latch_side == "right" and locked_right:
-                self._escape_latch_side = ""   # locked out — reset latch
-
-            if self._escape_latch_side:
-                # Already committed — keep same direction regardless of noise.
-                force_side = self._escape_latch_side
-            else:
-                # First frame in this escape: pick the side with greater clearance.
-                force_side = None
-                if side_escape_left and side_escape_right:
-                    force_side = "left" if lidar_left_mm >= lidar_right_mm else "right"
-                elif side_escape_left and not locked_left:
-                    force_side = "left"
-                elif side_escape_right and not locked_right:
-                    force_side = "right"
-                if force_side:
-                    self._escape_latch_side = force_side  # lock in direction
-                    self._escape_latch_clear_streak = 0  # reset clear counter
-
-            if force_side is not None:
-                # Determine zone key (L1/L2/R1/R2) then translate via
-                # ZONE_TO_CMD so FLIP_LR is automatically applied.
-                # < 900mm = tighter space → sharper turn (L2/R2)
-                if force_side == "left":
-                    zone_key = "L2" if lidar_left_mm < 900 else "L1"
-                else:
-                    zone_key = "R2" if lidar_right_mm < 900 else "R1"
-                zone_cmd = self.cfg.ZONE_TO_CMD.get(zone_key, f"GO:{zone_key}")
-                zone_name = zone_key
-                print(
-                    f"[Decision] LiDAR side-escape -> {zone_cmd} "
-                    f"(L={lidar_left_mm:.0f}mm R={lidar_right_mm:.0f}mm latch={force_side})"
-                )
-                stable_cmd, stable_count = self._apply_mode_hysteresis(
-                    zone_cmd, critical_stop=False
-                )
-                return DecisionResult(
-                    raw_command=zone_cmd, stable_command=stable_cmd,
-                    confidence=confidence,
-                    chosen_corridor=zone_name,
-                    chosen_group=None,
-                    reason=f"{zone_cmd}: LiDAR side-escape (front blocked, {force_side} open)",
-                    valid_groups=valid,
-                    center_blocked_reason="LiDAR front obstacle - side escape active",
-                    critical_stop=False,
-                    stable_count=stable_count,
-                    allow_recenter=False,
-                )
-        else:
-            # Not in side-escape mode: require N consecutive non-escape frames
-            # before clearing latch (prevents single-frame noise from resetting).
-            self._escape_latch_clear_streak += 1
-            if self._escape_latch_clear_streak >= self._escape_latch_clear_required:
-                self._escape_latch_side = ""
-                self._escape_latch_clear_streak = 0
+        # -- LiDAR Side-Escape Fast Path — DISABLED (OAK-FIRST POLICY) ----------------
+        # OAK camera is now the sole obstacle-avoidance authority.
+        # fusion_layer no longer emits "lidar_veto_side_escape", so this block
+        # is permanently inactive. Kept only to preserve latch-clear logic below.
+        # If you need to re-enable LiDAR veto, restore this in fusion_layer.fuse().
+        # ──────────────────────────────────────────────────────────────────────────────
+        if False:  # was: fusion_reason == "lidar_veto_side_escape"
+            pass   # intentionally disabled
 
         # Determine LiDAR directional preference for low-confidence frames.
         lidar_pref = self._lidar_side_preference(
