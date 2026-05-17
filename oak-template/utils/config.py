@@ -67,6 +67,10 @@ class WalkerConfig:
     # Set FLIP_LR=True when the camera is mounted so its image-left = walker's right.
     # Swaps all LEFT<->RIGHT zone commands and mirrors the LiDAR side distances.
     FLIP_LR: bool = False
+    # Set LIDAR_FLIP_LR=True when the LiDAR's physical left/right is swapped
+    # (e.g. mounted face-down / upside-down so its rotation direction is reversed).
+    # Corrected at the scan source — independent of camera FLIP_LR.
+    LIDAR_FLIP_LR: bool = False
 
     # ── Corridor Scoring Weights ─────────────────────────────
     WEIGHT_DEPTH_P20: float = 0.30  # 20th percentile depth score
@@ -271,6 +275,7 @@ class WalkerConfig:
             GO_FAST_MARGIN=float(os.getenv("GO_FAST_MARGIN", "0.22")),
             GO_FAST_FRAMES_REQUIRED=int(os.getenv("GO_FAST_FRAMES_REQUIRED", "2")),
             FLIP_LR=os.getenv("FLIP_LR", "0") == "1",
+            LIDAR_FLIP_LR=os.getenv("LIDAR_FLIP_LR", "0") == "1",
         )
 
     def __post_init__(self) -> None:

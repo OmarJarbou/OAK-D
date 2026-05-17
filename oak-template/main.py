@@ -401,6 +401,7 @@ def main():
         front_arc_deg=cfg.LIDAR_FRONT_ARC_DEG,
         side_arc_start_deg=cfg.LIDAR_SIDE_ARC_START_DEG,
         side_arc_end_deg=cfg.LIDAR_SIDE_ARC_END_DEG,
+        lidar_flip_lr=cfg.LIDAR_FLIP_LR,
     )
     fusion = FusionLayer(lidar, cfg)
 

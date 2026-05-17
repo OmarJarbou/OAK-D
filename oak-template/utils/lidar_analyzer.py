@@ -127,6 +127,7 @@ class LidarAnalyzer:
         front_arc_deg: float = DEFAULT_FRONT_ARC_DEG,
         side_arc_start_deg: float = DEFAULT_SIDE_ARC_START_DEG,
         side_arc_end_deg: float = DEFAULT_SIDE_ARC_END_DEG,
+        lidar_flip_lr: bool = False,
     ):
         self.port = str(port)
         b = str(backend).lower().strip()
@@ -140,6 +141,7 @@ class LidarAnalyzer:
             int(legacy_baud) if legacy_baud is not None else DEFAULT_LEGACY_BAUD
         )
 
+        self._lidar_flip_lr = bool(lidar_flip_lr)
         self._safety_mm = float(safety_mm)
         self._side_escape_mm = float(side_escape_mm)
         self._scan_timeout_s = float(scan_timeout_s)
@@ -520,6 +522,13 @@ class LidarAnalyzer:
         front_clear = front_min > self._safety_mm
         side_escape_left = left_min > self._side_escape_mm
         side_escape_right = right_min > self._side_escape_mm
+
+        # Correct for LiDAR mounted face-down or otherwise with inverted
+        # rotation direction — positive angles become physical RIGHT instead
+        # of physical LEFT, so swap all side-related fields at the source.
+        if self._lidar_flip_lr:
+            left_min, right_min = right_min, left_min
+            side_escape_left, side_escape_right = side_escape_right, side_escape_left
 
         return LidarScan(
             front_clear=bool(front_clear),
