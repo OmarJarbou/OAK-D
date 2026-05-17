@@ -1,263 +1,775 @@
-[Publisher] FREE -> GO:CENTER | GO:CENTER: active recenter needed (p20=1434mm streak=4/6 conf=0.75) | stable_count=4 | depth_mm=1419
+============================================================
+  Smart Walker - OAK-D Navigation System v3.0
+============================================================
+  Arduino port : /dev/serial0
+  Walker width : 0.64m + 2x0.1m margin = 0.8400000000000001m
+  Debug display: OFF
+  TTS          : ON
+  Snaps        : OFF
+  LiDAR role   : STOP/front only (camera steers)
+============================================================
+[TTS] Cached: stop.wav
+[TTS] Cached: free_mode.wav
+[TTS] Cached: go_forward.wav
+[TTS] Cached: slight_left.wav
+[TTS] Cached: turn_left.wav
+[TTS] Cached: hard_left.wav
+[TTS] Cached: slight_right.wav
+[TTS] Cached: turn_right.wav
+[TTS] Cached: hard_right.wav
+[TTS] Cached: system_authorized.wav
+[TTS] Cached: system_locked.wav
+[TTS] Pre-cache complete: 11/11 phrases ready
+[Visualizer] Disabled
+[Serial] Connected: /dev/serial0 @ 9600
+[LiDAR] backend=auto: trying direct serial (RPLIDAR C1)...[TTS] Engine ready
+
+[LiDAR] direct-serial: port='/dev/ttyUSB0' baud=460800
+[LiDAR] Flushing '/dev/ttyUSB0' and waiting 3 s for C1 motor spin-up...
+[Pipeline] Creating...
+[LiDAR] direct-serial: descriptor OK - scan running
+[Snaps] Disabled
+[Pipeline] Created. Starting...
+[Pipeline] Running. Waiting for RFID authorization...
+[Arduino -> Pi] STATUS:AUTHORIZED
+[System] [OK] AUTHORIZED - navigation begins when ready
+[TTS worker] saying: System authorized
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: System authorized
+[Arduino -> Pi] STATUS:FREE
+[Publisher] (none) -> STOP | STOP: no valid group width | stable_count=1 | depth_mm=1316
+[TTS] suppressed soft STOP (depth=1316mm > 700mm)
+[Serial -> Arduino] CMD:STOP
+[Publisher] STOP_HOLD 0.10s / 1.0s stable=2
+[Publisher] STOP_HOLD 0.19s / 1.0s stable=3
+[Publisher] STOP_HOLD 0.28s / 1.0s stable=4
+[Publisher] STOP_HOLD 0.38s / 1.0s stable=5
+[Publisher] STOP_HOLD 0.49s / 1.0s stable=6
+[Publisher] STOP_HOLD 0.61s / 1.0s stable=7
+[Publisher] STOP_HOLD 0.75s / 1.0s stable=8
+[Publisher] STOP_HOLD 0.85s / 1.0s stable=9
+[Publisher] STOP_HOLD 0.97s / 1.0s stable=10
+[Publisher] STOP -> FREE reason=RECOVERY_FREE held=1.07s stable=11
+[Publisher] STOP -> FREE | RECOVERY_FREE | stable_count=11 | depth_mm=1316
+[Serial -> Arduino] CMD:FREE
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Arduino -> Pi] STATUS:STOPPED
+[Arduino -> Pi] STATUS:FREE
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Status] f=200 auth=True ready=True cmd=STOP conf=82% groups=1/0 target=- lidar_front=1390mm
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] FREE -> STOP | STOP: no valid group width | stable_count=42 | depth_mm=1137
+[Serial -> Arduino] CMD:STOP
+[Publisher] STOP_HOLD 0.10s / 1.0s stable=43
+[Publisher] STOP_HOLD 0.20s / 1.0s stable=44
+[Publisher] STOP_HOLD 0.28s / 1.0s stable=45
+[Publisher] STOP_HOLD 0.38s / 1.0s stable=46
+[Publisher] STOP_HOLD 0.48s / 1.0s stable=47
+[Publisher] STOP_HOLD 0.59s / 1.0s stable=48
+[Publisher] STOP_HOLD 0.69s / 1.0s stable=49
+[Publisher] STOP_HOLD 0.78s / 1.0s stable=50
+[Publisher] STOP_HOLD 0.87s / 1.0s stable=51
+[Publisher] STOP_HOLD 0.97s / 1.0s stable=52
+[Publisher] STOP -> FREE reason=RECOVERY_FREE held=1.06s stable=53
+[Serial -> Arduino] CMD:FREE
+[Publisher] STOP -> FREE | RECOVERY_FREE | stable_count=53 | depth_mm=990
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Arduino -> Pi] STATUS:STOPPED
+[Arduino -> Pi] STATUS:FREE
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] FREE -> STOP | STOP: no valid group width | stable_count=86 | depth_mm=673
+[Serial -> Arduino] CMD:STOP
+[Publisher] STOP_HOLD 0.07s / 1.0s stable=87
+[Publisher] STOP_HOLD 0.16s / 1.0s stable=88[TTS worker] saying: Stop
+
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[Publisher] STOP_HOLD 0.35s / 1.0s stable=89
+[Publisher] STOP_HOLD 0.60s / 1.0s stable=90
+[Publisher] CRITICAL_STOP held=0.69s depth=586mm stable=91
+[Publisher] CRITICAL_STOP held=0.82s depth=585mm stable=92
+[Publisher] CRITICAL_STOP held=0.92s depth=589mm stable=93
+[Publisher] CRITICAL_STOP held=1.01s depth=586mm stable=94
+[Publisher] CRITICAL_STOP held=1.13s depth=591mm stable=95
+[Arduino -> Pi] STATUS:STOPPED
+[Publisher] CRITICAL_STOP held=1.23s depth=589mm stable=96
+[Publisher] CRITICAL_STOP held=1.33s depth=590mm stable=97
+[Publisher] CRITICAL_STOP held=1.43s depth=577mm stable=98
+[Publisher] CRITICAL_STOP held=1.63s depth=590mm stable=99
+[Publisher] CRITICAL_STOP held=1.76s depth=578mm stable=100
+[Publisher] CRITICAL_STOP held=1.84s depth=581mm stable=101
+[Publisher] CRITICAL_STOP held=1.93s depth=590mm stable=102
+[Publisher] CRITICAL_STOP held=2.02s depth=587mm stable=103
+[Publisher] CRITICAL_STOP held=2.13s depth=589mm stable=104
+[Publisher] CRITICAL_STOP held=2.24s depth=582mm stable=105
+[Publisher] CRITICAL_STOP held=2.36s depth=584mm stable=106
+[Publisher] CRITICAL_STOP held=2.48s depth=590mm stable=107
+[Publisher] CRITICAL_STOP held=2.60s depth=581mm stable=108
+[Publisher] CRITICAL_STOP held=2.71s depth=587mm stable=109
+[Publisher] CRITICAL_STOP held=2.79s depth=590mm stable=110
+[Publisher] CRITICAL_STOP held=2.92s depth=579mm stable=111
+[Publisher] CRITICAL_STOP held=3.02s depth=584mm stable=112
+[Publisher] CRITICAL_STOP held=3.11s depth=591mm stable=113
+[Publisher] CRITICAL_STOP held=3.19s depth=579mm stable=114
+[TTS worker] saying: Stop
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[Publisher] CRITICAL_STOP held=3.34s depth=583mm stable=115
+[Publisher] CRITICAL_STOP held=3.55s depth=581mm stable=116
+[Publisher] CRITICAL_STOP held=3.67s depth=579mm stable=117
+[Publisher] CRITICAL_STOP held=3.77s depth=587mm stable=118
+[Publisher] CRITICAL_STOP held=3.89s depth=573mm stable=119
+[Publisher] CRITICAL_STOP held=4.01s depth=581mm stable=120
+[Publisher] CRITICAL_STOP held=4.11s depth=598mm stable=121
+[Publisher] CRITICAL_STOP held=4.24s depth=587mm stable=122
+[Publisher] CRITICAL_STOP held=4.34s depth=583mm stable=123
+[Publisher] STOP -> FREE reason=RECOVERY_FREE held=4.43s stable=124
+[Publisher] STOP -> FREE | RECOVERY_FREE | stable_count=124 | depth_mm=629
+[Serial -> Arduino] CMD:FREE
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Arduino -> Pi] STATUS:FREE
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Decision] Camera narrow escape -> LEFT (safety=1.12 vs CENTER=1.01)
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] FREE -> GO:CENTER | GO:CENTER: active recenter needed (p20=1393mm streak=4/6 conf=0.75) | stable_count=4 | depth_mm=1375
 [TTS] speaking: Go forward
-[Serial -> Arduino] CMD:GO:CENTER
 [TTS worker] saying: Go forward
+[Serial -> Arduino] CMD:GO:CENTER
 [TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
 [TTS] falling back to espeak-ng for: Go forward
 [Arduino -> Pi] STATUS:ASSIST
 [Arduino -> Pi] STATUS:MOVING:CENTER
-[Publisher] COOLDOWN GO:CENTER -> FREE held=417ms < 800ms stable=2
-[Publisher] COOLDOWN GO:CENTER -> FREE held=508ms < 800ms stable=3
-[Publisher] COOLDOWN GO:CENTER -> FREE held=588ms < 800ms stable=4
-[Publisher] COOLDOWN GO:CENTER -> FREE held=675ms < 800ms stable=5
-[Publisher] COOLDOWN GO:CENTER -> FREE held=757ms < 800ms stable=1
-[Publisher] GO:CENTER -> FREE | FREE: exit-hold bad_streak=1/2 | stable_count=1 | depth_mm=1417
-[Serial -> Arduino] CMD:FREE
 [Arduino -> Pi] STATUS:REACHED
-[Arduino -> Pi] STATUS:FREE
-[TTS worker] saying: Stop
-[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
-[TTS] falling back to espeak-ng for: Stop
-[Publisher] FREE -> FREE | STOP: no valid group width | stable_count=1 | depth_mm=420
+[Publisher] GO:CENTER -> FREE | FREE: clear path (p20=1470mm streak=6/6 conf=0.87) | stable_count=1 | depth_mm=1206
 [Serial -> Arduino] CMD:FREE
-[TTS] speaking: Free mode
 [Arduino -> Pi] STATUS:FREE
+[TTS] speaking: Free mode
 [TTS worker] saying: Free mode
 [TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
 [TTS] falling back to espeak-ng for: Free mode
-[Publisher] FREE -> FREE | FREE: exit-hold bad_streak=1/2 | stable_count=1 | depth_mm=976
+[Publisher] FREE -> FREE | FREE: exit-hold bad_streak=1/2 | stable_count=1 | depth_mm=982
 [Serial -> Arduino] CMD:FREE
-[Decision] Side zone R2 preferred: safety=1.13 vs CENTER=0.88
-[TTS worker] saying: Stop
+[Arduino -> Pi] STATUS:FREE
+[Status] f=400 auth=True ready=True cmd=FREE conf=86% groups=1/1 target=CENTER lidar_front=1450mm
+[Publisher] FREE -> FREE | FREE: clear path (p20=1439mm streak=20/6 conf=0.89) | stable_count=16 | depth_mm=1422
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[Publisher] FREE -> FREE | FREE: clear path (p20=1412mm streak=15/6 conf=0.90) | stable_count=11 | depth_mm=1412
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[Publisher] FREE -> FREE | GO:CENTER: active recenter needed (p20=1419mm streak=1/6 conf=0.79) | stable_count=1 | depth_mm=1419
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[Decision] Camera narrow escape -> L2 (safety=1.08 vs CENTER=0.98)
+[Decision] Camera narrow escape -> RIGHT (safety=1.11 vs CENTER=0.91)
+[Decision] Camera narrow escape -> L2 (safety=1.07 vs CENTER=0.87)
+[Publisher] FREE -> FREE | FREE: exit-hold bad_streak=1/2 | stable_count=1 | depth_mm=1042
+[Serial -> Arduino] CMD:FREE
+[Decision] Camera narrow escape -> L2 (safety=1.05 vs CENTER=0.86)
+[Arduino -> Pi] STATUS:FREE
+[Decision] Camera narrow escape -> L2 (safety=1.05 vs CENTER=0.83)
+[Publisher] COOLDOWN FREE -> GO:L2 held=201ms < 800ms stable=2
+[TTS] speaking: Turn left
+[TTS worker] saying: Turn left
 [TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
-[TTS] falling back to espeak-ng for: Stop
-[Arduino -> Pi] STATUS:FREE
-[Status] f=400 auth=True ready=True cmd=FREE conf=71% groups=1/0 target=- lidar_front=3270mm
-[Publisher] FREE -> FREE | FREE: exit-hold bad_streak=1/2 | stable_count=1 | depth_mm=1395
-[Serial -> Arduino] CMD:FREE
-[Arduino -> Pi] STATUS:FREE
-[Publisher] FREE -> FREE | FREE: exit-hold bad_streak=1/2 | stable_count=7 | depth_mm=1401
-[Serial -> Arduino] CMD:FREE
-[Arduino -> Pi] STATUS:FREE
-[Publisher] FREE -> FREE | GO:RIGHT: center weak, right safer (conf=0.78) | stable_count=1 | depth_mm=1016
-[Serial -> Arduino] CMD:FREE
-[Decision] Side zone RIGHT preferred: safety=1.14 vs CENTER=0.93
-[Decision] Side zone RIGHT preferred: safety=1.14 vs CENTER=0.89
-[Publisher] COOLDOWN FREE -> GO:RIGHT held=227ms < 800ms stable=2
+[TTS] falling back to espeak-ng for: Turn left
+[Decision] Camera narrow escape -> L2 (safety=1.05 vs CENTER=0.81)
+[Publisher] COOLDOWN FREE -> GO:L2 held=341ms < 800ms stable=3
+[Decision] Camera narrow escape -> R2 (safety=1.09 vs CENTER=0.78)
+[Publisher] COOLDOWN FREE -> GO:L2 held=430ms < 800ms stable=1
+[Decision] Camera narrow escape -> R2 (safety=1.10 vs CENTER=0.76)
+[Publisher] COOLDOWN FREE -> GO:L2 held=564ms < 800ms stable=2
+[Decision] Camera narrow escape -> R1 (safety=1.08 vs CENTER=0.72)
+[Publisher] COOLDOWN FREE -> GO:L2 held=705ms < 800ms stable=1
+[Decision] Side zone R2 preferred: safety=1.11 vs CENTER=0.68
+[Decision] Camera narrow escape -> R2 (safety=1.11 vs CENTER=0.68)
+[Publisher] COOLDOWN FREE -> GO:L2 held=794ms < 800ms stable=1
+[Decision] Camera narrow escape -> R2 (safety=1.11 vs CENTER=0.65)
+[Publisher] FREE -> GO:R2 | GO:R2: camera narrow escape (group too narrow, R2 open) | stable_count=2 | depth_mm=832
+[Serial -> Arduino] CMD:GO:R2
+[Decision] Camera narrow escape -> R2 (safety=1.11 vs CENTER=0.62)
+[Decision] Camera narrow escape -> R2 (safety=1.11 vs CENTER=0.59)
+[Decision] Camera narrow escape -> R2 (safety=1.12 vs CENTER=0.57)
+[Arduino -> Pi] STATUS:ASSIST
+[Arduino -> Pi] STATUS:MOVING:R2
+[Arduino -> Pi] STATUS:AT_TARGET
+[Decision] Camera narrow escape -> R2 (safety=1.12 vs CENTER=0.53)
+[Decision] Camera narrow escape -> R2 (safety=1.12 vs CENTER=0.48)
+[Decision] Camera narrow escape -> RIGHT (safety=1.10 vs CENTER=0.45)
+[Decision] Camera narrow escape -> R2 (safety=1.09 vs CENTER=0.45)
+[Decision] Camera narrow escape -> R2 (safety=1.10 vs CENTER=0.43)
+[Decision] Camera narrow escape -> RIGHT (safety=1.09 vs CENTER=0.42)
+[Decision] Side zone R2 preferred: safety=1.09 vs CENTER=0.41
+[Decision] Camera narrow escape -> R2 (safety=1.09 vs CENTER=0.41)
+[Decision] Camera narrow escape -> RIGHT (safety=1.06 vs CENTER=0.42)
+[Decision] Camera narrow escape -> R2 (safety=1.07 vs CENTER=0.42)
+[Decision] Camera narrow escape -> L2 (safety=1.06 vs CENTER=0.43)
+[Decision] Camera narrow escape -> L2 (safety=1.05 vs CENTER=0.43)
+[Publisher] GO:R2 -> GO:L2 | GO:L2: camera narrow escape (group too narrow, L2 open) | stable_count=2 | depth_mm=790
+[Serial -> Arduino] CMD:GO:L2
+[Decision] Camera narrow escape -> RIGHT (safety=1.09 vs CENTER=0.43)
+[Decision] Camera narrow escape -> RIGHT (safety=1.07 vs CENTER=0.44)
+[Decision] Side zone RIGHT preferred: safety=1.08 vs CENTER=0.44
+[Decision] Camera narrow escape -> RIGHT (safety=1.08 vs CENTER=0.44)
+[Decision] Side zone R2 preferred: safety=1.07 vs CENTER=0.45
+[Decision] Camera narrow escape -> R2 (safety=1.07 vs CENTER=0.45)
+[Decision] Side zone R2 preferred: safety=1.08 vs CENTER=0.46
+[Decision] Camera narrow escape -> R2 (safety=1.08 vs CENTER=0.46)
+[Arduino -> Pi] STATUS:MOVING:L2
+[Decision] Camera narrow escape -> RIGHT (safety=1.09 vs CENTER=0.48)
+[Decision] Side zone RIGHT preferred: safety=1.09 vs CENTER=0.48
+[Decision] Camera narrow escape -> RIGHT (safety=1.09 vs CENTER=0.48)
+[Decision] Camera narrow escape -> RIGHT (safety=1.08 vs CENTER=0.47)
+[Decision] Camera narrow escape -> RIGHT (safety=1.08 vs CENTER=0.49)
+[Publisher] COOLDOWN GO:L2 -> GO:RIGHT held=712ms < 800ms stable=4
+[Decision] Camera narrow escape -> RIGHT (safety=1.08 vs CENTER=0.54)
+[Publisher] GO:L2 -> GO:RIGHT | GO:RIGHT: camera narrow escape (group too narrow, RIGHT open) | stable_count=5 | depth_mm=694[Serial -> Arduino] CMD:GO:RIGHT
+
+[Decision] Side zone RIGHT preferred: safety=1.08 vs CENTER=0.57
+[Decision] Camera narrow escape -> RIGHT (safety=1.08 vs CENTER=0.57)
+[Decision] Camera narrow escape -> R2 (safety=1.04 vs CENTER=0.59)
 [TTS] speaking: Hard right
 [TTS worker] saying: Hard right
 [TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
 [TTS] falling back to espeak-ng for: Hard right
-[Arduino -> Pi] STATUS:FREE
-[Decision] Side zone RIGHT preferred: safety=1.14 vs CENTER=0.89
-[Publisher] COOLDOWN FREE -> GO:RIGHT held=467ms < 800ms stable=3
-[Publisher] COOLDOWN FREE -> GO:RIGHT held=633ms < 800ms stable=1
-[Decision] Side zone RIGHT preferred: safety=1.12 vs CENTER=0.73
-[Publisher] COOLDOWN FREE -> GO:RIGHT held=721ms < 800ms stable=1
-[Publisher] FREE -> GO:RIGHT | STOP: no valid group width | stable_count=1 | depth_mm=839
-[Serial -> Arduino] CMD:GO:RIGHT
-[Arduino -> Pi] STATUS:ASSIST
-[Publisher] COOLDOWN GO:RIGHT -> STOP held=261ms < 800ms stable=4
-[Publisher] COOLDOWN GO:RIGHT -> STOP held=348ms < 800ms stable=5
-[Decision] Side zone RIGHT preferred: safety=1.13 vs CENTER=0.90
-[Publisher] COOLDOWN GO:RIGHT -> STOP held=428ms < 800ms stable=1
-[Publisher] COOLDOWN GO:RIGHT -> STOP held=521ms < 800ms stable=1
+[Decision] Camera narrow escape -> RIGHT (safety=1.08 vs CENTER=0.61)
+[Decision] Camera narrow escape -> RIGHT (safety=1.09 vs CENTER=0.65)
+[Decision] Camera narrow escape -> RIGHT (safety=1.07 vs CENTER=0.70)
+[Arduino -> Pi] STATUS:REACHED
 [Arduino -> Pi] STATUS:MOVING:RIGHT
-[Arduino -> Pi] STATUS:AT_TARGET
-[Publisher] COOLDOWN GO:RIGHT -> STOP held=624ms < 800ms stable=1
-[Publisher] COOLDOWN GO:RIGHT -> STOP held=731ms < 800ms stable=2
-[Publisher] GO:RIGHT -> STOP | GO:RIGHT: center weak, right safer (conf=0.77) | stable_count=1 | depth_mm=703
-[Serial -> Arduino] CMD:STOP
-[Publisher] STOP_HOLD 0.10s / 1.0s stable=1
-[Publisher] STOP_HOLD 0.18s / 1.0s stable=2
-[Publisher] STOP_HOLD 0.27s / 1.0s stable=3
-[Publisher] STOP_HOLD 0.44s / 1.0s stable=4
-[Publisher] STOP_HOLD 0.54s / 1.0s stable=5
-[Publisher] STOP_HOLD 0.62s / 1.0s stable=6
-[Publisher] STOP_HOLD 0.71s / 1.0s stable=7
-[Publisher] STOP_HOLD 0.79s / 1.0s stable=8
-[Publisher] STOP_HOLD 0.87s / 1.0s stable=9
-[Publisher] STOP_HOLD 0.97s / 1.0s stable=10
-[Publisher] STOP -> FREE reason=RECOVERY_FREE held=1.05s stable=11
-[Publisher] STOP -> FREE | RECOVERY_FREE | stable_count=11 | depth_mm=676
-[Serial -> Arduino] CMD:FREE
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Arduino -> Pi] STATUS:STOPPED
-[Arduino -> Pi] STATUS:FREE
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[TTS] speaking: Stop
-[TTS worker] saying: Stop
-[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
-[TTS] falling back to espeak-ng for: Stop
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] FREE -> STOP | STOP: no valid group width | stable_count=9 | depth_mm=598
-[Serial -> Arduino] CMD:STOP
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] STOP_HOLD 0.83s / 1.0s stable=1
-[Publisher] STOP_HOLD 0.90s / 1.0s stable=2
-[Publisher] STOP_HOLD 0.98s / 1.0s stable=1
-[Publisher] STOP -> FREE reason=RECOVERY_FREE held=1.06s stable=1
-[Publisher] STOP -> FREE | RECOVERY_FREE | stable_count=1 | depth_mm=1356
-[Serial -> Arduino] CMD:FREE
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Arduino -> Pi] STATUS:STOPPED
-[Arduino -> Pi] STATUS:FREE
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] FREE -> STOP | STOP: no valid group width | stable_count=29 | depth_mm=657
-[Serial -> Arduino] CMD:STOP
-[Publisher] STOP_HOLD 0.09s / 1.0s stable=30
-[Publisher] STOP_HOLD 0.16s / 1.0s stable=31
-[Publisher] STOP_HOLD 0.25s / 1.0s stable=32
-[Publisher] STOP_HOLD 0.46s / 1.0s stable=35
-[Publisher] STOP_HOLD 0.53s / 1.0s stable=36
-[Publisher] STOP_HOLD 0.61s / 1.0s stable=37
-[Publisher] STOP_HOLD 0.68s / 1.0s stable=38
-[Publisher] STOP_HOLD 0.76s / 1.0s stable=39
-[Publisher] STOP_HOLD 0.85s / 1.0s stable=40
-[Publisher] STOP_HOLD 0.93s / 1.0s stable=41
-[Publisher] STOP_HOLD 0.99s / 1.0s stable=42
-[Publisher] STOP -> FREE reason=RECOVERY_FREE held=1.07s stable=43
-[Publisher] STOP -> FREE | RECOVERY_FREE | stable_count=43 | depth_mm=649
-[Serial -> Arduino] CMD:FREE
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Arduino -> Pi] STATUS:STOPPED
-[Arduino -> Pi] STATUS:FREE
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R2 preferred: safety=1.11 vs CENTER=0.46
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone RIGHT preferred: safety=1.10 vs CENTER=0.38
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R2 preferred: safety=1.09 vs CENTER=0.34
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R2 preferred: safety=1.11 vs CENTER=0.33
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] FREE -> GO:R2 | GO:R2: center weak, right safer (conf=0.75) | stable_count=2 | depth_mm=656
+[Decision] Camera narrow escape -> L1 (safety=1.09 vs CENTER=0.70)
+[Decision] Camera narrow escape -> L1 (safety=1.09 vs CENTER=0.68)
+[Publisher] GO:RIGHT -> GO:L1 | GO:L1: camera narrow escape (group too narrow, L1 open) | stable_count=2 | depth_mm=711
+[Serial -> Arduino] CMD:GO:L1
+[Decision] Camera narrow escape -> RIGHT (safety=1.08 vs CENTER=0.65)
+[Decision] Camera narrow escape -> RIGHT (safety=1.09 vs CENTER=0.63)
+[Decision] Camera narrow escape -> RIGHT (safety=1.09 vs CENTER=0.61)
+[Decision] Camera narrow escape -> L1 (safety=1.05 vs CENTER=0.58)
+[Decision] Camera narrow escape -> RIGHT (safety=1.08 vs CENTER=0.56)
+[Decision] Side zone RIGHT preferred: safety=1.07 vs CENTER=0.55
+[Decision] Camera narrow escape -> RIGHT (safety=1.07 vs CENTER=0.55)
+[Decision] Camera narrow escape -> L2 (safety=1.07 vs CENTER=0.48)
+[Decision] Side zone RIGHT preferred: safety=1.09 vs CENTER=0.47
+[Decision] Camera narrow escape -> RIGHT (safety=1.09 vs CENTER=0.47)
+[Decision] Side zone RIGHT preferred: safety=1.09 vs CENTER=0.48
+[Decision] Camera narrow escape -> RIGHT (safety=1.09 vs CENTER=0.48)
+[Publisher] GO:L1 -> GO:RIGHT | GO:RIGHT: center weak, right safer (conf=0.78) | stable_count=2 | depth_mm=788
+[Serial -> Arduino] CMD:GO:RIGHT
+[Decision] Camera narrow escape -> R2 (safety=1.08 vs CENTER=0.45)
+[Decision] Camera narrow escape -> L2 (safety=1.08 vs CENTER=0.46)
+[Decision] Camera narrow escape -> L2 (safety=1.06 vs CENTER=0.49)
+[Decision] Camera narrow escape -> L2 (safety=1.07 vs CENTER=0.46)
+[Arduino -> Pi] STATUS:REACHED
+[Arduino -> Pi] STATUS:MOVING:L1
+[Decision] Camera narrow escape -> R2 (safety=1.09 vs CENTER=0.42)
+[Decision] Camera narrow escape -> R2 (safety=1.08 vs CENTER=0.43)
+[Decision] Side zone R2 preferred: safety=1.09 vs CENTER=0.46
+[Decision] Camera narrow escape -> R2 (safety=1.09 vs CENTER=0.46)
+[Decision] Side zone RIGHT preferred: safety=1.08 vs CENTER=0.46
+[Decision] Camera narrow escape -> L2 (safety=1.08 vs CENTER=0.46)
+[Decision] Camera narrow escape -> RIGHT (safety=1.09 vs CENTER=0.47)
+[Decision] Camera narrow escape -> RIGHT (safety=1.09 vs CENTER=0.48)
+[Decision] Camera narrow escape -> R2 (safety=1.07 vs CENTER=0.48)
+[Decision] Camera narrow escape -> R2 (safety=1.07 vs CENTER=0.49)
+[Publisher] GO:RIGHT -> GO:R2 | GO:R2: camera narrow escape (group too narrow, R2 open) | stable_count=2 | depth_mm=697
+[Serial -> Arduino] CMD:GO:R2
+[Decision] Camera narrow escape -> L1 (safety=1.05 vs CENTER=0.55)
+[Decision] Camera narrow escape -> R2 (safety=1.06 vs CENTER=0.56)
+[Decision] Camera narrow escape -> R2 (safety=1.04 vs CENTER=0.57)
+[Decision] Camera narrow escape -> RIGHT (safety=1.05 vs CENTER=0.59)
+[Decision] Camera narrow escape -> RIGHT (safety=1.07 vs CENTER=0.58)
+[Arduino -> Pi] STATUS:REACHED
+[Arduino -> Pi] STATUS:MOVING:RIGHT
+[Decision] Camera narrow escape -> RIGHT (safety=1.08 vs CENTER=0.59)
 [TTS] speaking: Turn right
 [TTS worker] saying: Turn right
-[Serial -> Arduino] CMD:GO:R2
 [TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
 [TTS] falling back to espeak-ng for: Turn right
-[Status] f=600 auth=True ready=True cmd=GO:R2 conf=64% groups=1/0 target=- lidar_front=688mm
-[Arduino -> Pi] STATUS:ASSIST
-[Arduino -> Pi] STATUS:MOVING:R2
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R2 preferred: safety=1.09 vs CENTER=0.63
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Decision] Camera narrow escape -> RIGHT (safety=1.10 vs CENTER=0.52)
+[Decision] Camera narrow escape -> RIGHT (safety=1.11 vs CENTER=0.50)
+[Publisher] GO:R2 -> GO:RIGHT | GO:RIGHT: camera narrow escape (group too narrow, RIGHT open) | stable_count=5 | depth_mm=818
+[Serial -> Arduino] CMD:GO:RIGHT
+[Decision] Camera narrow escape -> R2 (safety=1.11 vs CENTER=0.58)
+[Decision] Side zone R2 preferred: safety=1.11 vs CENTER=0.67
+[Decision] Camera narrow escape -> R2 (safety=1.11 vs CENTER=0.67)
+[Decision] Side zone R2 preferred: safety=1.12 vs CENTER=0.70
+[Decision] Camera narrow escape -> R2 (safety=1.12 vs CENTER=0.70)
+[Decision] Side zone R2 preferred: safety=1.10 vs CENTER=0.75
+[Decision] Camera narrow escape -> R2 (safety=1.10 vs CENTER=0.75)
+[Decision] Side zone R2 preferred: safety=1.10 vs CENTER=0.87
+[Decision] Camera narrow escape -> R2 (safety=1.10 vs CENTER=0.87)
 [Arduino -> Pi] STATUS:REACHED
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R2 preferred: safety=1.10 vs CENTER=0.50
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] GO:R2 -> STOP | STOP: no valid group width | stable_count=5 | depth_mm=724
-[Serial -> Arduino] CMD:STOP
-[Publisher] STOP_HOLD 0.08s / 1.0s stable=6
-[Publisher] STOP_HOLD 0.15s / 1.0s stable=7
-[Publisher] STOP_HOLD 0.23s / 1.0s stable=8
-[Publisher] STOP_HOLD 0.30s / 1.0s stable=9
-[Publisher] STOP_HOLD 0.37s / 1.0s stable=10
-[Publisher] STOP_HOLD 0.44s / 1.0s stable=11
-[Publisher] STOP_HOLD 0.51s / 1.0s stable=12
-[Publisher] STOP_HOLD 0.59s / 1.0s stable=13
-[Publisher] STOP_HOLD 0.67s / 1.0s stable=14
-[Publisher] STOP_HOLD 0.75s / 1.0s stable=15
-[Publisher] STOP_HOLD 0.82s / 1.0s stable=16
-[Publisher] STOP_HOLD 0.90s / 1.0s stable=17
+[Arduino -> Pi] STATUS:MOVING:R2
+[Arduino -> Pi] STATUS:REACHED
+[Decision] Camera narrow escape -> RIGHT (safety=1.11 vs CENTER=0.93)
+[Decision] Camera narrow escape -> RIGHT (safety=1.10 vs CENTER=0.92)
+[Decision] Camera narrow escape -> RIGHT (safety=1.10 vs CENTER=0.86)
+[Decision] Camera narrow escape -> R2 (safety=1.10 vs CENTER=0.84)
+[Decision] Camera narrow escape -> RIGHT (safety=1.10 vs CENTER=0.85)
+[Decision] Camera narrow escape -> RIGHT (safety=1.10 vs CENTER=0.88)
+[Arduino -> Pi] STATUS:MOVING:RIGHT
+[Arduino -> Pi] STATUS:REACHED
+[Decision] Camera narrow escape -> RIGHT (safety=1.11 vs CENTER=0.93)
+[Decision] Camera narrow escape -> RIGHT (safety=1.11 vs CENTER=0.93)
+[Decision] Camera narrow escape -> RIGHT (safety=1.11 vs CENTER=0.92)
+[Decision] Camera narrow escape -> RIGHT (safety=1.10 vs CENTER=0.93)
+[Decision] Camera narrow escape -> RIGHT (safety=1.10 vs CENTER=0.94)
+[Decision] Camera narrow escape -> RIGHT (safety=1.11 vs CENTER=0.97)
+[Publisher] GO:RIGHT -> GO:CENTER | GO:CENTER: active recenter needed (p20=1421mm streak=2/6 conf=0.77) | stable_count=2 | depth_mm=858
+[Serial -> Arduino] CMD:GO:CENTER
+[Arduino -> Pi] STATUS:MOVING:CENTER
+[Publisher] COOLDOWN GO:CENTER -> STOP held=515ms < 800ms stable=4
+[Status] f=600 auth=True ready=True cmd=STOP conf=69% groups=1/0 target=- lidar_front=763mm
+[Publisher] COOLDOWN GO:CENTER -> STOP held=582ms < 800ms stable=5
+[Publisher] COOLDOWN GO:CENTER -> STOP held=655ms < 800ms stable=6
+[Publisher] COOLDOWN GO:CENTER -> STOP held=756ms < 800ms stable=1
 [TTS] speaking: Stop
 [TTS worker] saying: Stop
 [TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
 [TTS] falling back to espeak-ng for: Stop
-[Publisher] STOP -> FREE reason=RECOVERY_FREE held=1.03s stable=18
-[Publisher] STOP -> FREE | RECOVERY_FREE | stable_count=18 | depth_mm=701
-[Serial -> Arduino] CMD:FREE
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Decision] Side zone RIGHT preferred: safety=1.10 vs CENTER=0.87
+[Decision] Camera narrow escape -> RIGHT (safety=1.10 vs CENTER=0.87)
+[Publisher] GO:CENTER -> STOP | GO:RIGHT: center weak, right safer (conf=0.84) | stable_count=1 | depth_mm=744
+[Serial -> Arduino] CMD:STOP
+[Decision] Camera narrow escape -> R2 (safety=1.10 vs CENTER=0.63)
+[Publisher] STOP_HOLD 0.19s / 1.0s stable=1
+[Arduino -> Pi] STATUS:REACHED
+[Decision] Camera narrow escape -> RIGHT (safety=1.08 vs CENTER=0.55)
+[Publisher] STOP_HOLD 0.28s / 1.0s stable=1
+[Decision] Camera narrow escape -> L2 (safety=1.08 vs CENTER=0.59)
+[Publisher] STOP_HOLD 0.36s / 1.0s stable=1
+[Decision] Camera narrow escape -> LEFT (safety=1.07 vs CENTER=0.60)
+[Publisher] STOP_HOLD 0.44s / 1.0s stable=1
+[Decision] Side zone R2 preferred: safety=1.11 vs CENTER=0.66
+[Decision] Camera narrow escape -> R2 (safety=1.11 vs CENTER=0.66)
+[Publisher] STOP_HOLD 0.54s / 1.0s stable=1
+[Decision] Side zone R2 preferred: safety=1.10 vs CENTER=0.70
+[Decision] Camera narrow escape -> R2 (safety=1.10 vs CENTER=0.70)
+[Publisher] COOLDOWN STOP -> GO:R2 held=629ms < 800ms stable=2
+[Decision] Side zone RIGHT preferred: safety=1.10 vs CENTER=0.81
+[Decision] Camera narrow escape -> RIGHT (safety=1.10 vs CENTER=0.81)
+[Publisher] COOLDOWN STOP -> GO:R2 held=708ms < 800ms stable=3
+[Decision] Camera narrow escape -> RIGHT (safety=1.08 vs CENTER=0.82)
+[Publisher] COOLDOWN STOP -> GO:R2 held=797ms < 800ms stable=1
+[Decision] Camera narrow escape -> R1 (safety=1.06 vs CENTER=0.82)
+[Publisher] STOP -> GO:R2 | GO:R1: camera narrow escape (group too narrow, R1 open) | stable_count=1 | depth_mm=759
+[Serial -> Arduino] CMD:GO:R2
+[Decision] Camera narrow escape -> RIGHT (safety=1.09 vs CENTER=0.82)
+[Decision] Camera narrow escape -> R2 (safety=1.09 vs CENTER=0.82)
 [Arduino -> Pi] STATUS:STOPPED
+[Arduino -> Pi] STATUS:MOVING:R2
+[Decision] Side zone R2 preferred: safety=1.09 vs CENTER=0.82
+[Decision] Camera narrow escape -> R2 (safety=1.09 vs CENTER=0.82)
+[Decision] Side zone RIGHT preferred: safety=1.09 vs CENTER=0.82
+[Decision] Camera narrow escape -> RIGHT (safety=1.09 vs CENTER=0.82)
+[Decision] Side zone R2 preferred: safety=1.10 vs CENTER=0.89
+[Decision] Camera narrow escape -> R2 (safety=1.10 vs CENTER=0.89)
+[Decision] Camera narrow escape -> R2 (safety=1.10 vs CENTER=0.93)
+[Arduino -> Pi] STATUS:REACHED
+[Publisher] GO:R2 -> GO:CENTER | GO:CENTER: active recenter needed (p20=1423mm streak=2/6 conf=0.81) | stable_count=2 | depth_mm=746
+[Serial -> Arduino] CMD:GO:CENTER
+[Publisher] COOLDOWN GO:CENTER -> STOP held=336ms < 800ms stable=4
+[Publisher] COOLDOWN GO:CENTER -> STOP held=410ms < 800ms stable=5
+[Arduino -> Pi] STATUS:MOVING:CENTER
+[Publisher] COOLDOWN GO:CENTER -> STOP held=516ms < 800ms stable=6
+[Publisher] COOLDOWN GO:CENTER -> STOP held=609ms < 800ms stable=1
+[Publisher] COOLDOWN GO:CENTER -> STOP held=698ms < 800ms stable=1
+[Publisher] COOLDOWN GO:CENTER -> STOP held=787ms < 800ms stable=2
+[Decision] Camera narrow escape -> RIGHT (safety=1.10 vs CENTER=0.90)
+[Publisher] GO:CENTER -> STOP | GO:RIGHT: camera narrow escape (group too narrow, RIGHT open) | stable_count=1 | depth_mm=765
+[Serial -> Arduino] CMD:STOP
+[Arduino -> Pi] STATUS:REACHED
+[Decision] Camera narrow escape -> R2 (safety=1.10 vs CENTER=0.84)
+[Publisher] STOP_HOLD 0.11s / 1.0s stable=1
+[Decision] Camera narrow escape -> LEFT (safety=1.08 vs CENTER=0.85)
+[Publisher] STOP_HOLD 0.21s / 1.0s stable=1
+[Decision] Camera narrow escape -> LEFT (safety=1.07 vs CENTER=0.86)
+[Publisher] STOP_HOLD 0.29s / 1.0s stable=2
+[Decision] Camera narrow escape -> RIGHT (safety=1.11 vs CENTER=0.86)
+[Publisher] STOP_HOLD 0.36s / 1.0s stable=1
+[Decision] Camera narrow escape -> RIGHT (safety=1.09 vs CENTER=0.86)
+[Publisher] COOLDOWN STOP -> GO:RIGHT held=450ms < 800ms stable=2
+[TTS] speaking: Hard right
+[TTS worker] saying: Hard right
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Hard right
+[Decision] Camera narrow escape -> R1 (safety=1.07 vs CENTER=0.86)
+[Publisher] COOLDOWN STOP -> GO:RIGHT held=616ms < 800ms stable=1
+[Decision] Camera narrow escape -> RIGHT (safety=1.09 vs CENTER=0.88)
+[Publisher] COOLDOWN STOP -> GO:RIGHT held=784ms < 800ms stable=1
+[Decision] Camera narrow escape -> RIGHT (safety=1.09 vs CENTER=0.86)
+[Publisher] STOP -> GO:RIGHT | GO:RIGHT: camera narrow escape (group too narrow, RIGHT open) | stable_count=2 | depth_mm=766
+[Serial -> Arduino] CMD:GO:RIGHT
+[Decision] Camera narrow escape -> RIGHT (safety=1.10 vs CENTER=0.86)
+[Decision] Camera narrow escape -> RIGHT (safety=1.09 vs CENTER=0.86)
+[Arduino -> Pi] STATUS:STOPPED
+[Decision] Side zone RIGHT preferred: safety=1.09 vs CENTER=0.87
+[Decision] Camera narrow escape -> RIGHT (safety=1.09 vs CENTER=0.87)
+[Decision] Camera narrow escape -> LEFT (safety=1.06 vs CENTER=0.86)
+[Decision] Side zone RIGHT preferred: safety=1.10 vs CENTER=0.87
+[Decision] Camera narrow escape -> RIGHT (safety=1.10 vs CENTER=0.87)
+[Decision] Camera narrow escape -> R2 (safety=1.09 vs CENTER=0.87)
+[Decision] Camera narrow escape -> LEFT (safety=1.08 vs CENTER=0.93)
+[Arduino -> Pi] STATUS:MOVING:RIGHT
+[Publisher] GO:RIGHT -> STOP | STOP: no valid group width | stable_count=4 | depth_mm=753
+[Serial -> Arduino] CMD:STOP
+[Arduino -> Pi] STATUS:REACHED
+[Publisher] STOP_HOLD 0.11s / 1.0s stable=5
+[Publisher] STOP_HOLD 0.24s / 1.0s stable=6
+[Publisher] STOP_HOLD 0.36s / 1.0s stable=7
+[Publisher] STOP_HOLD 0.45s / 1.0s stable=8
+[Publisher] STOP_HOLD 0.53s / 1.0s stable=9
+[Publisher] STOP_HOLD 0.60s / 1.0s stable=10
+[Publisher] STOP_HOLD 0.70s / 1.0s stable=11
+[Publisher] STOP_HOLD 0.77s / 1.0s stable=12
+[Publisher] STOP_HOLD 0.85s / 1.0s stable=13
+[Publisher] STOP_HOLD 0.93s / 1.0s stable=14
+[Publisher] STOP -> FREE reason=RECOVERY_FREE held=1.03s stable=15
+[Publisher] STOP -> FREE | RECOVERY_FREE | stable_count=15 | depth_mm=751
+[Arduino -> Pi] STATUS:STOPPED[Serial -> Arduino] CMD:FREE
+
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[TTS] suppressed soft STOP (depth=750mm > 700mm)
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO[Arduino -> Pi] STATUS:FREE
+
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO[TTS worker] saying: Stop
+
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] FREE -> FREE | STOP: no valid group width | stable_count=1 | depth_mm=1385
+[Serial -> Arduino] CMD:FREE
 [Arduino -> Pi] STATUS:FREE
-[Decision] Side zone R2 preferred: safety=1.10 vs CENTER=0.50
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
-[Decision] Side zone R2 preferred: safety=1.09 vs CENTER=0.50
+[Decision] Camera narrow escape -> LEFT (safety=1.12 vs CENTER=0.99)
+[Decision] Camera narrow escape -> LEFT (safety=1.10 vs CENTER=0.87)
+[TTS] speaking: Free mode
+[TTS worker] saying: Free mode
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Free mode
+[Publisher] FREE -> FREE | STOP: no valid group width | stable_count=1 | depth_mm=803
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[Publisher] FREE -> FREE | FREE: clear path (p20=1417mm streak=14/6 conf=0.89) | stable_count=9 | depth_mm=1410
+[Serial -> Arduino] CMD:FREE
+[Decision] Camera narrow escape -> LEFT (safety=1.14 vs CENTER=1.03)
+[Arduino -> Pi] STATUS:FREE
+[Decision] Camera narrow escape -> LEFT (safety=1.12 vs CENTER=1.00)
+[Decision] Camera narrow escape -> LEFT (safety=1.13 vs CENTER=0.99)
+[Decision] Camera narrow escape -> LEFT (safety=1.13 vs CENTER=0.94)
+[Decision] Camera narrow escape -> LEFT (safety=1.09 vs CENTER=0.93)
+[Decision] Camera narrow escape -> LEFT (safety=1.09 vs CENTER=0.94)
+[Decision] Camera narrow escape -> LEFT (safety=1.07 vs CENTER=0.95)
+[Decision] Camera narrow escape -> LEFT (safety=1.05 vs CENTER=0.95)
+[Publisher] FREE -> FREE | FREE: exit-hold bad_streak=1/2 | stable_count=1 | depth_mm=931
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[TTS worker] saying: Stop
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[Publisher] FREE -> FREE | STOP: no valid group width | stable_count=1 | depth_mm=551
+[Serial -> Arduino] CMD:FREE
+[Status] f=800 auth=True ready=True cmd=FREE conf=56% groups=0/0 target=- lidar_front=534mm
+[Arduino -> Pi] STATUS:FREE
+[Publisher] FREE -> FREE | FREE: exit-hold bad_streak=1/2 | stable_count=1 | depth_mm=1434
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[Publisher] FREE -> FREE | FREE: clear path (p20=1479mm streak=28/6 conf=0.90) | stable_count=24 | depth_mm=1462[Serial -> Arduino] CMD:FREE
+
+[Arduino -> Pi] STATUS:FREE
+[Publisher] FREE -> FREE | FREE: clear path (p20=1435mm streak=53/6 conf=0.87) | stable_count=6 | depth_mm=1255
+[Serial -> Arduino] CMD:FREE
+[Decision] Side zone RIGHT preferred: safety=1.13 vs CENTER=0.82
+[Decision] Camera narrow escape -> RIGHT (safety=1.13 vs CENTER=0.82)
+[Decision] Camera narrow escape -> R2 (safety=1.09 vs CENTER=0.70)
+[Decision] Camera narrow escape -> RIGHT (safety=1.11 vs CENTER=0.75)
+[TTS worker] saying: Stop
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[Decision] Camera narrow escape -> LEFT (safety=1.12 vs CENTER=0.95)
+[Decision] Camera narrow escape -> L2 (safety=1.12 vs CENTER=1.01)
+[Publisher] FREE -> FREE | FREE: exit-hold bad_streak=1/2 | stable_count=1 | depth_mm=365
+[Serial -> Arduino] CMD:FREE
+[Publisher] FREE -> FREE | FREE: exit-hold bad_streak=1/2 | stable_count=1 | depth_mm=339[Serial -> Arduino] CMD:FREE
+
+[Publisher] FREE -> FREE | FREE: exit-hold bad_streak=1/2 | stable_count=1 | depth_mm=384
+[Serial -> Arduino] CMD:FREE
+[Publisher] FREE -> FREE | STOP: no valid group width | stable_count=1 | depth_mm=384
+[Serial -> Arduino] CMD:FREE
+[Status] f=1000 auth=True ready=True cmd=FREE conf=53% groups=0/0 target=- lidar_front=332mm
+[Decision] Camera narrow escape -> R1 (safety=0.94 vs CENTER=0.35)
+[Decision] Camera narrow escape -> R1 (safety=0.90 vs CENTER=0.31)
+[Publisher] FREE -> GO:R1 | GO:R1: camera narrow escape (group too narrow, R1 open) | stable_count=2 | depth_mm=339
+[TTS] speaking: Slight right
+[TTS worker] saying: Slight right
+[Serial -> Arduino] CMD:GO:R1
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Slight right
+[Publisher] COOLDOWN GO:R1 -> STOP held=517ms < 800ms stable=4
+[Publisher] COOLDOWN GO:R1 -> STOP held=583ms < 800ms stable=5
+[Publisher] COOLDOWN GO:R1 -> STOP held=690ms < 800ms stable=6
+[Publisher] COOLDOWN GO:R1 -> STOP held=773ms < 800ms stable=7
+[Publisher] GO:R1 -> STOP | STOP: no valid group width | stable_count=8 | depth_mm=384
+[Serial -> Arduino] CMD:STOP
+[Publisher] CRITICAL_STOP held=0.09s depth=385mm stable=9
+[Publisher] CRITICAL_STOP held=0.17s depth=385mm stable=10
+[Publisher] CRITICAL_STOP held=0.25s depth=385mm stable=11
+[Publisher] CRITICAL_STOP held=0.36s depth=385mm stable=12
+[Publisher] CRITICAL_STOP held=0.44s depth=384mm stable=13
+[Publisher] CRITICAL_STOP held=0.52s depth=385mm stable=14
+[Publisher] CRITICAL_STOP held=0.61s depth=383mm stable=15
+[Publisher] CRITICAL_STOP held=0.70s depth=384mm stable=16
+[Publisher] CRITICAL_STOP held=0.77s depth=385mm stable=17
+[Publisher] CRITICAL_STOP held=0.85s depth=383mm stable=18
+[Publisher] CRITICAL_STOP held=0.94s depth=385mm stable=19
+[Publisher] CRITICAL_STOP held=1.09s depth=385mm stable=20
+[Publisher] CRITICAL_STOP held=1.18s depth=385mm stable=21
+[Publisher] CRITICAL_STOP held=1.26s depth=384mm stable=22
+[Publisher] CRITICAL_STOP held=1.34s depth=385mm stable=23
+[Publisher] CRITICAL_STOP held=1.42s depth=383mm stable=24
+[Publisher] CRITICAL_STOP held=1.50s depth=384mm stable=25
+[Publisher] CRITICAL_STOP held=1.58s depth=383mm stable=26
+[Publisher] CRITICAL_STOP held=1.66s depth=384mm stable=27
+[Publisher] CRITICAL_STOP held=1.73s depth=385mm stable=28
+[Publisher] CRITICAL_STOP held=1.82s depth=383mm stable=29
+[Publisher] CRITICAL_STOP held=1.90s depth=385mm stable=30
+[Publisher] CRITICAL_STOP held=1.98s depth=384mm stable=31
+[Publisher] CRITICAL_STOP held=2.06s depth=384mm stable=32
+[Publisher] CRITICAL_STOP held=2.13s depth=384mm stable=33
+[Publisher] CRITICAL_STOP held=2.20s depth=384mm stable=34
+[TTS] speaking: Stop
+[TTS worker] saying: Stop
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[Publisher] CRITICAL_STOP held=2.38s depth=384mm stable=35
+[Publisher] CRITICAL_STOP held=2.66s depth=384mm stable=36
+[Publisher] CRITICAL_STOP held=2.77s depth=383mm stable=37
+[Publisher] CRITICAL_STOP held=2.87s depth=385mm stable=38
+[Publisher] CRITICAL_STOP held=2.96s depth=384mm stable=39
+[Publisher] CRITICAL_STOP held=3.06s depth=384mm stable=40
+[Publisher] CRITICAL_STOP held=3.15s depth=384mm stable=41
+[Publisher] CRITICAL_STOP held=3.23s depth=384mm stable=42
+[Publisher] CRITICAL_STOP held=3.32s depth=384mm stable=43
+[Publisher] CRITICAL_STOP held=3.42s depth=383mm stable=44
+[Publisher] CRITICAL_STOP held=3.51s depth=385mm stable=45
+[Publisher] CRITICAL_STOP held=3.60s depth=386mm stable=46
+[Publisher] CRITICAL_STOP held=3.73s depth=384mm stable=47
+[Publisher] CRITICAL_STOP held=3.86s depth=384mm stable=48
+[Publisher] CRITICAL_STOP held=3.96s depth=384mm stable=49
+[Publisher] CRITICAL_STOP held=4.05s depth=383mm stable=50
+[Publisher] CRITICAL_STOP held=4.16s depth=385mm stable=51
+[Publisher] CRITICAL_STOP held=4.26s depth=385mm stable=52
+[Publisher] CRITICAL_STOP held=4.37s depth=384mm stable=53
+[Publisher] CRITICAL_STOP held=4.47s depth=384mm stable=54
+[Publisher] CRITICAL_STOP held=4.56s depth=384mm stable=55
+[Publisher] CRITICAL_STOP held=4.64s depth=385mm stable=56
+[Publisher] CRITICAL_STOP held=4.72s depth=384mm stable=57
+[Publisher] CRITICAL_STOP held=4.81s depth=384mm stable=58
+[Publisher] CRITICAL_STOP held=4.90s depth=383mm stable=59
+[Publisher] CRITICAL_STOP held=5.02s depth=383mm stable=60
+[Publisher] CRITICAL_STOP held=5.11s depth=384mm stable=61
+[Publisher] CRITICAL_STOP held=5.23s depth=385mm stable=62
+[Publisher] CRITICAL_STOP held=5.31s depth=385mm stable=63
+[Publisher] CRITICAL_STOP held=5.40s depth=385mm stable=64
+[Publisher] CRITICAL_STOP held=5.49s depth=384mm stable=65
+[Publisher] CRITICAL_STOP held=5.59s depth=384mm stable=66
+[Publisher] CRITICAL_STOP held=5.69s depth=384mm stable=67
+[Publisher] CRITICAL_STOP held=5.77s depth=385mm stable=68
+[Publisher] CRITICAL_STOP held=5.87s depth=384mm stable=69
+[Publisher] CRITICAL_STOP held=5.96s depth=384mm stable=70
+[Publisher] CRITICAL_STOP held=6.06s depth=384mm stable=71
+[Publisher] CRITICAL_STOP held=6.14s depth=385mm stable=72
+[Publisher] CRITICAL_STOP held=6.22s depth=385mm stable=73
+[Publisher] CRITICAL_STOP held=6.31s depth=384mm stable=74
+[Publisher] CRITICAL_STOP held=6.40s depth=384mm stable=75
+[Publisher] CRITICAL_STOP held=6.51s depth=384mm stable=76
+[Publisher] CRITICAL_STOP held=6.60s depth=385mm stable=77
+[Publisher] CRITICAL_STOP held=6.71s depth=384mm stable=78
+[Publisher] CRITICAL_STOP held=6.82s depth=384mm stable=79
+[Publisher] CRITICAL_STOP held=6.93s depth=384mm stable=80
+[Publisher] CRITICAL_STOP held=7.02s depth=384mm stable=81
+[Publisher] CRITICAL_STOP held=7.14s depth=385mm stable=82
+[Publisher] CRITICAL_STOP held=7.26s depth=385mm stable=83
+[Publisher] CRITICAL_STOP held=7.38s depth=384mm stable=84
+[Publisher] CRITICAL_STOP held=7.49s depth=384mm stable=85
+[Publisher] CRITICAL_STOP held=7.59s depth=384mm stable=86
+[Publisher] CRITICAL_STOP held=7.69s depth=385mm stable=87
+[Publisher] CRITICAL_STOP held=7.80s depth=384mm stable=88
+[Publisher] CRITICAL_STOP held=7.91s depth=384mm stable=89
+[Publisher] CRITICAL_STOP held=8.02s depth=384mm stable=90
+[Publisher] CRITICAL_STOP held=8.12s depth=384mm stable=91
+[Publisher] CRITICAL_STOP held=8.22s depth=385mm stable=92
+[Publisher] CRITICAL_STOP held=8.31s depth=384mm stable=93
+[Publisher] CRITICAL_STOP held=8.41s depth=384mm stable=94
+[Publisher] CRITICAL_STOP held=8.49s depth=384mm stable=95
+[Publisher] CRITICAL_STOP held=8.58s depth=383mm stable=96
+[Publisher] CRITICAL_STOP held=8.68s depth=384mm stable=97
+[Publisher] CRITICAL_STOP held=8.78s depth=385mm stable=98
+[Publisher] CRITICAL_STOP held=8.88s depth=385mm stable=99
+[Publisher] CRITICAL_STOP held=8.99s depth=384mm stable=100
+[Publisher] CRITICAL_STOP held=9.09s depth=383mm stable=101
+[Publisher] CRITICAL_STOP held=9.18s depth=384mm stable=102
+[Publisher] CRITICAL_STOP held=9.26s depth=385mm stable=103
+[Publisher] CRITICAL_STOP held=9.35s depth=384mm stable=104
+[Publisher] CRITICAL_STOP held=9.46s depth=384mm stable=105
+[Publisher] CRITICAL_STOP held=9.54s depth=385mm stable=106
+[Publisher] CRITICAL_STOP held=9.61s depth=382mm stable=107
+[Publisher] CRITICAL_STOP held=9.70s depth=385mm stable=108
+[Publisher] CRITICAL_STOP held=9.78s depth=384mm stable=109
+[Publisher] CRITICAL_STOP held=9.87s depth=385mm stable=110
+[Publisher] CRITICAL_STOP held=9.96s depth=385mm stable=111
+[Publisher] CRITICAL_STOP held=10.04s depth=385mm stable=112
+[Publisher] CRITICAL_STOP held=10.11s depth=385mm stable=113
+[Publisher] CRITICAL_STOP held=10.19s depth=385mm stable=114
+[Publisher] CRITICAL_STOP held=10.30s depth=384mm stable=115
+[Publisher] CRITICAL_STOP held=10.41s depth=384mm stable=116
+[Publisher] CRITICAL_STOP held=10.51s depth=384mm stable=117
+[Publisher] CRITICAL_STOP held=10.59s depth=385mm stable=118
+[Publisher] CRITICAL_STOP held=10.67s depth=385mm stable=119
+[Publisher] CRITICAL_STOP held=10.75s depth=385mm stable=120
+[Publisher] CRITICAL_STOP held=10.85s depth=383mm stable=121
+[Publisher] CRITICAL_STOP held=10.94s depth=384mm stable=122
+[Publisher] CRITICAL_STOP held=11.03s depth=384mm stable=123
+[Publisher] CRITICAL_STOP held=11.12s depth=383mm stable=124
+[Publisher] CRITICAL_STOP held=11.20s depth=384mm stable=125
+[Publisher] CRITICAL_STOP held=11.28s depth=384mm stable=126
+[Publisher] CRITICAL_STOP held=11.37s depth=384mm stable=127
+[Publisher] CRITICAL_STOP held=11.46s depth=384mm stable=128
+[Publisher] CRITICAL_STOP held=11.57s depth=384mm stable=129
+[Publisher] CRITICAL_STOP held=11.64s depth=384mm stable=130
+[Publisher] CRITICAL_STOP held=11.72s depth=384mm stable=131
+[Publisher] CRITICAL_STOP held=11.82s depth=385mm stable=132
+[Publisher] CRITICAL_STOP held=11.91s depth=385mm stable=133
+[Publisher] CRITICAL_STOP held=11.98s depth=384mm stable=134
+[Publisher] CRITICAL_STOP held=12.07s depth=385mm stable=135
+[Publisher] CRITICAL_STOP held=12.15s depth=385mm stable=136
+[Publisher] CRITICAL_STOP held=12.25s depth=384mm stable=137
+[Publisher] CRITICAL_STOP held=12.33s depth=385mm stable=138
+[Publisher] CRITICAL_STOP held=12.42s depth=384mm stable=139
+[Publisher] CRITICAL_STOP held=12.51s depth=384mm stable=140
+[Publisher] CRITICAL_STOP held=12.60s depth=384mm stable=141
+[Publisher] CRITICAL_STOP held=12.71s depth=384mm stable=142
+[Publisher] CRITICAL_STOP held=12.79s depth=384mm stable=143
+[Publisher] CRITICAL_STOP held=12.88s depth=384mm stable=144
+[Publisher] CRITICAL_STOP held=12.96s depth=384mm stable=145
+[Publisher] CRITICAL_STOP held=13.05s depth=384mm stable=146
+[Publisher] CRITICAL_STOP held=13.15s depth=384mm stable=147
+[Publisher] CRITICAL_STOP held=13.25s depth=384mm stable=148
+[Publisher] CRITICAL_STOP held=13.33s depth=385mm stable=149
+[Publisher] CRITICAL_STOP held=13.43s depth=385mm stable=150
+[Publisher] CRITICAL_STOP held=13.50s depth=385mm stable=151
+[Publisher] CRITICAL_STOP held=13.60s depth=385mm stable=152
+[Publisher] CRITICAL_STOP held=13.70s depth=384mm stable=153
+[Publisher] CRITICAL_STOP held=13.80s depth=383mm stable=154
+[Publisher] CRITICAL_STOP held=13.89s depth=383mm stable=155
+[Publisher] CRITICAL_STOP held=13.99s depth=385mm stable=156
+[Publisher] CRITICAL_STOP held=14.09s depth=384mm stable=157
+[Publisher] CRITICAL_STOP held=14.20s depth=384mm stable=158
+[Publisher] CRITICAL_STOP held=14.29s depth=384mm stable=159
+[Publisher] CRITICAL_STOP held=14.37s depth=384mm stable=160
+[Publisher] CRITICAL_STOP held=14.45s depth=383mm stable=161
+[Publisher] CRITICAL_STOP held=14.53s depth=384mm stable=162
+[Publisher] CRITICAL_STOP held=14.61s depth=385mm stable=163
+[Publisher] CRITICAL_STOP held=14.69s depth=385mm stable=164
+[Publisher] CRITICAL_STOP held=14.77s depth=384mm stable=165
+[Publisher] CRITICAL_STOP held=14.86s depth=384mm stable=166
+[Publisher] CRITICAL_STOP held=14.94s depth=384mm stable=167
+[Publisher] CRITICAL_STOP held=15.03s depth=385mm stable=168
+[Publisher] CRITICAL_STOP held=15.12s depth=384mm stable=169
+[Publisher] CRITICAL_STOP held=15.21s depth=384mm stable=170
+[Publisher] CRITICAL_STOP held=15.30s depth=384mm stable=171
+[Publisher] CRITICAL_STOP held=15.41s depth=384mm stable=172
+[Publisher] CRITICAL_STOP held=15.49s depth=384mm stable=173
+[Publisher] CRITICAL_STOP held=15.55s depth=385mm stable=174
+[Publisher] CRITICAL_STOP held=15.66s depth=385mm stable=175
+[Publisher] CRITICAL_STOP held=15.75s depth=384mm stable=176
+[Publisher] CRITICAL_STOP held=15.84s depth=384mm stable=177
+[Publisher] CRITICAL_STOP held=15.94s depth=384mm stable=178

@@ -93,6 +93,10 @@ class DecisionEngine:
         self._escape_latch_clear_streak: int = 0  # consecutive non-escape frames
         self._escape_latch_clear_required: int = 3  # frames needed to clear latch
 
+        # Camera narrow-escape direction latch (prevents L2↔R2 shake in tight corridors).
+        self._camera_escape_latch_zone: str = ""
+        self._camera_escape_clear_streak: int = 0
+
         # Lightweight temporal smoothing (EMA) for stability without vision changes.
         self._ema_alpha: float = float(cfg.TEMP_EMA_ALPHA)
         self._ema_warmup_frames: int = int(cfg.TEMP_EMA_WARMUP_FRAMES)
@@ -390,11 +394,30 @@ class DecisionEngine:
                 critical_stop = False
                 self._confirmed_centered = False
             else:
-                raw_cmd = "STOP"
-                reason = "STOP: no valid group width"
-                best_group = None
-                best_target = ""
-                center_blocked_reason = "No eligible group"
+                # Corridor labeled narrow but path may still be open — avoid STOP spam.
+                min_open_p20 = min(
+                    (
+                        m.p20_depth
+                        for m in analysis.corridors.values()
+                        if m.is_clear and m.p20_depth > 0
+                    ),
+                    default=0.0,
+                )
+                if min_open_p20 >= cfg.SOFT_STOP_MIN_DEPTH_MM:
+                    raw_cmd = "FREE"
+                    reason = (
+                        f"FREE: narrow corridor, path open "
+                        f"(min_p20={int(min_open_p20)}mm, no merged group)"
+                    )
+                    best_group = None
+                    best_target = "CENTER"
+                    center_blocked_reason = "No eligible group — soft FREE"
+                else:
+                    raw_cmd = "STOP"
+                    reason = "STOP: no valid group width"
+                    best_group = None
+                    best_target = ""
+                    center_blocked_reason = "No eligible group"
                 critical_stop = False
                 self._confirmed_centered = False
         else:
@@ -573,9 +596,11 @@ class DecisionEngine:
         ):
             self._confirmed_centered = False
 
-        # Any STOP clears confirmed centered state.
+        # Any STOP clears confirmed centered state and camera escape latch.
         if stable_cmd == "STOP":
             self._confirmed_centered = False
+            self._camera_escape_latch_zone = ""
+            self._camera_escape_clear_streak = 0
 
         if stable_cmd.startswith("GO:") and stable_cmd != "GO:CENTER":
             self._last_non_center_go = stable_cmd
@@ -718,7 +743,18 @@ class DecisionEngine:
         else:
             self._go_candidate = raw
             self._go_streak = 1
-        if self._go_streak < self._effective_go_frames:
+        required_go = self._effective_go_frames
+        # Switching between opposite lateral zones needs extra confirmation.
+        if (
+            self._last_stable.startswith("GO:")
+            and raw.startswith("GO:")
+            and raw != "GO:CENTER"
+            and self._last_stable != "GO:CENTER"
+            and self._lateral_side(raw) != self._lateral_side(self._last_stable)
+            and self._lateral_side(raw) != ""
+        ):
+            required_go = max(required_go, self._go_frames_required * 2)
+        if self._go_streak < required_go:
             return self._last_stable, self._go_streak
         if (
             self._last_stable != raw
@@ -732,6 +768,16 @@ class DecisionEngine:
 
     # ── Safety-Score Target Selection ────────────────────────
 
+    @staticmethod
+    def _lateral_side(cmd_or_zone: str) -> str:
+        """Return 'left', 'right', or '' for a GO:* command or zone name."""
+        key = cmd_or_zone.replace("GO:", "")
+        if key in ("LEFT", "L2", "L1"):
+            return "left"
+        if key in ("RIGHT", "R2", "R1"):
+            return "right"
+        return ""
+
     def _try_camera_narrow_escape(
         self,
         analysis: AnalysisResult,
@@ -740,9 +786,8 @@ class DecisionEngine:
     ) -> Optional[str]:
         """Pick a side zone when no merged group meets walker width.
 
-        Uses camera safety_score only (no LiDAR). Requires the side to be
-        is_clear, p20 >= CAMERA_NARROW_ESCAPE_MIN_P20_MM, and to beat CENTER
-        by SIDE_PREFER_MARGIN (or center is not clear).
+        Uses camera safety_score with a direction latch so the walker does not
+        flip L2↔R2 every frame when scores are close.
         """
         cfg = self.cfg
         center = analysis.corridors.get("CENTER")
@@ -752,8 +797,7 @@ class DecisionEngine:
         left_zones = frozenset({"LEFT", "L2", "L1"})
         right_zones = frozenset({"R1", "R2", "RIGHT"})
 
-        best_name: Optional[str] = None
-        best_safety = -1.0
+        candidates: list[tuple[str, float]] = []
         for name in ("LEFT", "L2", "L1", "R1", "R2", "RIGHT"):
             if locked_left and name in left_zones:
                 continue
@@ -764,23 +808,74 @@ class DecisionEngine:
                 continue
             if m.p20_depth < cfg.CAMERA_NARROW_ESCAPE_MIN_P20_MM:
                 continue
-            if m.safety_score > best_safety:
-                best_safety = m.safety_score
-                best_name = name
+            candidates.append((name, m.safety_score))
 
-        if best_name is None:
+        if not candidates:
+            self._camera_escape_clear_streak += 1
+            if (
+                self._camera_escape_clear_streak
+                >= cfg.CAMERA_ESCAPE_LATCH_CLEAR_FRAMES
+            ):
+                self._camera_escape_latch_zone = ""
             return None
+
+        candidates.sort(key=lambda x: x[1], reverse=True)
+        best_name, best_safety = candidates[0]
 
         margin = best_safety - center.safety_score
-        if center.is_clear and margin < cfg.SIDE_PREFER_MARGIN:
-            return None
-        if not center.is_clear and margin < cfg.SIDE_PREFER_MARGIN * 0.5:
+        pick_margin = cfg.SIDE_PREFER_MARGIN
+        if not center.is_clear:
+            pick_margin *= 0.5
+
+        # Release latch when center path is clearly open again.
+        if (
+            center.is_clear
+            and center.p20_depth >= cfg.FREE_CLEAR_DISTANCE_MM
+            and margin < pick_margin
+        ):
+            self._camera_escape_clear_streak += 1
+            if (
+                self._camera_escape_clear_streak
+                >= cfg.CAMERA_ESCAPE_LATCH_CLEAR_FRAMES
+            ):
+                if self._camera_escape_latch_zone:
+                    print(
+                        "[Decision] Camera escape latch RELEASED "
+                        "(center path clear)"
+                    )
+                self._camera_escape_latch_zone = ""
             return None
 
-        print(
-            f"[Decision] Camera narrow escape -> {best_name} "
-            f"(safety={best_safety:.2f} vs CENTER={center.safety_score:.2f})"
-        )
+        self._camera_escape_clear_streak = 0
+
+        if margin < pick_margin and not self._camera_escape_latch_zone:
+            return None
+
+        # Keep latched direction unless challenger wins by LATERAL_SWITCH_MARGIN.
+        if self._camera_escape_latch_zone:
+            latched = self._camera_escape_latch_zone
+            latched_m = analysis.corridors.get(latched)
+            if latched_m is not None and latched_m.is_clear:
+                latched_score = latched_m.safety_score
+                if (
+                    best_name != latched
+                    and self._lateral_side(best_name) != self._lateral_side(latched)
+                    and (best_safety - latched_score) < cfg.LATERAL_SWITCH_MARGIN
+                ):
+                    best_name = latched
+                    best_safety = latched_score
+                else:
+                    best_name = latched
+            else:
+                self._camera_escape_latch_zone = ""
+
+        if best_name != self._camera_escape_latch_zone:
+            print(
+                f"[Decision] Camera narrow escape -> {best_name} "
+                f"(safety={best_safety:.2f} vs CENTER={center.safety_score:.2f}"
+                f"{', latched' if self._camera_escape_latch_zone else ''})"
+            )
+        self._camera_escape_latch_zone = best_name
         return best_name
 
     def _lidar_side_preference(

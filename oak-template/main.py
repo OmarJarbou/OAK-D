@@ -124,6 +124,7 @@ model = "luxonis/yolov8-instance-segmentation-nano:coco-512x288"
 # ── TTS ───────────────────────────────────────────────────────
 NAV_TTS_COOLDOWN = 3.0
 tts_queue = queue.Queue(maxsize=2)
+_tts_generation = 0
 
 last_tts_time = 0
 last_text = None
@@ -133,7 +134,7 @@ _tts_player: TTSPlayer | None = None
 
 
 def tts_worker():
-    global last_tts_time, last_text
+    global last_tts_time, last_text, _tts_generation
 
     if not cfg.USE_TTS:
         print("[TTS] Disabled")
@@ -142,13 +143,18 @@ def tts_worker():
     print("[TTS] Engine ready")
 
     while True:
-        text = tts_queue.get()
-        if text is None:
+        item = tts_queue.get()
+        if item is None:
             break
+        text, gen = item
 
         now = time.time()
 
         if text == last_text and (now - last_tts_time < NAV_TTS_COOLDOWN):
+            continue
+
+        if gen != _tts_generation:
+            print(f"[TTS] skipped stale: {text}")
             continue
 
         last_text = text
@@ -157,15 +163,24 @@ def tts_worker():
         try:
             print(f"[TTS worker] saying: {text}")
             if _tts_player is not None:
-                _tts_player.play_blocking(text)   # ← synchronous: WAV via aplay or espeak fallback
+                _tts_player.play_blocking(text)
             else:
                 import os
                 os.system(f'espeak-ng -v en+f3 -s 135 "{text}" >/dev/null 2>&1')
+            if gen != _tts_generation:
+                print(f"[TTS] aborted stale after play: {text}")
         except Exception as e:
             print(f"[TTS] error: {e}")
-            
+
+
 def speak(text: str):
-    # clear old pending messages
+    global _tts_generation
+    _tts_generation += 1
+    gen = _tts_generation
+
+    if _tts_player is not None:
+        _tts_player.stop()
+
     while not tts_queue.empty():
         try:
             tts_queue.get_nowait()
@@ -173,7 +188,7 @@ def speak(text: str):
             break
 
     try:
-        tts_queue.put_nowait(text)
+        tts_queue.put_nowait((text, gen))
     except queue.Full:
         print("[TTS] queue full, skipped")
 
@@ -601,8 +616,8 @@ def main():
                         allow_recenter=result.allow_recenter,
                     )
 
-                    # TTS on stable command change
-                    if result.stable_command != "NONE":
+                    # TTS only when Arduino actually received a new command
+                    if sent and result.stable_command != "NONE":
                         now_t = time.time()
 
                         if not hasattr(main, "last_spoken_command"):

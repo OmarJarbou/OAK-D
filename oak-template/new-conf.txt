@@ -1,0 +1,91 @@
+# ── Walker Physical ───────────────────────────────────────────
+WALKER_WIDTH_M=0.64
+SIDE_MARGIN_M=0.10
+
+# ── LiDAR Arc Angles ──────────────────────────────────────────
+# Front arc: +-30deg (matches ~72deg camera FOV front portion)
+LIDAR_FRONT_ARC_DEG=30.0
+# Side arc: 45-75deg (forward-lateral, not pure sideways)
+# Was: 30.0-90.0 (too wide, measured walls instead of forward corridor)
+LIDAR_SIDE_ARC_START_DEG=45.0
+LIDAR_SIDE_ARC_END_DEG=75.0
+
+# ── LiDAR role ────────────────────────────────────────────────
+# 0 = LiDAR only for front distance + emergency STOP (camera picks L/R)
+# 1 = legacy: LiDAR can force GO:L1/R1 via side-escape
+LIDAR_STEERING_ENABLED=0
+
+# ── LiDAR Safety Thresholds ───────────────────────────────────
+# Raised from 600 to 650 to compensate for 30cm mounting height
+# (LiDAR reads ~50mm closer than camera for same physical obstacle)
+LIDAR_SAFETY_MM=700.0
+LIDAR_SIDE_ESCAPE_MM=800.0
+LIDAR_SCAN_TIMEOUT_S=0.5
+
+# ── Height Compensation (Fusion) ──────────────────────────────
+# LiDAR veto ignored when camera front > this (low obstacle detection)
+LIDAR_CAMERA_AGREE_MM=1400.0
+
+# ── Narrow corridor / soft STOP ─────────────────────────────
+# Camera steers L/R when merged width < walker (no LiDAR side-escape)
+CAMERA_NARROW_ESCAPE_MIN_P20_MM=800.0
+# Latch escape direction — frames of clear center before releasing
+CAMERA_ESCAPE_LATCH_CLEAR_FRAMES=8
+# Extra margin to flip L↔R during narrow escape (prevents servo shake)
+LATERAL_SWITCH_MARGIN=0.35
+# Use FREE instead of soft STOP when any clear zone p20 is above this
+SOFT_STOP_MIN_DEPTH_MM=900.0
+# Skip TTS "Stop" for no-valid-group STOP when closest zone is above this
+SOFT_STOP_TTS_MIN_DEPTH_MM=700.0
+
+# ── Side Direction: Anti-Oscillation ─────────────────────────
+# Raised from 0.15 to 0.20: prevents flip-flop when differences
+# are in the 0.13-0.18 range (confirmed from log analysis)
+SIDE_PREFER_MARGIN=0.20
+# CENTER stays chosen unless side beats it by SIDE_PREFER_MARGIN
+CENTER_SAFETY_BIAS=0.10
+CENTER_ACCEPT_RATIO=0.85
+
+# ── LiDAR Directional Bias (low-confidence assist) ────────────
+LIDAR_SIDE_BIAS_CONF_THRESHOLD=0.50
+LIDAR_SIDE_BIAS_MM_MIN_GAP=300.0
+LIDAR_SIDE_BIAS_BONUS=0.08
+
+# ── Decision Hysteresis ───────────────────────────────────────
+STOP_FRAMES_REQUIRED=4
+FREE_FRAMES_REQUIRED=6
+GO_FRAMES_REQUIRED=4
+COMMAND_CHANGE_COOLDOWN_S=1.2
+MIN_COMMAND_HOLD_MS=1200.0
+
+# ── FREE Mode Stability ───────────────────────────────────────
+FREE_STABLE_FRAMES=6
+FREE_CLEAR_DISTANCE_MM=1200.0
+FREE_EXIT_BAD_FRAMES=2
+FREE_CENTER_MIN_P20_MM=1600.0
+FREE_CENTER_CLOSE_OBS_MAX=0.10
+FREE_CENTER_MIN_VALID_RATIO=0.40
+FREE_CONF_THRESHOLD=0.55
+
+# ── STOP / Recovery ───────────────────────────────────────────
+STOP_HOLD_SECONDS=1.0
+CRITICAL_STOP_DISTANCE_MM=600.0
+UNSAFE_CONF_THRESHOLD=0.35
+UNSAFE_CONF_STREAK_FRAMES=3
+
+# ── Fast Turn Commit ──────────────────────────────────────────
+GO_FAST_MARGIN=0.22
+GO_FAST_FRAMES_REQUIRED=2
+
+# ── Recenter After Side Steer ─────────────────────────────────
+RECENTER_MIN_P20_MM=900.0
+RECENTER_SAFETY_GAP=0.10
+
+# ── Temporal EMA Smoothing ────────────────────────────────────
+TEMP_EMA_ALPHA=0.25
+TEMP_EMA_WARMUP_FRAMES=4
+
+# ── Camera Orientation ────────────────────────────────────────
+# Set FLIP_LR=1 if camera image-left = walker's physical right
+FLIP_LR=0
+# LIDAR_FLIP_LR=1

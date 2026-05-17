@@ -134,6 +134,12 @@ class WalkerConfig:
     SIDE_PREFER_MARGIN: float = 0.15  # side wins if safety beats CENTER by this much
     # Camera-only lateral escape when merged group width < walker (no LiDAR).
     CAMERA_NARROW_ESCAPE_MIN_P20_MM: float = 800.0
+    # Frames of clear path before releasing camera narrow-escape direction latch.
+    CAMERA_ESCAPE_LATCH_CLEAR_FRAMES: int = 8
+    # Extra safety margin required to flip escape direction (prevents L/R shake).
+    LATERAL_SWITCH_MARGIN: float = 0.35
+    # Prefer FREE over soft STOP when closest zone p20 is above this (mm).
+    SOFT_STOP_MIN_DEPTH_MM: float = 900.0
     # Do not speak "Stop" for soft STOP: no valid group width when min zone p20 above this.
     SOFT_STOP_TTS_MIN_DEPTH_MM: float = 700.0
     POST_RECOVERY_GRACE_S: float = 3.0  # grace after STOP->FREE recovery
@@ -261,6 +267,15 @@ class WalkerConfig:
             SIDE_PREFER_MARGIN=float(os.getenv("SIDE_PREFER_MARGIN", "0.15")),
             CAMERA_NARROW_ESCAPE_MIN_P20_MM=float(
                 os.getenv("CAMERA_NARROW_ESCAPE_MIN_P20_MM", "800.0")
+            ),
+            CAMERA_ESCAPE_LATCH_CLEAR_FRAMES=int(
+                os.getenv("CAMERA_ESCAPE_LATCH_CLEAR_FRAMES", "8")
+            ),
+            LATERAL_SWITCH_MARGIN=float(
+                os.getenv("LATERAL_SWITCH_MARGIN", "0.35")
+            ),
+            SOFT_STOP_MIN_DEPTH_MM=float(
+                os.getenv("SOFT_STOP_MIN_DEPTH_MM", "900.0")
             ),
             SOFT_STOP_TTS_MIN_DEPTH_MM=float(
                 os.getenv("SOFT_STOP_TTS_MIN_DEPTH_MM", "700.0")

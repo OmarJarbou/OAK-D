@@ -101,6 +101,21 @@ class TTSPlayer:
 
         print(f"[TTS] Pre-cache complete: {len(self._cache)}/{len(PHRASE_MAP)} phrases ready")
 
+    def stop(self) -> None:
+        """Interrupt any in-flight playback (called when a newer phrase arrives)."""
+        with self._lock:
+            proc = self._current_proc
+            self._current_proc = None
+        if proc is not None and proc.poll() is None:
+            try:
+                proc.terminate()
+                proc.wait(timeout=0.3)
+            except Exception:
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
+
     def play_blocking(self, text: str) -> None:
         """
         Blocking version — for use inside tts_worker thread.
@@ -112,15 +127,20 @@ class TTSPlayer:
 
         if wav_path is not None and wav_path.exists():
             try:
-                result = subprocess.run(
-                    ["aplay", "-q", str(wav_path)],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.PIPE,
-                    timeout=5.0,
-                )
-                if result.returncode != 0:
-                    err = result.stderr.decode(errors="replace").strip()
-                    print(f"[TTS] aplay failed ({result.returncode}): {err}")
+                with self._lock:
+                    proc = subprocess.Popen(
+                        ["aplay", "-q", str(wav_path)],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.PIPE,
+                    )
+                    self._current_proc = proc
+                rc = proc.wait(timeout=5.0)
+                with self._lock:
+                    if self._current_proc is proc:
+                        self._current_proc = None
+                if rc != 0:
+                    err = proc.stderr.read().decode(errors="replace").strip() if proc.stderr else ""
+                    print(f"[TTS] aplay failed ({rc}): {err}")
                     print(f"[TTS] falling back to espeak-ng for: {text}")
                     self._espeak_sync(text)
                 return
@@ -128,6 +148,7 @@ class TTSPlayer:
                 print("[TTS] aplay not found — falling back to espeak-ng")
             except subprocess.TimeoutExpired:
                 print("[TTS] aplay timeout — falling back to espeak-ng")
+                self.stop()
             except Exception as e:
                 print(f"[TTS] aplay error: {e} — falling back to espeak-ng")
 
@@ -145,21 +166,29 @@ class TTSPlayer:
     def _espeak_sync(self, text: str) -> None:
         """Synchronous espeak-ng call. Errors are printed."""
         try:
-            result = subprocess.run(
-                [
-                    "espeak-ng",
-                    "-v", _ESPEAK_VOICE,
-                    "-s", _ESPEAK_SPEED,
-                    text,
-                ],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.PIPE,
-                timeout=10.0,
-            )
-            if result.returncode != 0:
-                err = result.stderr.decode(errors="replace").strip()
+            with self._lock:
+                proc = subprocess.Popen(
+                    [
+                        "espeak-ng",
+                        "-v", _ESPEAK_VOICE,
+                        "-s", _ESPEAK_SPEED,
+                        text,
+                    ],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.PIPE,
+                )
+                self._current_proc = proc
+            rc = proc.wait(timeout=10.0)
+            with self._lock:
+                if self._current_proc is proc:
+                    self._current_proc = None
+            if rc != 0:
+                err = proc.stderr.read().decode(errors="replace").strip() if proc.stderr else ""
                 print(f"[TTS] espeak-ng error: {err}")
         except FileNotFoundError:
             print("[TTS] espeak-ng not found — no audio output")
+        except subprocess.TimeoutExpired:
+            print("[TTS] espeak-ng timeout")
+            self.stop()
         except Exception as e:
             print(f"[TTS] espeak-ng exception: {e}")
