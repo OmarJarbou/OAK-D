@@ -357,15 +357,46 @@ class DecisionEngine:
                 eligible.append((g, best))
 
         # ── 4. Determine raw mode candidate by priority ──────
+        narrow_zone = self._try_camera_narrow_escape(
+            analysis, locked_left, locked_right
+        )
         if not eligible:
-            raw_cmd = "STOP"
-            reason = "STOP: no valid group width"
-            best_group = None
-            best_target = ""
-            center_blocked_reason = "No eligible group"
-            critical_stop = False
-            # STOP clears confirmed centering.
-            self._confirmed_centered = False
+            if narrow_zone is not None:
+                go_cmd = cfg.ZONE_TO_CMD.get(narrow_zone, "GO:CENTER")
+                raw_cmd = go_cmd
+                best_target = narrow_zone
+                best_group = None
+                reason = (
+                    f"{go_cmd}: camera narrow escape "
+                    f"(group too narrow, {narrow_zone} open)"
+                )
+                center_blocked_reason = self._why_not_center(
+                    narrow_zone,
+                    FreeSpaceGroup(
+                        zone_names=[narrow_zone],
+                        zone_indices=[
+                            analysis.corridors[narrow_zone].zone_index
+                        ],
+                        total_width_m=0.0,
+                        is_valid=False,
+                        avg_p20_depth=analysis.corridors[narrow_zone].p20_depth,
+                        avg_score=analysis.corridors[narrow_zone].score,
+                        best_zone=narrow_zone,
+                    ),
+                    analysis,
+                    locked_left,
+                    locked_right,
+                )
+                critical_stop = False
+                self._confirmed_centered = False
+            else:
+                raw_cmd = "STOP"
+                reason = "STOP: no valid group width"
+                best_group = None
+                best_target = ""
+                center_blocked_reason = "No eligible group"
+                critical_stop = False
+                self._confirmed_centered = False
         else:
             # ── 5. Pick Best Group (by avg safety_score, not has_center) ──
             def group_priority(item):
@@ -410,16 +441,23 @@ class DecisionEngine:
             
             # Allow turning left/right even if front is blocked (has_emergency),
             # so the walker can pivot and escape the obstacle.
+            if narrow_zone is not None and best_target in ("", "CENTER"):
+                best_target = narrow_zone
+                go_cmd = cfg.ZONE_TO_CMD.get(best_target, "GO:CENTER")
+                center_blocked_reason = self._why_not_center(
+                    best_target, best_group, analysis, locked_left, locked_right
+                )
+
             can_side_escape = (
-                analysis.has_emergency 
-                and len(valid) > 0 
-                and not unsafe_low_conf 
+                analysis.has_emergency
+                and not unsafe_low_conf
                 and best_target not in ("", "CENTER")
+                and (len(valid) > 0 or narrow_zone is not None)
             )
-            
+
             unsafe_condition = (
                 (analysis.has_emergency and not can_side_escape)
-                or len(valid) == 0
+                or (len(valid) == 0 and narrow_zone is None)
                 or unsafe_low_conf
             )
 
@@ -693,6 +731,57 @@ class DecisionEngine:
         return self._last_stable, self._go_streak
 
     # ── Safety-Score Target Selection ────────────────────────
+
+    def _try_camera_narrow_escape(
+        self,
+        analysis: AnalysisResult,
+        locked_left: bool,
+        locked_right: bool,
+    ) -> Optional[str]:
+        """Pick a side zone when no merged group meets walker width.
+
+        Uses camera safety_score only (no LiDAR). Requires the side to be
+        is_clear, p20 >= CAMERA_NARROW_ESCAPE_MIN_P20_MM, and to beat CENTER
+        by SIDE_PREFER_MARGIN (or center is not clear).
+        """
+        cfg = self.cfg
+        center = analysis.corridors.get("CENTER")
+        if center is None:
+            return None
+
+        left_zones = frozenset({"LEFT", "L2", "L1"})
+        right_zones = frozenset({"R1", "R2", "RIGHT"})
+
+        best_name: Optional[str] = None
+        best_safety = -1.0
+        for name in ("LEFT", "L2", "L1", "R1", "R2", "RIGHT"):
+            if locked_left and name in left_zones:
+                continue
+            if locked_right and name in right_zones:
+                continue
+            m = analysis.corridors.get(name)
+            if m is None or not m.is_clear:
+                continue
+            if m.p20_depth < cfg.CAMERA_NARROW_ESCAPE_MIN_P20_MM:
+                continue
+            if m.safety_score > best_safety:
+                best_safety = m.safety_score
+                best_name = name
+
+        if best_name is None:
+            return None
+
+        margin = best_safety - center.safety_score
+        if center.is_clear and margin < cfg.SIDE_PREFER_MARGIN:
+            return None
+        if not center.is_clear and margin < cfg.SIDE_PREFER_MARGIN * 0.5:
+            return None
+
+        print(
+            f"[Decision] Camera narrow escape -> {best_name} "
+            f"(safety={best_safety:.2f} vs CENTER={center.safety_score:.2f})"
+        )
+        return best_name
 
     def _lidar_side_preference(
         self,

@@ -132,6 +132,10 @@ class WalkerConfig:
     FREE_CLEAR_DISTANCE_MM: float = 1200.0
     FREE_STICKY_SECONDS: float = 3.0  # how long FREE resists GO:CENTER re-entry
     SIDE_PREFER_MARGIN: float = 0.15  # side wins if safety beats CENTER by this much
+    # Camera-only lateral escape when merged group width < walker (no LiDAR).
+    CAMERA_NARROW_ESCAPE_MIN_P20_MM: float = 800.0
+    # Do not speak "Stop" for soft STOP: no valid group width when min zone p20 above this.
+    SOFT_STOP_TTS_MIN_DEPTH_MM: float = 700.0
     POST_RECOVERY_GRACE_S: float = 3.0  # grace after STOP->FREE recovery
     FREE_EXIT_BAD_FRAMES: int = 2  # consecutive "not free" frames required to exit FREE
 
@@ -163,7 +167,7 @@ class WalkerConfig:
     LIDAR_LEGACY_BAUD: int = 115200
     # auto | c1 | legacy — auto tries rplidarc1 first, then legacy rplidar.
     LIDAR_BACKEND: str = "auto"
-    LIDAR_SAFETY_MM: float = 600.0
+    LIDAR_SAFETY_MM: float = 700.0
     LIDAR_SIDE_ESCAPE_MM: float = 800.0
     LIDAR_FRONT_ARC_DEG: float = 30.0
     LIDAR_SIDE_ARC_START_DEG: float = 30.0
@@ -171,7 +175,7 @@ class WalkerConfig:
     LIDAR_SCAN_TIMEOUT_S: float = 0.5
     # Height compensation: LiDAR (30cm) veto ignored when camera front >
     # this value — camera sees clear path, LiDAR seeing low obstacle.
-    LIDAR_CAMERA_AGREE_MM: float = 1200.0
+    LIDAR_CAMERA_AGREE_MM: float = 1400.0
     FUSION_DISAGREEMENT_THRESHOLD_MM: float = 800.0
 
     # ── LiDAR Side-Distance Directional Bias ─────────────────
@@ -255,6 +259,12 @@ class WalkerConfig:
             FREE_CLEAR_DISTANCE_MM=float(os.getenv("FREE_CLEAR_DISTANCE_MM", "1200.0")),
             FREE_STICKY_SECONDS=float(os.getenv("FREE_STICKY_SECONDS", "3.0")),
             SIDE_PREFER_MARGIN=float(os.getenv("SIDE_PREFER_MARGIN", "0.15")),
+            CAMERA_NARROW_ESCAPE_MIN_P20_MM=float(
+                os.getenv("CAMERA_NARROW_ESCAPE_MIN_P20_MM", "800.0")
+            ),
+            SOFT_STOP_TTS_MIN_DEPTH_MM=float(
+                os.getenv("SOFT_STOP_TTS_MIN_DEPTH_MM", "700.0")
+            ),
             POST_RECOVERY_GRACE_S=float(os.getenv("POST_RECOVERY_GRACE_S", "3.0")),
             CENTER_SAFETY_BIAS=float(os.getenv("CENTER_SAFETY_BIAS", "0.10")),
             CENTER_ACCEPT_RATIO=float(os.getenv("CENTER_ACCEPT_RATIO", "0.85")),

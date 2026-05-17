@@ -612,12 +612,29 @@ def main():
                             result.stable_command != main.last_spoken_command
                             and now_t - last_nav_tts_time >= NAV_TTS_COOLDOWN
                         ):
-                            tts_text = TTS_MAP.get(result.stable_command, result.stable_command)
-                            print(f"[TTS] speaking: {tts_text}")
-                            speak(tts_text)
+                            soft_stop = (
+                                result.stable_command == "STOP"
+                                and not result.critical_stop
+                                and "no valid group width" in result.reason
+                                and min_p20 > cfg.SOFT_STOP_TTS_MIN_DEPTH_MM
+                            )
+                            if soft_stop:
+                                print(
+                                    f"[TTS] suppressed soft STOP "
+                                    f"(depth={min_p20:.0f}mm > "
+                                    f"{cfg.SOFT_STOP_TTS_MIN_DEPTH_MM:.0f}mm)"
+                                )
+                                main.last_spoken_command = result.stable_command
+                                last_nav_tts_time = now_t
+                            else:
+                                tts_text = TTS_MAP.get(
+                                    result.stable_command, result.stable_command
+                                )
+                                print(f"[TTS] speaking: {tts_text}")
+                                speak(tts_text)
 
-                            main.last_spoken_command = result.stable_command
-                            last_nav_tts_time = now_t
+                                main.last_spoken_command = result.stable_command
+                                last_nav_tts_time = now_t
 
                     # Debug visualization
                     if cfg.DEBUG_DISPLAY:
