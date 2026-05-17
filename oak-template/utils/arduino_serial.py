@@ -34,6 +34,9 @@ class ArduinoState:
     last_status: str = ""
     connected: bool = False
     center_confirmed: bool = False      # True once stepper confirmed CENTER reached
+    left_adc: int = -1
+    center_adc: int = -1
+    right_adc: int = -1
 
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
@@ -58,6 +61,9 @@ class ArduinoState:
                 "last_status": self.last_status,
                 "connected": self.connected,
                 "center_confirmed": self.center_confirmed,
+                "left_adc": self.left_adc,
+                "center_adc": self.center_adc,
+                "right_adc": self.right_adc,
             }
 
     def can_navigate(self) -> bool:
@@ -239,7 +245,7 @@ class ArduinoSerial:
         # Strip any leading non-printable / non-ASCII bytes that can appear
         # on Serial1 during Arduino power-on or RFID noise (e.g. \x00STATUS:AUTHORIZED).
         # Scan forward until we find a known protocol prefix.
-        for prefix in ("STATUS:", "BANK:"):
+        for prefix in ("STATUS:", "BANK:", "CALIB:"):
             idx = msg.find(prefix)
             if idx > 0:          # garbage bytes before the real message
                 msg = msg[idx:]
@@ -319,6 +325,10 @@ class ArduinoSerial:
             else:
                 print(f"[Serial] Unknown STATUS: {status}")
 
+        # ── CALIB messages (steering EEPROM positions) ───
+        elif msg.startswith("CALIB:"):
+            self._parse_calib(msg[6:])
+
         # ── BANK messages ─────────────────────────────────
         elif msg.startswith("BANK:"):
             result = msg[5:]
@@ -333,6 +343,34 @@ class ArduinoSerial:
                 self._on_status(msg)
             except Exception:
                 pass
+
+    def _parse_calib(self, payload: str) -> None:
+        """Parse CALIB:CENTER=...,LEFT=...,RIGHT=... from Arduino."""
+        updates: dict = {}
+        for part in payload.split(","):
+            part = part.strip()
+            if "=" not in part:
+                continue
+            key, val = part.split("=", 1)
+            key = key.strip().upper()
+            try:
+                adc = int(val.strip())
+            except ValueError:
+                continue
+            if key == "CENTER":
+                updates["center_adc"] = adc
+            elif key == "LEFT":
+                updates["left_adc"] = adc
+            elif key == "RIGHT":
+                updates["right_adc"] = adc
+        if updates:
+            self.state.update(**updates)
+            print(
+                f"[Serial] Calibration ADC: "
+                f"L={updates.get('left_adc', self.state.left_adc)} "
+                f"C={updates.get('center_adc', self.state.center_adc)} "
+                f"R={updates.get('right_adc', self.state.right_adc)}"
+            )
 
     # ── Mock Helpers ───────────────────────────────────────
 

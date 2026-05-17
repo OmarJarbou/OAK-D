@@ -1,16 +1,9 @@
 # main.py
 """
-Smart Walker — OAK-D Navigation System v3.0
-════════════════════════════════════════════
-Full integration with Arduino Mega via Serial1.
+Smart Walker — OAK-D Navigation (simplified).
 
-Architecture:
-  WalkerConfig        → all tunable parameters
-  ArduinoSerial       → bidirectional serial (reader + writer threads)
-  CorridorAnalyzer    → 7-zone depth + merged free-space groups
-  DecisionEngine      → safety gates, group selection, temporal smoothing
-  CommandPublisher    → rate-limited command dispatch
-  Visualizer          → OpenCV debug overlay (optional)
+Camera: 3 zones (LEFT / CENTER / RIGHT) → steering.
+LiDAR:  front distance → emergency STOP only.
 """
 
 import os
@@ -27,22 +20,23 @@ import depthai as dai
 from depthai_nodes.node.parsing_neural_network import ParsingNeuralNetwork
 from depthai_nodes.node import ApplyDepthColormap
 
-# ── Local Modules ─────────────────────────────────────────────
 from utils.config import WalkerConfig
 from utils.arduino_serial import ArduinoSerial
-from utils.corridor_analyzer import CorridorAnalyzer
-from utils.decision_engine import DecisionEngine
 from utils.command_publisher import CommandPublisher
 from utils.lidar_analyzer import LidarAnalyzer
-from utils.fusion_layer import FusionLayer
+from utils.simple_nav import (
+    analyze_simple,
+    decide_simple,
+    apply_flip_lr,
+    SimpleSmoother,
+    ZONE_NAMES,
+)
 from utils.tts_player import TTSPlayer
 
-# ── SnapsProducer ─────────────────────────────────────────────
 try:
     from utils.snaps_producer import SnapsProducer
 except Exception:
     class SnapsProducer(dai.node.HostNode):
-        """Fallback SnapsProducer when the real one is unavailable."""
         def __init__(self):
             super().__init__()
             self.em = None
@@ -112,7 +106,6 @@ except Exception:
                 self.em.waitForPendingUploads()
 
 
-# ── Config ────────────────────────────────────────────────────
 load_dotenv()
 
 cfg = WalkerConfig.from_env()
@@ -120,17 +113,20 @@ api_key = os.getenv("OAK_API_KEY", "")
 use_visualizer = os.getenv("USE_VISUALIZER", "0") == "1"
 model = "luxonis/yolov8-instance-segmentation-nano:coco-512x288"
 
-
-# ── TTS ───────────────────────────────────────────────────────
 NAV_TTS_COOLDOWN = 3.0
 tts_queue = queue.Queue(maxsize=2)
 _tts_generation = 0
-
-last_tts_time = 0
+last_tts_time = 0.0
 last_text = None
-
-# Pre-cached WAV player (initialised in main() after cfg is ready)
 _tts_player: TTSPlayer | None = None
+
+TTS_MAP = {
+    "GO:CENTER": "Go forward",
+    "GO:LEFT": "Turn left",
+    "GO:RIGHT": "Turn right",
+    "STOP": "Stop",
+    "FREE": "Free mode",
+}
 
 
 def tts_worker():
@@ -141,34 +137,24 @@ def tts_worker():
         return
 
     print("[TTS] Engine ready")
-
     while True:
         item = tts_queue.get()
         if item is None:
             break
         text, gen = item
-
         now = time.time()
-
         if text == last_text and (now - last_tts_time < NAV_TTS_COOLDOWN):
             continue
-
         if gen != _tts_generation:
-            print(f"[TTS] skipped stale: {text}")
             continue
-
         last_text = text
         last_tts_time = now
-
         try:
-            print(f"[TTS worker] saying: {text}")
+            print(f"[TTS] saying: {text}")
             if _tts_player is not None:
                 _tts_player.play_blocking(text)
             else:
-                import os
                 os.system(f'espeak-ng -v en+f3 -s 135 "{text}" >/dev/null 2>&1')
-            if gen != _tts_generation:
-                print(f"[TTS] aborted stale after play: {text}")
         except Exception as e:
             print(f"[TTS] error: {e}")
 
@@ -177,237 +163,97 @@ def speak(text: str):
     global _tts_generation
     _tts_generation += 1
     gen = _tts_generation
-
     if _tts_player is not None:
         _tts_player.stop()
-
     while not tts_queue.empty():
         try:
             tts_queue.get_nowait()
         except queue.Empty:
             break
-
     try:
         tts_queue.put_nowait((text, gen))
     except queue.Full:
         print("[TTS] queue full, skipped")
 
 
-TTS_MAP = {
-    "GO:CENTER": "Go forward",
-    "GO:L1":     "Slight left",
-    "GO:L2":     "Turn left",
-    "GO:LEFT":   "Hard left",
-    "GO:R1":     "Slight right",
-    "GO:R2":     "Turn right",
-    "GO:RIGHT":  "Hard right",
-    "STOP":      "Stop",
-    "FREE":      "Free mode",
-}
-
-
-# ══════════════════════════════════════════════════════════════
-# Debug Visualization — shows merged groups
-# ══════════════════════════════════════════════════════════════
-
-def build_debug_frame(depth_frame, analysis, result, arduino_state,
-                      last_sent, cfg_ref):
-    """Build debug visualization showing zones, merged groups, and decision.
-
-    Overlay uses a colormap for human viewing only; corridor logic uses raw mm.
-    """
-    # Colorize raw depth (mm) for display — not used for obstacle classification
-    clipped = np.clip(depth_frame, cfg_ref.MIN_DEPTH_MM, cfg_ref.MAX_DEPTH_MM)
+def build_debug_frame(depth_frame, analysis, result, arduino_state, last_sent):
+    clipped = np.clip(depth_frame, cfg.MIN_DEPTH_MM, cfg.MAX_DEPTH_MM)
     norm = (
-        (clipped - cfg_ref.MIN_DEPTH_MM)
-        / max(cfg_ref.MAX_DEPTH_MM - cfg_ref.MIN_DEPTH_MM, 1)
+        (clipped - cfg.MIN_DEPTH_MM)
+        / max(cfg.MAX_DEPTH_MM - cfg.MIN_DEPTH_MM, 1)
         * 255.0
     ).astype(np.uint8)
     norm = 255 - norm
     vis = cv2.applyColorMap(norm, cv2.COLORMAP_JET)
 
-    h, w = depth_frame.shape
+    h, w = depth_frame.shape[:2]
     x1, y1, x2, y2 = analysis.roi_box
-
-    # Blackout floor
-    if analysis.floor_mask is not None and analysis.floor_mask.size > 1:
-        roi_vis = vis[y1:y2, x1:x2]
-        if roi_vis.shape[:2] == analysis.floor_mask.shape:
-            roi_vis[analysis.floor_mask] = [0, 0, 0]
-
-    # Draw ROI rectangle
     cv2.rectangle(vis, (x1, y1), (x2, y2), (255, 255, 255), 2)
 
     roi_w = x2 - x1
-    zone_w = roi_w // cfg_ref.NUM_ZONES
+    zone_w = roi_w // 3
     font = cv2.FONT_HERSHEY_SIMPLEX
 
-    # ── Draw merged group backgrounds first ──────────────
-    for g in analysis.groups:
-        if not g.zone_indices:
-            continue
-        gx1 = x1 + g.zone_indices[0] * zone_w
-        gx2 = x1 + (g.zone_indices[-1] + 1) * zone_w
-        if g.zone_indices[-1] == cfg_ref.NUM_ZONES - 1:
-            gx2 = x2  # Last zone extends to edge
+    cmd_zone = {
+        "GO:LEFT": "LEFT", "GO:CENTER": "CENTER", "GO:RIGHT": "RIGHT",
+    }.get(result.stable_command, "")
 
-        # Valid group = green tint, invalid = orange tint
-        color = (0, 180, 0) if g.is_valid else (0, 100, 180)
-        overlay = vis.copy()
-        cv2.rectangle(overlay, (gx1, y2 - 30), (gx2, y2), color, -1)
-        cv2.addWeighted(overlay, 0.4, vis, 0.6, 0, vis)
-
-        # Draw merged width label
-        width_txt = f"{g.total_width_m:.2f}m"
-        status = "OK" if g.is_valid else "NARROW"
-        mid_x = (gx1 + gx2) // 2 - 40
-        cv2.putText(vis, f"{width_txt} {status}", (mid_x, y2 - 10),
-                    font, 0.45, (255, 255, 255), 1, cv2.LINE_AA)
-
-    # ── Highlight chosen corridor ────────────────────────
-    if result.chosen_corridor:
-        chosen_m = analysis.corridors.get(result.chosen_corridor)
-        if chosen_m:
-            ci = chosen_m.zone_index
-            cx1 = x1 + ci * zone_w
-            cx2 = cx1 + zone_w
-            overlay = vis.copy()
-            cv2.rectangle(overlay, (cx1, y1), (cx2, y2 - 30), (0, 255, 0), -1)
-            cv2.addWeighted(overlay, 0.18, vis, 0.82, 0, vis)
-            # Draw target marker
-            cv2.arrowedLine(vis, ((cx1 + cx2) // 2, y2 - 35),
-                           ((cx1 + cx2) // 2, y1 + 10),
-                           (0, 255, 0), 3, tipLength=0.15)
-
-    # ── Draw individual zone info ────────────────────────
-    for i, name in enumerate(cfg_ref.ZONE_NAMES):
-        zx = x1 + i * zone_w
-
-        # Separator
+    for i, name in enumerate(ZONE_NAMES):
+        zx1 = x1 + i * zone_w
+        zx2 = x2 if i == 2 else x1 + (i + 1) * zone_w
         if i > 0:
-            cv2.line(vis, (zx, y1), (zx, y2), (180, 180, 180), 1)
-
-        m = analysis.corridors.get(name)
-        if m is None:
-            continue
-
-        # Color by clear/blocked status
-        if name == result.chosen_corridor:
-            color = (0, 255, 0)         # Bright green — target
-        elif m.is_clear:
-            color = (255, 255, 0)       # Cyan — clear
+            cv2.line(vis, (zx1, y1), (zx1, y2), (180, 180, 180), 1)
+        p20 = analysis.metrics.get(name, 0)
+        if "STOP" in result.stable_command:
+            color = (0, 0, 255)
+        elif name == cmd_zone:
+            color = (0, 255, 0)
         else:
-            color = (0, 0, 255)         # Red — blocked
+            color = (255, 255, 0)
+        cv2.putText(vis, f"{name} {int(p20)}mm", (zx1 + 4, y1 + 20),
+                    font, 0.45, color, 1, cv2.LINE_AA)
 
-        # Zone metrics
-        text_x = zx + 3
-        text_y = y1 + 16
-        fs = 0.35
-        lines = [
-            name,
-            f"p20:{int(m.p20_depth)}",
-            f"cc:{m.largest_close_blob_px}",
-            f"v:{m.vertical_close_run_frac:.2f}",
-            f"sf:{m.safety_score:.2f}",
-            f"w:{m.zone_width_m:.2f}m",
-            f"{'CLR' if m.is_clear else 'BLK'}",
-        ]
-        for j, txt in enumerate(lines):
-            cv2.putText(vis, txt, (text_x, text_y + j * 14),
-                        font, fs, color, 1, cv2.LINE_AA)
-
-    # ── Bottom Info Panel ─────────────────────────────────
-    panel_y = h - 5
-
-    # Raw + Stable command
-    raw_color = (0, 0, 255) if "STOP" in result.raw_command else (0, 200, 255)
-    cv2.putText(vis, f"RAW: {result.raw_command}", (10, panel_y - 80),
-                font, 0.55, raw_color, 2, cv2.LINE_AA)
-
-    stable_color = {
-        "STOP": (0, 0, 255), "GO:CENTER": (0, 255, 0), "NONE": (128, 128, 128),
-    }.get(result.stable_command, (0, 200, 255))
-    cv2.putText(vis, f"CMD: {result.stable_command}", (10, panel_y - 55),
-                font, 0.65, stable_color, 2, cv2.LINE_AA)
-
-    # Confidence
-    conf_color = ((0, 255, 0) if result.confidence > 0.6
-                  else (0, 200, 255) if result.confidence > 0.3
-                  else (0, 0, 255))
-    cv2.putText(vis, f"Conf: {result.confidence:.0%}", (10, panel_y - 32),
-                font, 0.5, conf_color, 2, cv2.LINE_AA)
-
-    # Last sent + reason
-    cv2.putText(vis, f"Sent: {last_sent or '-'}", (10, panel_y - 12),
-                font, 0.45, (200, 200, 200), 1, cv2.LINE_AA)
-    cv2.putText(vis, result.reason[:70], (10, panel_y),
-                font, 0.38, (200, 200, 200), 1, cv2.LINE_AA)
-
-    # Arduino state (right side)
-    auth_txt = "AUTH" if arduino_state.get("authorized") else "LOCKED"
-    auth_color = (0, 255, 0) if arduino_state.get("authorized") else (0, 0, 255)
-    cv2.putText(vis, auth_txt, (w - 100, panel_y - 80),
-                font, 0.55, auth_color, 2, cv2.LINE_AA)
-
-    mode_txt = arduino_state.get("mode", "?")
-    cv2.putText(vis, f"Mode:{mode_txt}", (w - 130, panel_y - 55),
-                font, 0.45, (200, 200, 200), 1, cv2.LINE_AA)
-
-    ready_txt = "READY" if arduino_state.get("ready") else "WAIT"
-    ready_clr = (0, 255, 0) if arduino_state.get("ready") else (0, 165, 255)
-    cv2.putText(vis, ready_txt, (w - 100, panel_y - 32),
-                font, 0.5, ready_clr, 2, cv2.LINE_AA)
-
-    # Group info
-    n_groups = len(analysis.groups)
-    n_valid = len(analysis.valid_groups)
-    cv2.putText(vis, f"Groups:{n_groups} Valid:{n_valid}", (w - 200, panel_y - 12),
+    panel_y = h - 8
+    cv2.putText(vis, f"RAW: {result.raw_command}", (10, panel_y - 50),
+                font, 0.5, (0, 200, 255), 1, cv2.LINE_AA)
+    cv2.putText(vis, f"CMD: {result.stable_command}", (10, panel_y - 28),
+                font, 0.6, (0, 255, 0) if "GO" in result.stable_command else (0, 0, 255), 2, cv2.LINE_AA)
+    cv2.putText(vis, f"Sent: {last_sent or '-'}", (10, panel_y - 8),
                 font, 0.4, (200, 200, 200), 1, cv2.LINE_AA)
 
-    # Center rejection reason (if any)
-    cbr = getattr(result, 'center_blocked_reason', '')
-    if cbr:
-        cv2.putText(vis, f"CTR: {cbr[:65]}", (10, y1 - 8),
-                    font, 0.38, (0, 165, 255), 1, cv2.LINE_AA)
-
+    auth_txt = "AUTH" if arduino_state.get("authorized") else "LOCKED"
+    cv2.putText(vis, auth_txt, (w - 90, panel_y - 28),
+                font, 0.5, (0, 255, 0) if arduino_state.get("authorized") else (0, 0, 255), 2, cv2.LINE_AA)
     return vis
 
 
-# ══════════════════════════════════════════════════════════════
-# Main
-# ══════════════════════════════════════════════════════════════
-
 def main():
     print("=" * 60)
-    print("  Smart Walker - OAK-D Navigation System v3.0")
+    print("  Smart Walker - Simplified Navigation v4.0")
     print("=" * 60)
     print(f"  Arduino port : {cfg.ARDUINO_PORT}")
-    print(f"  Walker width : {cfg.WALKER_WIDTH_M}m + 2x{cfg.SIDE_MARGIN_M}m margin"
-          f" = {cfg.REQUIRED_CLEAR_WIDTH_M}m")
-    print(f"  Debug display: {'ON' if cfg.DEBUG_DISPLAY else 'OFF'}")
+    print(f"  Zones        : {cfg.NUM_ZONES} ({', '.join(cfg.ZONE_NAMES)})")
+    print(f"  STOP dist    : {cfg.STOP_DISTANCE_MM:.0f}mm")
+    print(f"  LiDAR        : front STOP only")
+    print(f"  Debug        : {'ON' if cfg.DEBUG_DISPLAY else 'OFF'}")
     print(f"  TTS          : {'ON' if cfg.USE_TTS else 'OFF'}")
-    print(f"  Snaps        : {'ON' if cfg.ENABLE_SNAPS else 'OFF'}")
-    print(
-        f"  LiDAR role   : "
-        f"{'stop + L/R steering' if cfg.LIDAR_STEERING_ENABLED else 'STOP/front only (camera steers)'}"
-    )
     print("=" * 60)
 
-    # ── Components ────────────────────────────────────────
     global _tts_player
     _tts_player = TTSPlayer(sounds_dir="/home/lama/OAK-D/sounds")
     if cfg.USE_TTS:
-        _tts_player.pregenerate()   # generate WAV files once at startup
+        _tts_player.pregenerate()
 
     arduino = ArduinoSerial(port=cfg.ARDUINO_PORT, baud=cfg.ARDUINO_BAUD)
-    corridor_analyzer = CorridorAnalyzer(cfg)
-    decision_engine = DecisionEngine(cfg)
     publisher = CommandPublisher(cfg, arduino)
+    smoother = SimpleSmoother(
+        hysteresis=cfg.CMD_HYSTERESIS_FRAMES,
+        cooldown_ms=cfg.CMD_COOLDOWN_MS,
+    )
+
     lidar_mock = cfg.LIDAR_PORT.upper() == "MOCK"
     _lb = cfg.LIDAR_BACKEND.lower().strip()
-    _legacy_baud = (
-        cfg.LIDAR_BAUD if _lb == "legacy" else cfg.LIDAR_LEGACY_BAUD
-    )
+    _legacy_baud = cfg.LIDAR_BAUD if _lb == "legacy" else cfg.LIDAR_LEGACY_BAUD
     lidar = LidarAnalyzer(
         port=cfg.LIDAR_PORT,
         mock=lidar_mock,
@@ -421,14 +267,10 @@ def main():
         side_arc_start_deg=cfg.LIDAR_SIDE_ARC_START_DEG,
         side_arc_end_deg=cfg.LIDAR_SIDE_ARC_END_DEG,
     )
-    fusion = FusionLayer(lidar, cfg)
 
     visualizer = None
     if use_visualizer:
         visualizer = dai.RemoteConnection(httpPort=8082)
-        print("[Visualizer] Enabled on port 8082")
-    else:
-        print("[Visualizer] Disabled")
 
     arduino.start()
     lidar.start()
@@ -436,8 +278,8 @@ def main():
     tts_thread = threading.Thread(target=tts_worker, daemon=True)
     tts_thread.start()
 
-    last_nav_tts_time = 0.0
     was_authorized = False
+    last_spoken_command = None
 
     try:
         with dai.Device() as device, dai.Pipeline(device) as pipeline:
@@ -448,7 +290,6 @@ def main():
             nn_archive = dai.NNArchive(dai.getModelFromZoo(model_desc, apiKey=api_key))
             label_map = nn_archive.getConfigV1().model.heads[0].metadata.classes
 
-            # Cameras
             color_cam = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
             left_cam = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
             right_cam = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
@@ -467,7 +308,6 @@ def main():
             right_out = right_cam.requestOutput(
                 size=(400, 400), type=dai.ImgFrame.Type.NV12, fps=30)
 
-            # Stereo
             stereo = pipeline.create(dai.node.StereoDepth).build(
                 left=left_out, right=right_out)
             stereo.initialConfig.setMedianFilter(dai.MedianFilter.MEDIAN_OFF)
@@ -482,7 +322,6 @@ def main():
             depth_colormap = pipeline.create(ApplyDepthColormap).build(stereo.disparity)
             depth_colormap.setColormap(cv2.COLORMAP_JET)
 
-            # YOLO
             nn_with_parser = pipeline.create(ParsingNeuralNetwork).build(
                 color_cam, nn_archive)
 
@@ -491,27 +330,17 @@ def main():
                 visualizer.addTopic("Depth", depth_colormap.out, "images")
                 visualizer.addTopic("YOLO", nn_with_parser.out, "images")
 
-            _snaps_producer = None
             if cfg.ENABLE_SNAPS:
-                _snaps_producer = pipeline.create(SnapsProducer).build(
+                pipeline.create(SnapsProducer).build(
                     nn_with_parser.passthrough, nn_with_parser.out, label_map=label_map)
-                print("[Snaps] Enabled")
-            else:
-                print("[Snaps] Disabled")
 
             depth_queue = stereo.depth.createOutputQueue(maxSize=4, blocking=False)
 
-            print("[Pipeline] Created. Starting...")
             pipeline.start()
-
             if visualizer is not None:
                 visualizer.registerPipeline(pipeline)
 
             print("[Pipeline] Running. Waiting for RFID authorization...")
-
-            # ══════════════════════════════════════════════
-            # Main Loop
-            # ══════════════════════════════════════════════
             frame_count = 0
 
             while pipeline.isRunning():
@@ -519,177 +348,89 @@ def main():
                     if visualizer is not None:
                         key = visualizer.waitKey(1)
                         if key == ord("q"):
-                            print("Quit key pressed.")
                             pipeline.stop()
                             break
 
-                    # Get depth frame
-                    try:
-                        if depth_queue.has():
-                            depth_msg = depth_queue.get()
-                        else:
-                            time.sleep(0.005)
-                            continue
-                    except Exception as e:
-                        if "QueueException" in str(e) or not pipeline.isRunning():
-                            print("[Pipeline] Depth queue closed during shutdown.")
-                            break
-                        raise
+                    if not depth_queue.has():
+                        time.sleep(0.005)
+                        continue
 
+                    depth_msg = depth_queue.get()
                     depth_frame = depth_msg.getFrame()
                     if depth_frame is None or depth_frame.size == 0:
                         continue
 
                     frame_count += 1
-
-                    # Arduino state
                     state = arduino.state.snapshot()
 
-                    # Auth transitions
                     if state["authorized"] and not was_authorized:
-                        print("[System] [OK] AUTHORIZED - navigation begins when ready")
+                        print("[System] AUTHORIZED")
                         speak("System authorized")
                         was_authorized = True
                     elif not state["authorized"] and was_authorized:
-                        print("[System] DEAUTHORIZED - navigation stopped")
-                        decision_engine.reset()
+                        print("[System] DEAUTHORIZED")
+                        smoother.reset()
                         publisher.reset()
-                        speak("System locked")
                         was_authorized = False
 
-                    # Corridor analysis (merged groups)
-                    analysis = corridor_analyzer.analyze(depth_frame)
-                    fused = fusion.fuse(analysis)
-                    # Apply fusion results back to analysis for decision engine
-                    if fused.has_emergency != analysis.has_emergency:
-                        from dataclasses import replace
-                        analysis = replace(analysis, has_emergency=fused.has_emergency)
+                    analysis = analyze_simple(depth_frame, cfg)
+                    if analysis is None:
+                        continue
 
-                    # Fix 2: LiDAR veto → immediate Stop announcement,
-                    # Cooldown added to prevent spamming every frame.
-                    # Only announce if the system is actually authorized and ready to move.
-                    if state.get("authorized") and state.get("ready"):
-                        if fused.fusion_reason == "lidar_veto_emergency" and cfg.USE_TTS:
-                            now_t = time.time()
-                            if now_t - getattr(main, "last_lidar_stop_time", 0.0) >= NAV_TTS_COOLDOWN:
-                                speak("Stop")
-                                main.last_lidar_stop_time = now_t
-
-                    # Decision: camera 7-zone scoring for L/R; LiDAR optional side bias.
-                    _ll = _lr = 0.0
-                    _sel = _ser = False
-                    if cfg.LIDAR_STEERING_ENABLED:
-                        _ll = fused.lidar_left_mm
-                        _lr = fused.lidar_right_mm
-                        _sel = fused.side_escape_left
-                        _ser = fused.side_escape_right
-                        if cfg.FLIP_LR:
-                            _ll, _lr = _lr, _ll
-                            _sel, _ser = _ser, _sel
-
-                    result = decision_engine.decide(
-                        analysis,
-                        state,
-                        fusion_boost=fused.confidence_boost,
-                        lidar_left_mm=_ll,
-                        lidar_right_mm=_lr,
-                        side_escape_left=_sel,
-                        side_escape_right=_ser,
-                        fusion_reason=fused.fusion_reason,
-                        lidar_front_mm=fused.front_clear_mm,
+                    lidar_scan = lidar.latest_scan
+                    lidar_front = (
+                        float(lidar_scan.front_min_mm)
+                        if lidar_scan and lidar_scan.front_min_mm > 0
+                        else None
                     )
 
-                    # Critical stop uses FORWARD depth only (L1/CENTER/R1 + LiDAR front).
-                    # Do not use side zones — close obstacle on the avoided side must not
-                    # trigger STOP while turning away from it.
-                    forward_depths: list[float] = []
-                    for zname in ("L1", "CENTER", "R1"):
-                        zm = analysis.corridors.get(zname)
-                        if zm is not None and zm.p20_depth > 0:
-                            forward_depths.append(float(zm.p20_depth))
-                    if fused.front_clear_mm > 0:
-                        forward_depths.append(float(fused.front_clear_mm))
-                    min_p20 = min(forward_depths) if forward_depths else 0.0
-
-                    sent = publisher.publish(
-                        result.stable_command,
-                        state,
-                        reason=result.reason,
-                        min_p20_depth=min_p20,
-                        stable_count=result.stable_count,
-                        critical_stop=result.critical_stop,
-                        allow_recenter=result.allow_recenter,
+                    raw_cmd, reason = decide_simple(
+                        analysis.metrics, lidar_front, cfg
                     )
+                    raw_cmd = apply_flip_lr(raw_cmd, cfg.FLIP_LR)
 
-                    # TTS only when Arduino actually received a new command
-                    if sent and result.stable_command != "NONE":
-                        now_t = time.time()
+                    result = smoother.update(raw_cmd)
+                    result.reason = reason
 
-                        if not hasattr(main, "last_spoken_command"):
-                            main.last_spoken_command = None
+                    cmd_to_send = result.stable_command
+                    if not state.get("authorized") or not state.get("ready"):
+                        cmd_to_send = "NONE"
 
-                        if (
-                            result.stable_command != main.last_spoken_command
-                            and now_t - last_nav_tts_time >= NAV_TTS_COOLDOWN
-                        ):
-                            soft_stop = (
-                                result.stable_command == "STOP"
-                                and not result.critical_stop
-                                and "no valid group width" in result.reason
-                                and min_p20 > cfg.SOFT_STOP_TTS_MIN_DEPTH_MM
-                            )
-                            if soft_stop:
-                                print(
-                                    f"[TTS] suppressed soft STOP "
-                                    f"(depth={min_p20:.0f}mm > "
-                                    f"{cfg.SOFT_STOP_TTS_MIN_DEPTH_MM:.0f}mm)"
-                                )
-                                main.last_spoken_command = result.stable_command
-                                last_nav_tts_time = now_t
-                            else:
-                                tts_text = TTS_MAP.get(
-                                    result.stable_command, result.stable_command
-                                )
-                                print(f"[TTS] speaking: {tts_text}")
-                                speak(tts_text)
+                    sent = publisher.publish(cmd_to_send, state, reason=reason)
 
-                                main.last_spoken_command = result.stable_command
-                                last_nav_tts_time = now_t
+                    if sent and cfg.USE_TTS and cmd_to_send not in ("NONE", ""):
+                        if cmd_to_send != last_spoken_command:
+                            tts_text = TTS_MAP.get(cmd_to_send, cmd_to_send)
+                            print(f"[TTS] {tts_text}")
+                            speak(tts_text)
+                            last_spoken_command = cmd_to_send
 
-                    # Debug visualization
                     if cfg.DEBUG_DISPLAY:
                         debug_frame = build_debug_frame(
                             depth_frame, analysis, result, state,
-                            publisher.last_command or "-", cfg)
+                            publisher.last_command or "-",
+                        )
                         cv2.imshow("Smart Walker Navigation", debug_frame)
-                        key = cv2.waitKey(1) & 0xFF
-                        if key == ord("q"):
-                            print("Quit key pressed.")
+                        if cv2.waitKey(1) & 0xFF == ord("q"):
                             pipeline.stop()
                             break
 
-                    # Periodic log
                     if frame_count % 200 == 0:
-                        n_grp = len(analysis.groups)
-                        n_val = len(analysis.valid_groups)
-                        lidar_scan = lidar.latest_scan
                         lidar_str = (
-                            f"lidar_front={lidar_scan.front_min_mm:.0f}mm"
-                            if lidar_scan else "lidar=stale"
+                            f"front={lidar_front:.0f}mm"
+                            if lidar_front
+                            else "lidar=stale"
                         )
                         print(
                             f"[Status] f={frame_count} "
-                            f"auth={state['authorized']} "
-                            f"ready={state['ready']} "
                             f"cmd={result.stable_command} "
-                            f"conf={result.confidence:.0%} "
-                            f"groups={n_grp}/{n_val} "
-                            f"target={result.chosen_corridor or '-'}"
-                            f" {lidar_str}"
+                            f"L={analysis.metrics.get('LEFT', 0):.0f} "
+                            f"C={analysis.metrics.get('CENTER', 0):.0f} "
+                            f"R={analysis.metrics.get('RIGHT', 0):.0f} "
+                            f"{lidar_str}"
                         )
 
                 except KeyboardInterrupt:
-                    print("Interrupted.")
                     pipeline.stop()
                     break
                 except Exception as e:
@@ -702,20 +443,20 @@ def main():
         try:
             arduino.stop()
         except Exception as e:
-            print(f"[Shutdown] Arduino stop error: {e}")
+            print(f"[Shutdown] Arduino: {e}")
         try:
             lidar.stop()
         except Exception as e:
-            print(f"[Shutdown] LiDAR stop error: {e}")
+            print(f"[Shutdown] LiDAR: {e}")
         try:
             tts_queue.put(None)
         except Exception as e:
-            print(f"[Shutdown] TTS queue stop error: {e}")
+            print(f"[Shutdown] TTS: {e}")
         if cfg.DEBUG_DISPLAY:
             try:
                 cv2.destroyAllWindows()
-            except Exception as e:
-                print(f"[Shutdown] cv2 cleanup error: {e}")
+            except Exception:
+                pass
         print("[System] Shutdown complete.")
 
 

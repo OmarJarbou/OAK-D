@@ -976,6 +976,16 @@ void setup() {
 void loop() {
   handleRFID();             // always listen for card
   handleLocalSerial();      // USB debug commands
+
+  // Send steering calibration to Pi every 5 seconds
+  static unsigned long lastCalibSend = 0;
+  if (millis() - lastCalibSend > 5000 && CENTER_ADC != -1) {
+    Serial1.print("CALIB:CENTER="); Serial1.print(CENTER_ADC);
+    Serial1.print(",LEFT=");        Serial1.print(LEFT_ADC);
+    Serial1.print(",RIGHT=");       Serial1.println(RIGHT_ADC);
+    lastCalibSend = millis();
+  }
+
   handlePiSerial();         // Pi/camera commands
   handleAuthSequence();     // non-blocking brake/motor sequence
   handleBanknoteDetection();// runs after auth, independent

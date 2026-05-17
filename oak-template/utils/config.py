@@ -46,23 +46,25 @@ class WalkerConfig:
     BOTTOM_CROP_RATIO: float = 0.95  # Skip bottom 5% (walker frame)
     SIDE_MARGIN_RATIO: float = 0.20  # Trim 8% each side
 
-    # ── Corridor / Zone Configuration ────────────────────────
-    NUM_ZONES: int = 7
+    # ── Corridor / Zone Configuration (3 zones — camera L/C/R only) ──
+    NUM_ZONES: int = 3
     ZONE_NAMES: List[str] = field(
-        default_factory=lambda: ["LEFT", "L2", "L1", "CENTER", "R1", "R2", "RIGHT"]
+        default_factory=lambda: ["LEFT", "CENTER", "RIGHT"]
     )
-    # Maps zone name -> Arduino GO command suffix
     ZONE_TO_CMD: dict = field(
         default_factory=lambda: {
             "LEFT": "GO:LEFT",
-            "L2": "GO:L2",
-            "L1": "GO:L1",
             "CENTER": "GO:CENTER",
-            "R1": "GO:R1",
-            "R2": "GO:R2",
             "RIGHT": "GO:RIGHT",
         }
     )
+
+    # ── Simple navigation thresholds ───────────────────────────
+    STOP_DISTANCE_MM: float = 700.0
+    MIN_SIDE_DEPTH_MM: float = 800.0
+    CENTER_BIAS_MM: float = 200.0
+    CMD_HYSTERESIS_FRAMES: int = 3
+    CMD_COOLDOWN_MS: float = 500.0
 
     # Set FLIP_LR=True when the camera is mounted so its image-left = walker's right.
     # Swaps all LEFT<->RIGHT zone commands and mirrors the LiDAR side distances.
@@ -303,18 +305,18 @@ class WalkerConfig:
             GO_FAST_FRAMES_REQUIRED=int(os.getenv("GO_FAST_FRAMES_REQUIRED", "2")),
             MANEUVER_HOLD_S=float(os.getenv("MANEUVER_HOLD_S", "2.5")),
             FLIP_LR=os.getenv("FLIP_LR", "0") == "1",
+            STOP_DISTANCE_MM=float(os.getenv("STOP_DISTANCE_MM", "700.0")),
+            MIN_SIDE_DEPTH_MM=float(os.getenv("MIN_SIDE_DEPTH_MM", "800.0")),
+            CENTER_BIAS_MM=float(os.getenv("CENTER_BIAS_MM", "200.0")),
+            CMD_HYSTERESIS_FRAMES=int(os.getenv("CMD_HYSTERESIS_FRAMES", "3")),
+            CMD_COOLDOWN_MS=float(os.getenv("CMD_COOLDOWN_MS", "500.0")),
         )
 
     def __post_init__(self) -> None:
-        """Apply FLIP_LR: mirror all left<->right zone commands."""
+        """Apply FLIP_LR: mirror left<->right zone commands."""
         if self.FLIP_LR:
-            flipped = {
-                "LEFT":   "GO:RIGHT",
-                "L2":     "GO:R2",
-                "L1":     "GO:R1",
+            self.ZONE_TO_CMD = {
+                "LEFT": "GO:RIGHT",
                 "CENTER": "GO:CENTER",
-                "R1":     "GO:L1",
-                "R2":     "GO:L2",
-                "RIGHT":  "GO:LEFT",
+                "RIGHT": "GO:LEFT",
             }
-            self.ZONE_TO_CMD = flipped
