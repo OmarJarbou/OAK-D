@@ -270,8 +270,8 @@ class CorridorAnalyzer:
             and not blocked_obstacle
             and p20_depth > cfg.EMERGENCY_STOP_MM
             and thin_depth > cfg.EMERGENCY_STOP_MM
-            and close_obstacle_ratio < 0.58
-            and danger_obstacle_ratio < max(0.26, cfg.SPREAD_EMERGENCY_RATIO - 0.02)
+            and close_obstacle_ratio < 0.70
+            and danger_obstacle_ratio < 0.35
         )
 
         depth_score = float(np.clip(

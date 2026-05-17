@@ -44,7 +44,7 @@ class WalkerConfig:
     # ── ROI Crop Ratios ──────────────────────────────────────
     TOP_CROP_RATIO: float = 0.40  # Skip upper 40% (ceiling/sky)
     BOTTOM_CROP_RATIO: float = 0.95  # Skip bottom 5% (walker frame)
-    SIDE_MARGIN_RATIO: float = 0.20  # Trim 8% each side
+    SIDE_MARGIN_RATIO: float = 0.10  # Trim 8% each side
 
     # ── Corridor / Zone Configuration ────────────────────────
     NUM_ZONES: int = 7
@@ -168,7 +168,11 @@ class WalkerConfig:
     LIDAR_SCAN_TIMEOUT_S: float = 0.5
     # Height compensation: LiDAR (30cm) veto ignored when camera front >
     # this value — camera sees clear path, LiDAR seeing low obstacle.
+    LIDAR_FRONT_TRUST_MM: float = 500.0
     LIDAR_CAMERA_AGREE_MM: float = 1200.0
+    # Escape latch auto-release: front is clear on BOTH sensors
+    ESCAPE_RELEASE_FRONT_MM: float = 800.0
+    ESCAPE_RELEASE_CAMERA_MM: float = 1200.0
     # Raised from 800 → 2000: camera emergency is trusted up to 2 m even
     # when LiDAR reports clear.  Prevents walker driving into real obstacles.
     FUSION_DISAGREEMENT_THRESHOLD_MM: float = 2000.0
@@ -220,7 +224,10 @@ class WalkerConfig:
             LIDAR_BACKEND=os.getenv("LIDAR_BACKEND", "auto"),
             LIDAR_SAFETY_MM=float(os.getenv("LIDAR_SAFETY_MM", "600.0")),
             LIDAR_SIDE_ESCAPE_MM=float(os.getenv("LIDAR_SIDE_ESCAPE_MM", "800.0")),
+            LIDAR_FRONT_TRUST_MM=float(os.getenv("LIDAR_FRONT_TRUST_MM", "500.0")),
             LIDAR_CAMERA_AGREE_MM=float(os.getenv("LIDAR_CAMERA_AGREE_MM", "1200.0")),
+            ESCAPE_RELEASE_FRONT_MM=float(os.getenv("ESCAPE_RELEASE_FRONT_MM", "800.0")),
+            ESCAPE_RELEASE_CAMERA_MM=float(os.getenv("ESCAPE_RELEASE_CAMERA_MM", "1200.0")),
             FUSION_DISAGREEMENT_THRESHOLD_MM=float(
                 os.getenv("FUSION_DISAGREEMENT_THRESHOLD_MM", "2000.0")
             ),
