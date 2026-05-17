@@ -96,6 +96,7 @@ class DecisionEngine:
         # Camera narrow-escape direction latch (prevents L2↔R2 shake in tight corridors).
         self._camera_escape_latch_zone: str = ""
         self._camera_escape_clear_streak: int = 0
+        self._maneuver_hold_s: float = float(cfg.MANEUVER_HOLD_S)
 
         # Lightweight temporal smoothing (EMA) for stability without vision changes.
         self._ema_alpha: float = float(cfg.TEMP_EMA_ALPHA)
@@ -460,10 +461,8 @@ class DecisionEngine:
                         break
 
             go_cmd = cfg.ZONE_TO_CMD.get(best_target, "GO:CENTER")
-            critical_stop = bool(analysis.has_emergency)
-            
-            # Allow turning left/right even if front is blocked (has_emergency),
-            # so the walker can pivot and escape the obstacle.
+            forward_mm = self._forward_depth_mm(analysis, lidar_front_mm)
+
             if narrow_zone is not None and best_target in ("", "CENTER"):
                 best_target = narrow_zone
                 go_cmd = cfg.ZONE_TO_CMD.get(best_target, "GO:CENTER")
@@ -471,34 +470,29 @@ class DecisionEngine:
                     best_target, best_group, analysis, locked_left, locked_right
                 )
 
-            can_side_escape = (
-                analysis.has_emergency
-                and not unsafe_low_conf
-                and best_target not in ("", "CENTER")
-                and (len(valid) > 0 or narrow_zone is not None)
+            escape_zone = narrow_zone or (
+                best_target if best_target not in ("", "CENTER") else None
+            )
+            boxed_in = (
+                forward_mm > 0
+                and forward_mm < cfg.CRITICAL_STOP_DISTANCE_MM
+                and escape_zone is None
+                and self._steer_instead_of_stop(
+                    analysis, None, locked_left, locked_right
+                ) is None
             )
 
-            unsafe_condition = (
-                (analysis.has_emergency and not can_side_escape)
-                or (len(valid) == 0 and narrow_zone is None)
-                or unsafe_low_conf
-            )
-
-            # Clear confirmed-centered latch if steering away from center is needed
-            # or if center is no longer clearly passable.
             if best_target != "CENTER" or not self._center_path_clear(analysis):
                 self._confirmed_centered = False
 
-            if unsafe_condition:
+            if unsafe_low_conf and boxed_in:
                 raw_cmd = "STOP"
-                # STOP clears confirmed centering.
                 self._confirmed_centered = False
-                if analysis.has_emergency and not can_side_escape:
-                    reason = "STOP: danger close ratio high"
-                elif len(valid) == 0:
-                    reason = "STOP: no valid group width"
-                else:
-                    reason = f"STOP: depth confidence unsafe ({confidence:.2f})"
+                reason = f"STOP: depth confidence unsafe ({confidence:.2f})"
+            elif boxed_in:
+                raw_cmd = "STOP"
+                self._confirmed_centered = False
+                reason = "STOP: blocked ahead, no side path"
             else:
                 # If Arduino already confirmed we're centered and CENTER remains clear,
                 # force FREE only (avoid GO:CENTER↔FREE oscillation).
@@ -529,8 +523,34 @@ class DecisionEngine:
                             self._confirmed_centered = False
 
             if raw_cmd == "FREE":
-                # FREE does not clear confirmed-centered latch by itself.
                 pass
+
+            forward_mm = self._forward_depth_mm(analysis, lidar_front_mm)
+            critical_stop = (
+                forward_mm > 0
+                and forward_mm < cfg.CRITICAL_STOP_DISTANCE_MM
+                and self._steer_instead_of_stop(
+                    analysis, narrow_zone, locked_left, locked_right
+                ) is None
+            )
+
+        # ── 7.3 Prefer steer over STOP when any side path is open ─────
+        if raw_cmd == "STOP":
+            steer_zone = self._steer_instead_of_stop(
+                analysis, narrow_zone, locked_left, locked_right
+            )
+            if steer_zone is not None:
+                go_cmd = cfg.ZONE_TO_CMD.get(steer_zone, "GO:CENTER")
+                raw_cmd = go_cmd
+                best_target = steer_zone
+                reason = f"{go_cmd}: steer around obstacle ({steer_zone} open)"
+                critical_stop = False
+                self._confirmed_centered = False
+            elif self._in_maneuver_hold() and self._last_stable.startswith("GO:"):
+                if self._last_stable != "GO:CENTER":
+                    raw_cmd = self._last_stable
+                    reason = f"{raw_cmd}: maneuver hold (finish turn)"
+                    critical_stop = False
 
         # ── 7.5 FREE exit hysteresis (Option C) ─────────────────────
         # When currently stable FREE, require N consecutive "not free" frames
@@ -767,6 +787,40 @@ class DecisionEngine:
         return self._last_stable, self._go_streak
 
     # ── Safety-Score Target Selection ────────────────────────
+
+    def _forward_depth_mm(
+        self, analysis: AnalysisResult, lidar_front_mm: float = 0.0
+    ) -> float:
+        """Closest forward obstacle: L1/CENTER/R1 and optional LiDAR front."""
+        vals: list[float] = []
+        for name in ("L1", "CENTER", "R1"):
+            m = analysis.corridors.get(name)
+            if m is not None and m.p20_depth > 0:
+                vals.append(float(m.p20_depth))
+        if lidar_front_mm > 0:
+            vals.append(float(lidar_front_mm))
+        return min(vals) if vals else 0.0
+
+    def _in_maneuver_hold(self) -> bool:
+        """True shortly after a lateral GO:* — suppress STOP from side obstacles."""
+        cmd = self._last_stable
+        if not cmd.startswith("GO:") or cmd == "GO:CENTER":
+            return False
+        return (time.time() - self._last_change_time) < self._maneuver_hold_s
+
+    def _steer_instead_of_stop(
+        self,
+        analysis: AnalysisResult,
+        narrow_zone: Optional[str],
+        locked_left: bool,
+        locked_right: bool,
+    ) -> Optional[str]:
+        """Return zone name to steer toward, or None if truly must STOP."""
+        if narrow_zone is not None:
+            return narrow_zone
+        return self._try_camera_narrow_escape(
+            analysis, locked_left, locked_right
+        )
 
     @staticmethod
     def _lateral_side(cmd_or_zone: str) -> str:

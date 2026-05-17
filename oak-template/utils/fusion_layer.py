@@ -127,7 +127,25 @@ class FusionLayer:
                         lidar_right_mm=float(scan.right_min_mm),
                     )
 
-            # Stop-only mode (or no side escape): emergency STOP; camera steers later.
+            # LiDAR front blocked — let camera steer if a side path is open.
+            camera_escape = self._camera_side_escape_available(oak_analysis)
+            if camera_escape or (not lidar_steering and (
+                scan.side_escape_left or scan.side_escape_right
+            )):
+                return FusedAnalysis(
+                    oak_analysis=oak_analysis,
+                    has_emergency=False,
+                    front_clear_mm=float(lidar_front_mm),
+                    side_escape_left=bool(scan.side_escape_left),
+                    side_escape_right=bool(scan.side_escape_right),
+                    lidar_active=True,
+                    confidence_boost=+0.05,
+                    fusion_reason="lidar_front_blocked_camera_steers",
+                    lidar_left_mm=float(scan.left_min_mm),
+                    lidar_right_mm=float(scan.right_min_mm),
+                )
+
+            # Truly boxed in: LiDAR + camera agree no escape.
             fused_oak = self._override_emergency(oak_analysis, True)
             return FusedAnalysis(
                 oak_analysis=fused_oak,
@@ -186,6 +204,17 @@ class FusionLayer:
             lidar_left_mm=float(scan.left_min_mm),
             lidar_right_mm=float(scan.right_min_mm),
         )
+
+    @staticmethod
+    def _camera_side_escape_available(analysis: AnalysisResult, min_p20_mm: float = 700.0) -> bool:
+        """True if any lateral camera zone is clear enough to steer around a front block."""
+        for name in ("LEFT", "L2", "L1", "R1", "R2", "RIGHT"):
+            m = analysis.corridors.get(name)
+            if m is None:
+                continue
+            if m.is_clear and float(m.p20_depth or 0.0) >= min_p20_mm:
+                return True
+        return False
 
     @staticmethod
     def _oak_front_mm(analysis: AnalysisResult) -> float:

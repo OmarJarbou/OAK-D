@@ -153,6 +153,8 @@ class WalkerConfig:
     # When side beats center by this much, commit direction in fewer frames
     GO_FAST_MARGIN: float = 0.22
     GO_FAST_FRAMES_REQUIRED: int = 2
+    # After a lateral GO:*, ignore STOP for this long (avoid stop on avoided-side obstacle).
+    MANEUVER_HOLD_S: float = 2.5
 
     # ── Lightweight Temporal Smoothing (DecisionEngine only) ─────────
     # EMA applied to p20_depth and close_obstacle_ratio per zone
@@ -299,6 +301,7 @@ class WalkerConfig:
             UNSAFE_CONF_STREAK_FRAMES=int(os.getenv("UNSAFE_CONF_STREAK_FRAMES", "3")),
             GO_FAST_MARGIN=float(os.getenv("GO_FAST_MARGIN", "0.22")),
             GO_FAST_FRAMES_REQUIRED=int(os.getenv("GO_FAST_FRAMES_REQUIRED", "2")),
+            MANEUVER_HOLD_S=float(os.getenv("MANEUVER_HOLD_S", "2.5")),
             FLIP_LR=os.getenv("FLIP_LR", "0") == "1",
         )
 

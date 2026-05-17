@@ -141,8 +141,20 @@ class CommandPublisher:
             )
             return False
 
-        # ── Critical STOP: override all cooldowns immediately ────────
+        # ── Critical STOP: override cooldowns only when truly boxed in ahead ─
         if command == "STOP" and critical_stop and changed:
+            # Do not cut short an active lateral maneuver for a side-zone reading.
+            if (
+                self._last_sent
+                and self._last_sent.startswith("GO:")
+                and self._last_sent != "GO:CENTER"
+                and held_current < self.cfg.MANEUVER_HOLD_S
+            ):
+                print(
+                    f"[Publisher] MANEUVER_HOLD blocked CRITICAL_STOP "
+                    f"(held={held_current:.2f}s < {self.cfg.MANEUVER_HOLD_S:.2f}s)"
+                )
+                return False
             print(
                 f"[Publisher] {self._last_sent or '(none)'} -> STOP "
                 f"reason=CRITICAL_STOP stable={stable_count} "

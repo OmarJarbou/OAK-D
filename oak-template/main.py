@@ -599,12 +599,17 @@ def main():
                         lidar_front_mm=fused.front_clear_mm,
                     )
 
-                    # Compute min p20 depth across ALL zones for critical stop check.
-                    # Side escape paths should prevent CRITICAL_STOP from latching.
-                    min_p20 = min(
-                        (m.p20_depth for m in analysis.corridors.values() if m.p20_depth > 0),
-                        default=0.0,
-                    )
+                    # Critical stop uses FORWARD depth only (L1/CENTER/R1 + LiDAR front).
+                    # Do not use side zones — close obstacle on the avoided side must not
+                    # trigger STOP while turning away from it.
+                    forward_depths: list[float] = []
+                    for zname in ("L1", "CENTER", "R1"):
+                        zm = analysis.corridors.get(zname)
+                        if zm is not None and zm.p20_depth > 0:
+                            forward_depths.append(float(zm.p20_depth))
+                    if fused.front_clear_mm > 0:
+                        forward_depths.append(float(fused.front_clear_mm))
+                    min_p20 = min(forward_depths) if forward_depths else 0.0
 
                     sent = publisher.publish(
                         result.stable_command,
