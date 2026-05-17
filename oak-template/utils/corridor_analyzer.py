@@ -370,7 +370,14 @@ class CorridorAnalyzer:
         names = [z.name for z in zones]
         indices = [z.zone_index for z in zones]
         total_width = sum(z.zone_width_m for z in zones)
-        is_valid = total_width >= cfg.REQUIRED_CLEAR_WIDTH_M
+        
+        # FIX: Account for zone quantization error. The physical gap is usually wider
+        # than the sum of purely clear zones because obstacles might only partially 
+        # occupy the boundary zones. We add 1.2x the width of a single zone as tolerance.
+        zone_w = zones[0].zone_width_m if zones else 0.0
+        effective_width = total_width + (1.2 * zone_w)
+        
+        is_valid = effective_width >= cfg.REQUIRED_CLEAR_WIDTH_M
         avg_p20 = sum(z.p20_depth for z in zones) / len(zones)
         avg_score = sum(z.score for z in zones) / len(zones)
 
