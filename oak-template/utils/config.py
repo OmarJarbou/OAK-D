@@ -166,6 +166,9 @@ class WalkerConfig:
     LIDAR_SIDE_ARC_START_DEG: float = 30.0
     LIDAR_SIDE_ARC_END_DEG: float = 90.0
     LIDAR_SCAN_TIMEOUT_S: float = 0.5
+    # Height compensation: LiDAR (30cm) veto ignored when camera front >
+    # this value — camera sees clear path, LiDAR seeing low obstacle.
+    LIDAR_CAMERA_AGREE_MM: float = 1200.0
     FUSION_DISAGREEMENT_THRESHOLD_MM: float = 800.0
 
     # ── LiDAR Side-Distance Directional Bias ─────────────────
@@ -215,6 +218,7 @@ class WalkerConfig:
             LIDAR_BACKEND=os.getenv("LIDAR_BACKEND", "auto"),
             LIDAR_SAFETY_MM=float(os.getenv("LIDAR_SAFETY_MM", "600.0")),
             LIDAR_SIDE_ESCAPE_MM=float(os.getenv("LIDAR_SIDE_ESCAPE_MM", "800.0")),
+            LIDAR_CAMERA_AGREE_MM=float(os.getenv("LIDAR_CAMERA_AGREE_MM", "1200.0")),
             FUSION_DISAGREEMENT_THRESHOLD_MM=float(
                 os.getenv("FUSION_DISAGREEMENT_THRESHOLD_MM", "800.0")
             ),

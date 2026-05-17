@@ -402,7 +402,7 @@ def main():
         side_arc_start_deg=cfg.LIDAR_SIDE_ARC_START_DEG,
         side_arc_end_deg=cfg.LIDAR_SIDE_ARC_END_DEG,
     )
-    fusion = FusionLayer(lidar)
+    fusion = FusionLayer(lidar, cfg)
 
     visualizer = None
     if use_visualizer:
@@ -576,6 +576,7 @@ def main():
                         side_escape_left=_sel,
                         side_escape_right=_ser,
                         fusion_reason=fused.fusion_reason,
+                        lidar_front_mm=fused.front_clear_mm,
                     )
 
                     # Compute min p20 depth across ALL zones for critical stop check.

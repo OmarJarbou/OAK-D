@@ -1,186 +1,1060 @@
-بفهم مدى خطورة الموضوع، وأقدر أهمية هذا المشروع. خليني أحلل الكود بعمق وأحدد المشاكل الجذرية.سأحلل الكود بعمق الآن. المشكلة الأساسية ليست في كود واحد بل في منظومة القرارات كلها.الآن أفصّل كل مشكلة مع الإصلاح الدقيق:
+═══════════════════════════════════════════════════════════════
+  SMART WALKER — COMPLETE FIX GUIDE (Windsurf/Cascade Session)
+  Last updated: May 2026
+  Status: Ready to implement — do NOT ask Claude again
+═══════════════════════════════════════════════════════════════
 
----
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 0: PROJECT CONTEXT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-## المشاكل الجذرية وإصلاحاتها
+Goal: Obstacle avoidance + braking for a blind-assistance smart walker.
+Safety requirement: HIGH accuracy — the user is blind and depends on it.
 
-### 🔴 مشكلة 1 — FLIP_LR يكسر حماية القفل الجانبي (الأخطر)
+Hardware:
+  - OAK-D camera (stereo depth) → mounted at ~70cm height
+  - RPLIDAR C1 (360° 2D LiDAR)  → mounted at ~30cm height
+  - Both on same axis, same forward direction (0° = forward)
+  - Arduino Mega → controls motors, receives CMD: via Serial
+  - Raspberry Pi → runs main.py, sends commands to Arduino
 
-`FLIP_LR=1` في `.env` يعني أن الكاميرا مقلوبة، فـ `GO:LEFT` يصبح في الواقع "يمين". لكن في `CommandPublisher`:
+Project path: oak-template/
+Key files:
+  - main.py                         (pipeline + main loop)
+  - utils/config.py                 (WalkerConfig dataclass — all params)
+  - utils/fusion_layer.py           (FusionLayer — merges OAK + LiDAR)
+  - utils/decision_engine.py        (DecisionEngine — picks command)
+  - utils/lidar_analyzer.py         (LidarAnalyzer — background thread)
+  - utils/corridor_analyzer.py      (CorridorAnalyzer — 7-zone depth)
+  - utils/command_publisher.py      (CommandPublisher — rate limits sends)
+  - utils/arduino_serial.py         (ArduinoSerial — bidirectional serial)
+  - utils/tts_player.py             (TTSPlayer — voice feedback)
+  - .env file → does NOT exist yet, needs to be created
 
-```python
-# الكود الحالي — خاطئ عند FLIP_LR=1
-@staticmethod
-def _is_left_command(command: str) -> bool:
-    return command in {"GO:LEFT", "GO:L2", "GO:L1"}  # هذه يمين فعلياً عند الـ flip!
-```
+Architecture flow:
+  depth_frame → CorridorAnalyzer.analyze() → AnalysisResult
+  LidarAnalyzer (background thread) → LidarScan (latest_scan)
+  AnalysisResult + LidarScan → FusionLayer.fuse() → FusedAnalysis
+  FusedAnalysis → DecisionEngine.decide() → DecisionResult
+  DecisionResult → CommandPublisher.publish() → Arduino CMD
 
-عندما يكون `locked_left=True` (جدار على اليسار الفيزيائي)، الكود يحظر `GO:LEFT` لكن `GO:LEFT` بعد الـ flip تعني "يمين فيزيائي" = الاتجاه الآمن! **النتيجة: يحظر الاتجاه الآمن ويسمح بالخطر.**
+Zones (left to right): LEFT, L2, L1, CENTER, R1, R2, RIGHT
+LiDAR arcs: front = ±30°, left = 30°→90°, right = -90°→-30°
 
-```python
-# الإصلاح في command_publisher.py
-def __init__(self, cfg: WalkerConfig, serial: ArduinoSerial):
-    # ... existing code ...
-    self._flip_lr = cfg.FLIP_LR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 1: ROOT CAUSE ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-def _is_left_command(self, command: str) -> bool:
-    # بعد الـ flip، GO:LEFT يعني يمين فيزيائي
-    if not self._flip_lr:
-        return command in {"GO:LEFT", "GO:L2", "GO:L1"}
+BUG #1 [CRITICAL] — front_clear_mm NEVER passed to decide()
+────────────────────────────────────────────────────────────
+FusedAnalysis has field:  front_clear_mm: float
+But in main.py lines 562-579, only these are forwarded:
+  lidar_left_mm, lidar_right_mm, side_escape_left, side_escape_right
+
+"front_clear_mm" is NEVER sent to DecisionEngine.decide().
+
+Consequence: the _escape_latch_side in decision_engine.py can only
+be released when fusion_reason changes AWAY from "lidar_veto_side_escape".
+But fusion_reason stays "lidar_veto_side_escape" as long as LiDAR
+front_min_mm < LIDAR_SAFETY_MM (600mm). Since the latch release has
+no direct access to front_min_mm, it can NEVER proactively release —
+it relies on a side-effect of fusion changing state.
+
+Proof from log (output_scenario.txt lines ~282-483):
+  stable_count=4 → GO:L1, then stable_count=153 → still GO:L1
+  L=2300+mm (left very open), R=150mm (right blocked), front=450mm
+  System stays stuck in GO:L1 for ~150 frames (~5 seconds)
+  Only escapes when _is_free_candidate accidentally triggers
+
+───────────────────────────────────────────────────────────
+BUG #2 [HIGH] — SIDE_PREFER_MARGIN=0.15 causes flip-flop
+───────────────────────────────────────────────────────────
+In config.py line 134: SIDE_PREFER_MARGIN: float = 0.15
+In from_env() line 249: default "0.15"
+
+From log (output_scenario.txt lines 192-224), during FREE mode:
+  [Decision] Side zone LEFT preferred:  safety=1.20 vs CENTER=1.07  diff=0.13
+  [Decision] Side zone RIGHT preferred: safety=1.25 vs CENTER=1.07  diff=0.18
+  [Decision] Side zone LEFT preferred:  safety=1.26 vs CENTER=1.08  diff=0.18
+  (flips every few frames between LEFT and RIGHT)
+
+The difference is 0.13-0.18 — exactly straddling the 0.15 threshold.
+Each frame noise shifts it above/below → random left/right oscillation.
+This means the system has NO stable direction when path is open.
+
+───────────────────────────────────────────────────────────
+BUG #3 [HIGH] — Height difference causes false LiDAR vetoes
+───────────────────────────────────────────────────────────
+LiDAR at 30cm reads chair legs / table bases as obstacles.
+Camera at 70cm sees over them → says path is clear.
+Result: fusion triggers "lidar_veto_side_escape" for non-obstacles,
+forcing unnecessary GO:L1/R1 commands when path is actually free.
+
+From log: lidar_front=450mm while depth_mm=847mm (camera sees clear).
+The camera p20 in front zones was ~800-1478mm during this sequence —
+high enough to be "clear" by camera standards but LiDAR keeps vetoing.
+
+───────────────────────────────────────────────────────────
+BUG #4 [MEDIUM] — Side arc too wide (30°-90°) measures walls
+───────────────────────────────────────────────────────────
+In config.py lines 166-167:
+  LIDAR_SIDE_ARC_START_DEG: float = 30.0
+  LIDAR_SIDE_ARC_END_DEG: float   = 90.0
+
+An arc of 30°-90° includes 90° (pure sideways) → measures wall distance.
+For a walker that needs to turn slightly, we need forward-lateral info
+(~45°-75°), not pure lateral. This inflates "side_escape" readings and
+makes the system think there's more room than actually exists forward-left.
+
+───────────────────────────────────────────────────────────
+BUG #5 [MEDIUM] — Escape latch fragile: clears on single frame
+───────────────────────────────────────────────────────────
+In decision_engine.py lines 318-320:
+  else:
+      # Not in side-escape mode: clear the latch
+      self._escape_latch_side = ""
+
+If fusion_reason is NOT "lidar_veto_side_escape" for even ONE frame
+(e.g. a noisy scan briefly shows front_clear=True), the latch clears.
+Next frame it re-engages and may pick a DIFFERENT direction.
+This creates: go-left, stop, go-right, stop pattern.
+
+───────────────────────────────────────────────────────────
+BUG #6 [LOW] — No .env file → all params use code defaults
+───────────────────────────────────────────────────────────
+There is no .env file in oak-template/. All tunable parameters
+are using hardcoded defaults from config.py. This makes it hard
+to tune without code changes. A .env file needs to be created.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 2: COMPLETE IMPLEMENTATION PLAN
+(Apply in this exact order)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+═══════════════════════════════════════════════
+FIX 1: Pass lidar_front_mm to decide() [CRITICAL]
+Files: main.py + decision_engine.py
+═══════════════════════════════════════════════
+
+STEP 1A — decision_engine.py: Add lidar_front_mm parameter to decide()
+
+Find this signature (line ~169):
+    def decide(
+        self,
+        analysis: AnalysisResult,
+        arduino_state: dict,
+        fusion_boost: float = 0.0,
+        lidar_left_mm: float = 0.0,
+        lidar_right_mm: float = 0.0,
+        side_escape_left: bool = False,
+        side_escape_right: bool = False,
+        fusion_reason: str = "",
+    ) -> DecisionResult:
+
+Replace with:
+    def decide(
+        self,
+        analysis: AnalysisResult,
+        arduino_state: dict,
+        fusion_boost: float = 0.0,
+        lidar_left_mm: float = 0.0,
+        lidar_right_mm: float = 0.0,
+        side_escape_left: bool = False,
+        side_escape_right: bool = False,
+        fusion_reason: str = "",
+        lidar_front_mm: float = 0.0,
+    ) -> DecisionResult:
+
+STEP 1B — decision_engine.py: Add escape latch release using lidar_front_mm
+
+Find this block (line ~267):
+    if fusion_reason == "lidar_veto_side_escape":
+        # Use latched direction if already committed; pick fresh only if none.
+        if self._escape_latch_side == "left" and locked_left:
+
+BEFORE that line, insert:
+        # ── Proactive escape latch release ──────────────────────────────
+        # Release when LiDAR front is genuinely clear again.
+        # Uses lidar_front_mm (passed from fused.front_clear_mm) — not
+        # lidar_left/right_mm which are side arcs (30-90°), not front.
+        if self._escape_latch_side and lidar_front_mm > cfg.LIDAR_SAFETY_MM:
+            print(
+                f"[Decision] Escape latch RELEASED (front clear): "
+                f"lidar_front={lidar_front_mm:.0f}mm > {cfg.LIDAR_SAFETY_MM:.0f}mm"
+            )
+            self._escape_latch_side = ""
+
+STEP 1C — main.py: Forward front_clear_mm to decide()
+
+Find this block (line ~570):
+    result = decision_engine.decide(
+        analysis,
+        state,
+        fusion_boost=fused.confidence_boost,
+        lidar_left_mm=_ll,
+        lidar_right_mm=_lr,
+        side_escape_left=_sel,
+        side_escape_right=_ser,
+        fusion_reason=fused.fusion_reason,
+    )
+
+Replace with:
+    result = decision_engine.decide(
+        analysis,
+        state,
+        fusion_boost=fused.confidence_boost,
+        lidar_left_mm=_ll,
+        lidar_right_mm=_lr,
+        side_escape_left=_sel,
+        side_escape_right=_ser,
+        fusion_reason=fused.fusion_reason,
+        lidar_front_mm=fused.front_clear_mm,
+    )
+
+═══════════════════════════════════════════════
+FIX 2: Add hysteresis to escape latch clear [BUG #5]
+File: decision_engine.py
+═══════════════════════════════════════════════
+
+The latch clears on ONE frame of non-escape mode. Add a counter.
+
+STEP 2A — In DecisionEngine.__init__(), find:
+        self._escape_latch_side: str = ""
+
+Add after it:
+        self._escape_latch_clear_streak: int = 0  # consecutive non-escape frames
+        self._escape_latch_clear_required: int = 3  # frames needed to clear latch
+
+STEP 2B — In decide(), find the else branch (line ~318):
     else:
-        return command in {"GO:RIGHT", "GO:R2", "GO:R1"}
+        # Not in side-escape mode: clear the latch so next escape starts fresh.
+        self._escape_latch_side = ""
 
-def _is_right_command(self, command: str) -> bool:
-    if not self._flip_lr:
-        return command in {"GO:RIGHT", "GO:R2", "GO:R1"}
+Replace with:
     else:
-        return command in {"GO:LEFT", "GO:L2", "GO:L1"}
+        # Not in side-escape mode: require N consecutive non-escape frames
+        # before clearing latch (prevents single-frame noise from resetting).
+        self._escape_latch_clear_streak += 1
+        if self._escape_latch_clear_streak >= self._escape_latch_clear_required:
+            self._escape_latch_side = ""
+            self._escape_latch_clear_streak = 0
+
+Also find the block where latch is first set (line ~287):
+                if force_side:
+                    self._escape_latch_side = force_side  # lock in direction
+
+Add after it:
+                    self._escape_latch_clear_streak = 0  # reset clear counter
+
+STEP 2C — In DecisionEngine.reset(), find:
+        self._escape_latch_side = ""
+
+Add after it:
+        self._escape_latch_clear_streak = 0
+
+═══════════════════════════════════════════════
+FIX 3: Height compensation in FusionLayer [BUG #3]
+File: utils/fusion_layer.py
+═══════════════════════════════════════════════
+
+LiDAR at 30cm fires false vetoes for chair legs. The fix:
+Only trust a LiDAR front veto when the camera ALSO sees
+something close (within LIDAR_CAMERA_AGREE_MM).
+
+STEP 3A — fusion_layer.py: Add config to __init__
+
+Find:
+    def __init__(self, lidar: LidarAnalyzer):
+        self._lidar = lidar
+
+Replace with:
+    def __init__(self, lidar: LidarAnalyzer, cfg=None):
+        self._lidar = lidar
+        self._cfg = cfg
+
+STEP 3B — fusion_layer.py: Change the LiDAR veto block
+
+Find the entire block starting with:
+        # 3) LiDAR veto: LiDAR says emergency, OAK says clear.
+        if lidar_emergency and (not oak_emergency):
+            # ── Side-escape override ─────────────────────────────────────
+            has_side_escape = bool(scan.side_escape_left) or bool(scan.side_escape_right)
+            if has_side_escape:
+                return FusedAnalysis(
+                    oak_analysis=oak_analysis,
+                    has_emergency=False,
+                    front_clear_mm=float(lidar_front_mm),
+                    side_escape_left=bool(scan.side_escape_left),
+                    side_escape_right=bool(scan.side_escape_right),
+                    lidar_active=True,
+                    confidence_boost=+0.05,
+                    fusion_reason="lidar_veto_side_escape",
+                    lidar_left_mm=float(scan.left_min_mm),
+                    lidar_right_mm=float(scan.right_min_mm),
+                )
+
+            # No side escape available → true emergency, stop the walker.
+            fused_oak = self._override_emergency(oak_analysis, True)
+            return FusedAnalysis(
+                oak_analysis=fused_oak,
+                has_emergency=True,
+                front_clear_mm=float(lidar_front_mm),
+                side_escape_left=False,
+                side_escape_right=False,
+                lidar_active=True,
+                confidence_boost=+0.05,
+                fusion_reason="lidar_veto_emergency",
+                lidar_left_mm=float(scan.left_min_mm),
+                lidar_right_mm=float(scan.right_min_mm),
+            )
+
+Replace with:
+        # 3) LiDAR veto: LiDAR says emergency, OAK says clear.
+        if lidar_emergency and (not oak_emergency):
+            oak_front = self._oak_front_mm(oak_analysis)
+
+            # Height compensation: LiDAR (30cm) sees low obstacles camera (70cm)
+            # ignores. Only trust LiDAR veto when camera also sees something close.
+            # LIDAR_CAMERA_AGREE_MM threshold: if camera front > this, LiDAR is
+            # likely seeing a low obstacle (chair leg, threshold, etc.) — ignore.
+            _agree_mm = (
+                float(self._cfg.LIDAR_CAMERA_AGREE_MM)
+                if self._cfg is not None
+                else 1200.0
+            )
+            camera_agrees = float(oak_front) < _agree_mm
+
+            if not camera_agrees:
+                # Camera sees clear path — LiDAR likely hitting low obstacle.
+                # Ignore veto entirely; pass through LiDAR side data for bias.
+                return FusedAnalysis(
+                    oak_analysis=oak_analysis,
+                    has_emergency=False,
+                    front_clear_mm=float(oak_front),
+                    side_escape_left=bool(scan.side_escape_left),
+                    side_escape_right=bool(scan.side_escape_right),
+                    lidar_active=True,
+                    confidence_boost=+0.03,
+                    fusion_reason="lidar_low_obstacle_ignored",
+                    lidar_left_mm=float(scan.left_min_mm),
+                    lidar_right_mm=float(scan.right_min_mm),
+                )
+
+            # Camera agrees obstacle is close → LiDAR veto is real.
+            has_side_escape = bool(scan.side_escape_left) or bool(scan.side_escape_right)
+            if has_side_escape:
+                return FusedAnalysis(
+                    oak_analysis=oak_analysis,
+                    has_emergency=False,
+                    front_clear_mm=float(lidar_front_mm),
+                    side_escape_left=bool(scan.side_escape_left),
+                    side_escape_right=bool(scan.side_escape_right),
+                    lidar_active=True,
+                    confidence_boost=+0.05,
+                    fusion_reason="lidar_veto_side_escape",
+                    lidar_left_mm=float(scan.left_min_mm),
+                    lidar_right_mm=float(scan.right_min_mm),
+                )
+
+            # No side escape → true emergency (both sensors agree).
+            fused_oak = self._override_emergency(oak_analysis, True)
+            return FusedAnalysis(
+                oak_analysis=fused_oak,
+                has_emergency=True,
+                front_clear_mm=float(lidar_front_mm),
+                side_escape_left=False,
+                side_escape_right=False,
+                lidar_active=True,
+                confidence_boost=+0.05,
+                fusion_reason="lidar_veto_emergency",
+                lidar_left_mm=float(scan.left_min_mm),
+                lidar_right_mm=float(scan.right_min_mm),
+            )
+
+STEP 3C — main.py: Pass cfg to FusionLayer
+
+Find (line ~405):
+    fusion = FusionLayer(lidar)
+
+Replace with:
+    fusion = FusionLayer(lidar, cfg)
+
+═══════════════════════════════════════════════
+FIX 4: Add LIDAR_CAMERA_AGREE_MM to config [for Fix 3]
+File: utils/config.py
+═══════════════════════════════════════════════
+
+STEP 4A — Add field to WalkerConfig dataclass.
+
+Find (line ~168):
+    LIDAR_SCAN_TIMEOUT_S: float = 0.5
+    FUSION_DISAGREEMENT_THRESHOLD_MM: float = 800.0
+
+Add after LIDAR_SCAN_TIMEOUT_S:
+    # Height compensation: LiDAR (30cm) veto ignored when camera front >
+    # this value — camera sees clear path, LiDAR seeing low obstacle.
+    LIDAR_CAMERA_AGREE_MM: float = 1200.0
+
+STEP 4B — Add to from_env() method.
+
+Find in from_env():
+    FUSION_DISAGREEMENT_THRESHOLD_MM=float(
+        os.getenv("FUSION_DISAGREEMENT_THRESHOLD_MM", "800.0")
+    ),
+
+Add before it:
+    LIDAR_CAMERA_AGREE_MM=float(os.getenv("LIDAR_CAMERA_AGREE_MM", "1200.0")),
+
+═══════════════════════════════════════════════
+FIX 5: Create .env file with optimized parameters [BUGS #2, #4, #6]
+File: oak-template/.env  (CREATE NEW FILE)
+═══════════════════════════════════════════════
+
+Create file at: oak-template/.env
+
+Full content:
+# ── Hardware Ports ────────────────────────────────────────────
+ARDUINO_PORT=/dev/ttyACM0
+ARDUINO_BAUD=9600
+LIDAR_PORT=/dev/ttyUSB0
+LIDAR_BAUD=460800
+LIDAR_BACKEND=auto
+
+# ── Walker Physical ───────────────────────────────────────────
+WALKER_WIDTH_M=0.64
+SIDE_MARGIN_M=0.15
+
+# ── LiDAR Arc Angles ──────────────────────────────────────────
+# Front arc: ±30° (matches ~72° camera FOV front portion)
+LIDAR_FRONT_ARC_DEG=30.0
+# Side arc: 45°-75° (forward-lateral, not pure sideways)
+# Was: 30.0-90.0 (too wide, measured walls instead of forward corridor)
+LIDAR_SIDE_ARC_START_DEG=45.0
+LIDAR_SIDE_ARC_END_DEG=75.0
+
+# ── LiDAR Safety Thresholds ───────────────────────────────────
+# Raised from 600 to 650 to compensate for 30cm mounting height
+# (LiDAR reads ~50mm closer than camera for same physical obstacle)
+LIDAR_SAFETY_MM=650.0
+LIDAR_SIDE_ESCAPE_MM=800.0
+LIDAR_SCAN_TIMEOUT_S=0.5
+
+# ── Height Compensation (Fusion) ─────────────────────────────
+# LiDAR veto ignored when camera front > this (low obstacle detection)
+LIDAR_CAMERA_AGREE_MM=1200.0
+
+# ── Side Direction: Anti-Oscillation ─────────────────────────
+# Raised from 0.15 to 0.20: prevents flip-flop when differences
+# are in the 0.13-0.18 range (confirmed from log analysis)
+SIDE_PREFER_MARGIN=0.20
+# CENTER stays chosen unless side beats it by SIDE_PREFER_MARGIN
+CENTER_SAFETY_BIAS=0.10
+CENTER_ACCEPT_RATIO=0.85
+
+# ── LiDAR Directional Bias (low-confidence assist) ────────────
+LIDAR_SIDE_BIAS_CONF_THRESHOLD=0.50
+LIDAR_SIDE_BIAS_MM_MIN_GAP=300.0
+LIDAR_SIDE_BIAS_BONUS=0.08
+
+# ── Decision Hysteresis ───────────────────────────────────────
+STOP_FRAMES_REQUIRED=4
+FREE_FRAMES_REQUIRED=6
+GO_FRAMES_REQUIRED=4
+COMMAND_CHANGE_COOLDOWN_S=0.7
+MIN_COMMAND_HOLD_MS=800.0
+
+# ── FREE Mode Stability ───────────────────────────────────────
+FREE_STABLE_FRAMES=6
+FREE_CLEAR_DISTANCE_MM=1200.0
+FREE_EXIT_BAD_FRAMES=2
+FREE_CENTER_MIN_P20_MM=1600.0
+FREE_CENTER_CLOSE_OBS_MAX=0.10
+FREE_CENTER_MIN_VALID_RATIO=0.40
+FREE_CONF_THRESHOLD=0.55
+
+# ── STOP / Recovery ───────────────────────────────────────────
+STOP_HOLD_SECONDS=1.0
+CRITICAL_STOP_DISTANCE_MM=600.0
+UNSAFE_CONF_THRESHOLD=0.35
+UNSAFE_CONF_STREAK_FRAMES=3
+
+# ── Fast Turn Commit ──────────────────────────────────────────
+GO_FAST_MARGIN=0.22
+GO_FAST_FRAMES_REQUIRED=2
+
+# ── Recenter After Side Steer ─────────────────────────────────
+RECENTER_MIN_P20_MM=900.0
+RECENTER_SAFETY_GAP=0.10
+
+# ── Temporal EMA Smoothing ────────────────────────────────────
+TEMP_EMA_ALPHA=0.25
+TEMP_EMA_WARMUP_FRAMES=4
+
+# ── Camera Orientation ────────────────────────────────────────
+# Set FLIP_LR=1 if camera image-left = walker's physical right
+FLIP_LR=0
+
+# ── Features ─────────────────────────────────────────────────
+DEBUG_DISPLAY=0
+USE_TTS=1
+ENABLE_SNAPS=0
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 3: WHAT NOT TO DO (Claude's wrong suggestions)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+❌ DO NOT use lidar_left_mm/lidar_right_mm to release escape latch.
+   These are SIDE arc distances (45°-75°), not front distances.
+   In a narrow hallway, sides will always be small → latch never releases.
+   USE: lidar_front_mm (= fused.front_clear_mm) instead.
+
+❌ DO NOT add ESCAPE_RELEASE_FRONT_MM / ESCAPE_RELEASE_CAMERA_MM params.
+   Claude proposed checking side distances to release front latch.
+   This is logically incorrect. Use LIDAR_SAFETY_MM for front check.
+
+❌ DO NOT raise SIDE_PREFER_MARGIN to 0.28.
+   The log shows differences of 0.13-0.17 causing flip-flop.
+   0.20 fixes this without being so aggressive it prevents needed turns.
+   0.28 would suppress too many legitimate steering corrections.
+
+❌ DO NOT train the camera on scenarios.
+   The camera sees obstacles correctly. The bug is in decision logic,
+   not in camera perception. Training is expensive and unnecessary.
+
+❌ DO NOT reorganize camera=direction / LiDAR=stopping architecture.
+   The hybrid fusion is architecturally correct. Fix the bugs, not the design.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 4: IMPLEMENTATION ORDER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Apply in this order (each builds on the previous):
+
+  1. FIX 4 first → config.py: add LIDAR_CAMERA_AGREE_MM field
+  2. FIX 1 → decision_engine.py: add lidar_front_mm param + latch release
+               main.py: forward front_clear_mm
+  3. FIX 2 → decision_engine.py: add escape_latch_clear_streak hysteresis
+  4. FIX 3 → fusion_layer.py: height compensation + update __init__
+               main.py: pass cfg to FusionLayer
+  5. FIX 5 → create oak-template/.env file
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 5: EXPECTED BEHAVIOR AFTER FIXES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+After implementing all fixes:
+
+1. Escape latch will release promptly when LiDAR front > 650mm
+   (was: waiting ~150 frames / 5+ seconds)
+
+2. Single-frame noise will NOT clear the latch (needs 3 consecutive
+   non-escape frames via escape_latch_clear_streak)
+
+3. Chair legs / low obstacles will NOT trigger unnecessary GO:L1/R1
+   (LiDAR veto requires camera agreement at < 1200mm)
+
+4. System will NOT flip-flop between LEFT/RIGHT during free walking
+   (SIDE_PREFER_MARGIN=0.20 eliminates 0.13-0.17 range oscillation)
+
+5. Side escape uses 45°-75° arc (forward-lateral) instead of 30°-90°
+   (better represents actual navigable corridor angle)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 6: TESTING CHECKLIST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+After implementing, verify these scenarios and check log output:
+
+[ ] Free walking (no obstacle):
+    Expected: CMD=FREE, no LEFT/RIGHT flipping in [Decision] lines
+    Bad sign: [Decision] Side zone X preferred alternating L/R every frame
+
+[ ] Obstacle directly ahead:
+    Expected: fusion_reason="lidar_veto_side_escape" → GO:L1 or GO:R1
+              latch releases within 1-2 seconds of clearing obstacle
+    Bad sign: GO:L1 persisting 100+ frames after camera shows clear path
+
+[ ] Chair / low obstacle:
+    Expected: fusion_reason="lidar_low_obstacle_ignored" in log
+              System stays FREE, does NOT steer around chair leg
+    Bad sign: "lidar_veto_side_escape" for objects camera doesn't see
+
+[ ] Narrow corridor (both sides < 800mm):
+    Expected: GO:L1 or GO:R1 toward wider side, stable direction
+    Bad sign: rapid alternation between L1 and R1
+
+[ ] Check [Decision] log lines during free walk:
+    Expected: Side zone differences should be > 0.20 before steering
+    Bad sign: steering commands for differences of 0.13-0.17
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 7: FILE REFERENCE QUICK LOOKUP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+utils/config.py
+  Line 134: SIDE_PREFER_MARGIN: float = 0.15       ← becomes 0.20 via .env
+  Line 163: LIDAR_SAFETY_MM: float = 600.0          ← becomes 650.0 via .env
+  Line 165-167: LIDAR arc angles                    ← side arc becomes 45-75 via .env
+  After line 168: ADD LIDAR_CAMERA_AGREE_MM field   ← new field (Fix 4)
+
+utils/fusion_layer.py
+  Line 28: def __init__(self, lidar: LidarAnalyzer): ← add cfg param (Fix 3C)
+  Line 72-108: LiDAR veto block                     ← replace with Fix 3B
+
+utils/decision_engine.py
+  Line 92: self._escape_latch_side: str = ""        ← add clear_streak below (Fix 2A)
+  Line 169: def decide(self, ...)                   ← add lidar_front_mm param (Fix 1A)
+  Line ~267: if fusion_reason == "lidar_veto_...":  ← add proactive release before (Fix 1B)
+  Line ~318: else: self._escape_latch_side = ""     ← add streak hysteresis (Fix 2B)
+  Line ~910: def reset(self)                        ← add clear_streak = 0 (Fix 2C)
+
+main.py
+  Line 405: fusion = FusionLayer(lidar)             ← add cfg (Fix 3C)
+  Line ~570-579: decision_engine.decide(...)        ← add lidar_front_mm= (Fix 1C)
+
+oak-template/.env (NEW FILE)
+  Create with all parameters from Fix 5
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+END OF FIX GUIDE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ANSWER ON PROMPT 1:
+# تحليل النظام كـ CTO
+
+قرأت الكود كاملاً. هذا نظام محترم البناء، لكن فيه مشاكل هيكلية واضحة. خليني أكون صريحاً.
+
+---
+
+## المشكلة الجوهرية: Camera-LiDAR Fusion مكسورة هيكلياً
+
+المشكلة مش في الدقة، المشكلة في **فلسفة الدمج** نفسها.
+
+### ما يحدث الآن:
+
+```
+LiDAR → front/side binary flags → FusionLayer → override emergency
+Camera → 7-zone scores → DecisionEngine → GO:LEFT / GO:RIGHT
+```
+
+الـ LiDAR بيأثر فقط على قرار الـ Emergency Stop، لكن الـ LEFT/RIGHT decisions تجي **100% من الكاميرا فقط** مع تعديلات طفيفة (`LIDAR_SIDE_BIAS_BONUS = 0.08`) — هذا الرقم صغير جداً وعملياً لا يغير شيئاً.
+
+---
+
+## إجاباتي على أسئلتك الثلاثة
+
+### 1. هل تقسيم المسؤوليات (Camera=اتجاه، LiDAR=مسافة) أفضل؟
+
+**نعم، لكن ليس بالطريقة التي تفكر بها.**
+
+التقسيم الصح:
+
+| المهمة | الأداة الأفضل | السبب |
+|--------|--------------|-------|
+| كشف عائق أمامي بدقة | **LiDAR** | دقة مم، لا يتأثر بالإضاءة |
+| قياس المسافة الجانبية | **LiDAR** | نفس السبب |
+| تحديد *نوع* الفراغ (ممر واسع vs ضيق) | **Camera** | تعطي بيانات بصرية كاملة |
+| الـ LEFT/RIGHT decision النهائي | **دمج الاثنين بشكل صحيح** | لا أحدهما وحده |
+
+المشكلة الحالية: الـ LiDAR side arcs (`30°→90°`) واسعة جداً — هي تقيس الجدار الجانبي، مش الممر المتاح أمام الواكر.
+
+### 2. هل نتدرب الكاميرا أم نحسن الكود الحالي؟
+
+**لا تتدرب الآن.** هذا قرار مكلف وغير ضروري لأن:
+
+- المشكلة ليست في رؤية الكاميرا، هي تشوف الأشياء
+- المشكلة في **منطق القرار** بعد الرؤية
+- التدريب يحتاج data collection + labeling + compute + وقت
+
+**الاستثناء الوحيد:** لو قررتم مستقبلاً تكتشفوا أنواع عوائق محددة (كرسي متحرك، درج، باب مفتوح) — هنا التدريب يستحق.
+
+### 3. ما الحل الصح؟
+
+إصلاح هيكلية الـ Fusion بحيث الـ LiDAR يكون **شريكاً حقيقياً** في قرار الاتجاه، مش مجرد emergency override.
+
+---
+
+## خطة العمل — أولويات واضحة
+
+### 🔴 الأولوية الأولى: إصلاح LiDAR Arc Configuration
+
+المشكلة الحالية في الأرقام:
+```python
+LIDAR_FRONT_ARC_DEG = 30.0        # معقول
+LIDAR_SIDE_ARC_START_DEG = 30.0   # يبدأ من حافة الـ front
+LIDAR_SIDE_ARC_END_DEG = 90.0     # يوصل للجانب الكامل — هذا يقيس الجدار مش الممر
+```
+
+الـ side arc يجب أن يكون **موجهاً للأمام-جانباً** (`45°→75°`) لا للجانب الكامل، لأن الواكر يحتاج يعرف هل الممر الجانبي-الأمامي مفتوح.
+
+### 🔴 الأولوية الثانية: إصلاح منطق القرار في `_pick_safest_target`
+
+الكود الحالي يعطي الـ LiDAR side bias فقط `0.08` bonus — هذا أقل من الـ `CENTER_SAFETY_BIAS = 0.20`. يعني الكاميرا دايماً تغلب الـ LiDAR.
+
+### 🟡 الأولوية الثالثة: Zone-to-LiDAR Angle Mapping
+
+الآن الـ Camera zones (LEFT, L1, L2, CENTER, R1, R2, RIGHT) ما عندها تعريف واضح بالزوايا. الـ LiDAR يقيس بالدرجات لكن ما في ربط مباشر بين Zone X والزاوية Y في الـ LiDAR.
+
+---
+
+## الأوامر للتنفيذ
+
+**الأمر الأول** — قبل أي كود، أحتاج منك إجابة على:
+
+1. الـ RPLIDAR C1، هل هو مثبت على نفس محور الكاميرا (نفس الارتفاع والاتجاه)؟ أم في موقع مختلف؟
+2. هل عندكم بيانات log حقيقية من جلسة تشغيل فيها الـ LEFT/RIGHT decision كانت غلط؟ (print statements موجودة في الكود)
+3. ما هو السيناريو الأكثر فشلاً؟ مثلاً: ممر ضيق على اليسار وواسع على اليمين لكن النظام يختار اليسار؟
+
+بناءً على إجاباتك، أعطيكم الكود المحدد للتعديل.
+-----------------------------------------
+PROMPT 2:
+اجابة أسئلتك:
+1- الكاميرا مثبتة على ارتفاع تقريبا 60-70سم, والlidar على ارتفاع تقريبا 30 سم, وكلاهما على نفس المحور ونفس الاتجاه.
+2- مثال من سيناريو واحد فقط مرفق اليك.
+output_scenario.txt
+3- هنالك سيناريوهات فاشلة كثيرة صراحة لذلك اقول لك ليس دقيق, ولكن الابرز انه الى الان بعده ما بيعطي قرارات يمين ويسار صح لما يشوف العائق, حتى انه غالب الوقت بفضل يروح للعائق.
+ANSWER:
+# تحليل الـ Log — تشخيص دقيق
+
+قرأت الـ log كاملاً. المشكلة واضحة جداً الآن. عندي **3 bugs حقيقية** وليس مجرد ضبط أرقام.
+
+---
+
+## Bug #1: الأخطر — `lidar_veto_side_escape` لا يخرج أبداً
+
+من الـ log:
+```
+[Status] f=2000 cmd=GO:L1  lidar_front=450mm   ← LiDAR يرى عائق
+[Status] f=2200 cmd=FREE   lidar_front=3186mm  ← LiDAR يرى طريق مفتوح
+```
+
+لكن بين هذين السطرين: النظام استمر يطبع `LiDAR side-escape -> GO:L1` لمئات الـ frames حتى بعد أن `depth_mm=847` و`depth_mm=852` — الكاميرا ترى الطريق مفتوحاً أمامياً لكن الـ latch لا يُفك.
+
+**المشكلة في الكود:**
+```python
+# fusion_layer.py - هذا الشرط لا يكفي
+if fusion_reason == "lidar_veto_side_escape":
+    # ... يبقى في escape mode
+else:
+    self._escape_latch_side = ""  # يُفك فقط لو fusion_reason تغير
+```
+
+الـ `fusion_reason` يبقى `"lidar_veto_side_escape"` طالما `scan.front_clear = False`، لكن الـ LiDAR front arc يقيس حتى 600mm فقط — وأحياناً العائق يكون جانبياً قليلاً ويظل في الـ front arc.
+
+---
+
+## Bug #2: `SIDE_PREFER_MARGIN=0.18` منخفض جداً — يؤدي لقرارات عشوائية
+
+من الـ log:
+```
+[Decision] Side zone LEFT preferred:  safety=1.20 vs CENTER=1.07  → فرق 0.13
+[Decision] Side zone RIGHT preferred: safety=1.21 vs CENTER=1.08  → فرق 0.13
+[Decision] Side zone LEFT preferred:  safety=1.21 vs CENTER=1.07  → فرق 0.14
+[Decision] Side zone RIGHT preferred: safety=1.23 vs CENTER=1.08  → فرق 0.15
+```
+
+الفرق دائماً `0.12-0.17` وهو فوق الـ `0.18` أحياناً وتحته أحياناً — لذلك القرار يتقلب يميناً ويساراً كل frame. النظام **يرى يساراً ثم يميناً ثم يساراً** في ثوانٍ لأن الهامش على حافة النيف.
+
+---
+
+## Bug #3: `_escape_latch_side` لا يُفك بشرط المسافة الأمامية
+
+في الـ log:
+```
+[Decision] LiDAR side-escape -> GO:L1 (L=2304mm R=374mm latch=left)
+...  [100+ frames متواصلة]
+[Publisher] GO:L1 -> FREE | FREE: clear path (p20=1478mm streak=15/6 conf=0.89)
+```
+
+النظام أُفلت من الـ escape لأن `_is_free_candidate` حقق شروطه، **لكن هذا صدفة** — لا يوجد شرط صريح يقول "إذا lidar_front > SAFE_CORRIDOR_MM، افك الـ latch".
+
+---
+
+## الأوامر للتنفيذ — 3 تعديلات محددة
+
+### التعديل 1: `fusion_layer.py` — أضف شرط لفك الـ escape
+
+في `FusionLayer.fuse()`:
+
+```python
+# أضف هذا الشرط قبل التحقق من fusion_reason
+# إذا الـ front أصبح واضحاً، لا ترسل side_escape أبداً
+if lidar_front_mm > self.cfg.SAFE_CORRIDOR_MM:  # > 1800mm
+    return FusedAnalysis(
+        ...,
+        fusion_reason="oak_lidar_agree",  # وليس side_escape
+    )
+```
+
+### التعديل 2: `decision_engine.py` — أضف شرط زمني وعمقي لفك الـ latch
+
+```python
+# في بداية دالة decide()، بعد تحديث EMA:
+if self._escape_latch_side:
+    front_p20 = min(
+        (analysis.corridors[z].p20_depth 
+         for z in ("L1","CENTER","R1") 
+         if analysis.corridors.get(z) and analysis.corridors[z].p20_depth > 0),
+        default=0.0
+    )
+    lidar_front_ok = (lidar_left_mm > cfg.LIDAR_SIDE_ESCAPE_MM 
+                      and lidar_right_mm > cfg.LIDAR_SIDE_ESCAPE_MM)
+    camera_front_ok = front_p20 > cfg.FREE_CLEAR_DISTANCE_MM
+    
+    if lidar_front_ok or camera_front_ok:
+        print(f"[Decision] Escape latch released: front_p20={front_p20:.0f}mm")
+        self._escape_latch_side = ""
+        # امسح fusion_reason حتى لا يبقى في side_escape mode
+```
+
+### التعديل 3: `.env` — رفع `SIDE_PREFER_MARGIN`
+
+```env
+# الحالي: 0.18 — على حافة النيف، يتقلب عشوائياً
+SIDE_PREFER_MARGIN=0.28
+
+# رفع CENTER_ACCEPT_RATIO لتقليل تقلب الجانبين
+CENTER_ACCEPT_RATIO=0.88
 ```
 
 ---
 
-### 🔴 مشكلة 2 — `confirmed_centered` يُسكت التوجيه في أخطر لحظة
+## خطة العمل للـ Agent
 
-```python
-# في decision_engine.py — هذا الكود خطير
-if arduino_state.get("center_confirmed", False):
-    self._confirmed_centered = True
-# ...
-if self._confirmed_centered and best_target == "CENTER" and self._center_path_clear(analysis):
-    raw_cmd = "FREE"  # ← يتوقف عن إرسال GO:CENTER حتى لو الطريق تغير!
+**الأولوية 1 — الأهم:** ابدأ بالتعديل 2 في `decision_engine.py` لأنه يحل الـ Bug الأكبر (latch لا يُفك).
+
+**الأولوية 2:** التعديل 3 في `.env` — سهل وفوري.
+
+**الأولوية 3:** التعديل 1 في `fusion_layer.py` — يحتاج قراءة الـ config للوصول لـ `SAFE_CORRIDOR_MM`.
+
+---
+
+**سؤال قبل التنفيذ:** هل الـ LiDAR مركّب بحيث الـ 0° يطابق اتجاه الواكر للأمام تماماً؟ لأن في الـ log أرى `lidar_front=450mm` بينما `depth_mm=847` في نفس الوقت — هذا فرق كبير يشير إما لـ offset في التثبيت أو الـ front arc يلتقط شيء الكاميرا لا تراه (مثلاً الأرض أو قدم شخص).
+-----------------------------------------
+PROMPT 3:
+نعم الزاوية صفر للايدر نفس الزاوية صفر للكاميرا, ممكن يكون في نسبة خطأ لكن مش كبيرة, لكن كما قلتلك الفرق في الارتفاع, اللايدر مركب على ارتفاع منخفض أكثر.
+ANSWER:
+# تشخيص نهائي — المشكلة الجذرية
+
+الفرق في الارتفاع (30cm vs 70cm) يفسر **كل شيء**.
+
+```
+الكاميرا (70cm):  ترى الممر أمامها واضح ✓
+LiDAR (30cm):     يرى أرجل الكراسي / قاعدة العوائق المنخفضة ✗
+                  ← يظن أن هناك عائق وهمي أمامياً
 ```
 
-المشكلة: إذا أرسل الأردوينو `center_confirmed` مرة واحدة، والكود يثق به ويوقف التوجيه — لكن الشخص الكفيف تحرك والطريق تغير. **الإصلاح: احذف هذه الميزة كلياً أو اجعلها تنتهي بعد إطار واحد:**
+هذا يعني أن `lidar_veto_side_escape` يُفعَّل بسبب عوائق منخفضة لا تمثل خطراً حقيقياً على الواكر، ثم الـ latch يبقى مفعلاً للأبد.
+
+---
+
+## الأوامر للتنفيذ — نسخة محدّثة
+
+سأعطيك التعديلات الثلاثة كاملة مع مراعاة مشكلة الارتفاع.
+
+### التعديل 1: `utils_config.py` — أضف معاملات جديدة
+
+في نهاية `WalkerConfig` وقبل `from_env`:
 
 ```python
-# في decide() — بعد تحديث EMA
-# أزل الـ confirmed_centered logic واستبدلها بـ:
-# FREE يُقرر فقط بناءً على _is_free_candidate() — لا ذاكرة من الأردوينو
-if arduino_state.get("center_confirmed", False):
-    pass  # تجاهل تماماً — لا نثق بحالة الأردوينو لإيقاف التوجيه
+# ── LiDAR-Camera Height Compensation ─────────────────────────
+# LiDAR is mounted lower than camera → sees low obstacles camera misses.
+# Trust LiDAR front veto only when camera also sees something close.
+LIDAR_FRONT_TRUST_MM: float = 500.0   # LiDAR front must be closer than this
+                                        # AND camera must agree to trigger veto
+LIDAR_CAMERA_AGREE_MM: float = 1200.0  # Camera p20 must be below this to agree
+# Escape latch auto-release: front is clear on BOTH sensors
+ESCAPE_RELEASE_FRONT_MM: float = 800.0   # LiDAR front > this → candidate for release
+ESCAPE_RELEASE_CAMERA_MM: float = 1200.0 # Camera p20 > this → release latch
+```
+
+وفي `from_env` أضف:
+```python
+LIDAR_FRONT_TRUST_MM=float(os.getenv("LIDAR_FRONT_TRUST_MM", "500.0")),
+LIDAR_CAMERA_AGREE_MM=float(os.getenv("LIDAR_CAMERA_AGREE_MM", "1200.0")),
+ESCAPE_RELEASE_FRONT_MM=float(os.getenv("ESCAPE_RELEASE_FRONT_MM", "800.0")),
+ESCAPE_RELEASE_CAMERA_MM=float(os.getenv("ESCAPE_RELEASE_CAMERA_MM", "1200.0")),
 ```
 
 ---
 
-### 🔴 مشكلة 3 — `stickiness` تمنع التحول للطريق الأآمن
+### التعديل 2: `utils_fusion_layer.py` — LiDAR veto يحتاج موافقة الكاميرا
 
+هذا هو التعديل الأهم. الـ LiDAR وحده لا يكفي لإعلان emergency بسبب فرق الارتفاع.
+
+في دالة `fuse()` في القسم:
 ```python
-# في decision_engine.py
-if current_m.safety_score >= best_m.safety_score * 0.80:
-    best_target = current_zone  # يبقى في المنطقة الحالية إذا كانت 80% من الأفضل
+# 3) LiDAR veto: LiDAR says emergency, OAK says clear.
+if lidar_emergency and (not oak_emergency):
 ```
 
-80% هامش عالٍ جداً في سياق شخص كفيف يتحرك. إذا ظهر عائق في المنطقة الحالية وانخفضت سلامتها إلى 0.5 بينما المنطقة الأخرى 0.7 — النسبة 0.5/0.7 = 71% أقل من 80% فينتقل، لكن إذا كانت 0.58/0.7 = 83% يبقى! **الإصلاح:**
+**استبدل هذا القسم كاملاً بـ:**
 
 ```python
-# خفض من 0.80 إلى 0.70 فقط
-if current_m.safety_score >= best_m.safety_score * 0.70:
-    best_target = current_zone
+# 3) LiDAR veto: LiDAR says emergency, OAK says clear.
+if lidar_emergency and (not oak_emergency):
+    # Height compensation: LiDAR (30cm) sees low obstacles camera (70cm) misses.
+    # Only trust LiDAR front veto when:
+    #   a) LiDAR front is very close (< LIDAR_FRONT_TRUST_MM), AND
+    #   b) Camera also sees something close (oak_front_mm < LIDAR_CAMERA_AGREE_MM)
+    # This prevents chair legs / low objects from triggering unnecessary stops.
+    oak_front = self._oak_front_mm(oak_analysis)
+    lidar_very_close = lidar_front_mm < self._cfg.LIDAR_FRONT_TRUST_MM
+    camera_agrees = oak_front < self._cfg.LIDAR_CAMERA_AGREE_MM
+
+    has_side_escape = bool(scan.side_escape_left) or bool(scan.side_escape_right)
+
+    if not lidar_very_close:
+        # LiDAR sees obstacle but it's not very close — likely low object.
+        # Ignore veto, treat as clear with slight confidence boost.
+        return FusedAnalysis(
+            oak_analysis=oak_analysis,
+            has_emergency=False,
+            front_clear_mm=float(oak_front),
+            side_escape_left=bool(scan.side_escape_left),
+            side_escape_right=bool(scan.side_escape_right),
+            lidar_active=True,
+            confidence_boost=+0.05,
+            fusion_reason="lidar_low_obstacle_ignored",
+            lidar_left_mm=float(scan.left_min_mm),
+            lidar_right_mm=float(scan.right_min_mm),
+        )
+
+    if has_side_escape:
+        # LiDAR sees real close obstacle with side escape available.
+        # Only activate side-escape if camera somewhat agrees.
+        if camera_agrees:
+            return FusedAnalysis(
+                oak_analysis=oak_analysis,
+                has_emergency=False,
+                front_clear_mm=float(lidar_front_mm),
+                side_escape_left=bool(scan.side_escape_left),
+                side_escape_right=bool(scan.side_escape_right),
+                lidar_active=True,
+                confidence_boost=+0.05,
+                fusion_reason="lidar_veto_side_escape",
+                lidar_left_mm=float(scan.left_min_mm),
+                lidar_right_mm=float(scan.right_min_mm),
+            )
+        else:
+            # Camera sees clear path, LiDAR sees low obstacle — trust camera.
+            return FusedAnalysis(
+                oak_analysis=oak_analysis,
+                has_emergency=False,
+                front_clear_mm=float(oak_front),
+                side_escape_left=bool(scan.side_escape_left),
+                side_escape_right=bool(scan.side_escape_right),
+                lidar_active=True,
+                confidence_boost=+0.03,
+                fusion_reason="lidar_low_obstacle_camera_clear",
+                lidar_left_mm=float(scan.left_min_mm),
+                lidar_right_mm=float(scan.right_min_mm),
+            )
+
+    # No side escape — true emergency only if camera also agrees.
+    if camera_agrees:
+        fused_oak = self._override_emergency(oak_analysis, True)
+        return FusedAnalysis(
+            oak_analysis=fused_oak,
+            has_emergency=True,
+            front_clear_mm=float(lidar_front_mm),
+            side_escape_left=False,
+            side_escape_right=False,
+            lidar_active=True,
+            confidence_boost=+0.05,
+            fusion_reason="lidar_veto_emergency",
+            lidar_left_mm=float(scan.left_min_mm),
+            lidar_right_mm=float(scan.right_min_mm),
+        )
+    else:
+        # LiDAR close but camera clear → low obstacle, ignore.
+        return FusedAnalysis(
+            oak_analysis=oak_analysis,
+            has_emergency=False,
+            front_clear_mm=float(oak_front),
+            side_escape_left=False,
+            side_escape_right=False,
+            lidar_active=True,
+            confidence_boost=+0.03,
+            fusion_reason="lidar_low_obstacle_camera_clear",
+            lidar_left_mm=float(scan.left_min_mm),
+            lidar_right_mm=float(scan.right_min_mm),
+        )
+```
+
+ولأن `FusionLayer` يحتاج الـ config الآن، عدّل الـ `__init__`:
+```python
+def __init__(self, lidar: LidarAnalyzer, cfg):
+    self._lidar = lidar
+    self._cfg = cfg
+```
+
+وفي `main.py` حيث تُنشئ `FusionLayer`:
+```python
+fusion = FusionLayer(lidar, cfg)  # أضف cfg
 ```
 
 ---
 
-### 🟡 مشكلة 4 — EMA alpha بطيء جداً
+### التعديل 3: `utils_decision_engine.py` — فك الـ latch تلقائياً
 
-`TEMP_EMA_ALPHA=0.25` يعني كل قراءة جديدة تأخذ 25% فقط. عند إطارات 10 fps، يستغرق النظام ~4 ثوانٍ ليستجيب لعائق ظهر فجأة.
+في دالة `decide()` أضف مباشرة بعد سطر `self._update_ema(analysis)`:
 
 ```python
-# في .env — غير هذا:
-TEMP_EMA_ALPHA=0.50  # استجابة أسرع بكثير
-TEMP_EMA_WARMUP_FRAMES=2  # بدلاً من 4
+# ── Auto-release escape latch when front is clear on both sensors ──
+if self._escape_latch_side:
+    # Check camera front clearance
+    cam_front_p20 = min(
+        (analysis.corridors[z].p20_depth
+         for z in ("L1", "CENTER", "R1")
+         if analysis.corridors.get(z)
+         and analysis.corridors[z].p20_depth > 0
+         and analysis.corridors[z].valid_ratio >= cfg.MIN_VALID_RATIO),
+        default=0.0,
+    )
+    lidar_front_released = (
+        lidar_left_mm > cfg.ESCAPE_RELEASE_FRONT_MM
+        and lidar_right_mm > cfg.ESCAPE_RELEASE_FRONT_MM
+    )
+    camera_front_released = cam_front_p20 > cfg.ESCAPE_RELEASE_CAMERA_MM
+
+    # Release if BOTH sensors agree front is clear
+    if lidar_front_released and camera_front_released:
+        print(
+            f"[Decision] Escape latch RELEASED: "
+            f"cam_p20={cam_front_p20:.0f}mm "
+            f"lidar_L={lidar_left_mm:.0f}mm lidar_R={lidar_right_mm:.0f}mm"
+        )
+        self._escape_latch_side = ""
 ```
 
 ---
 
-### 🟡 مشكلة 5 — `_oak_front_mm` تُعطي صفر عند منطقة فارغة
+### التعديل 4: `.env` — ضبط القيم
 
-```python
-@staticmethod
-def _oak_front_mm(analysis: AnalysisResult) -> float:
-    for k in ("L1", "CENTER", "R1"):
-        v = float(m.p20_depth)
-        if v > 0.0:
-            vals.append(v)
-    if not vals:
-        return 0.0  # ← صفر يعني "لا يوجد بيانات"
-    return float(min(vals))  # ← لكن min يختار الأصغر، وهذا قد يكون منطقة فيها بيانات سيئة
-```
+```env
+# Height compensation
+LIDAR_FRONT_TRUST_MM=500.0
+LIDAR_CAMERA_AGREE_MM=1200.0
+ESCAPE_RELEASE_FRONT_MM=800.0
+ESCAPE_RELEASE_CAMERA_MM=1200.0
 
-عند `oak_front_mm < DISAGREEMENT_TRUST_THRESHOLD_MM (800)` تثق بالـ OAK حتى لو البيانات غير موثوقة. **الإصلاح:**
+# Side preference — رفع من 0.18 لتقليل التقلب
+SIDE_PREFER_MARGIN=0.28
+CENTER_ACCEPT_RATIO=0.88
 
-```python
-@staticmethod
-def _oak_front_mm(analysis: AnalysisResult) -> float:
-    vals = []
-    for k in ("L1", "CENTER", "R1"):
-        m = analysis.corridors.get(k)
-        if m is not None:
-            v = float(m.p20_depth or 0.0)
-            # فقط إذا كانت المنطقة تحتوي بيانات كافية
-            if v > 0.0 and m.valid_ratio >= 0.14:
-                vals.append(v)
-    if not vals:
-        return 9999.0  # لا بيانات = افترض الطريق آمن، لا توقف بناءً على لا شيء
-    return float(min(vals))
+# LiDAR safety — رفع قليلاً لتعويض الارتفاع المنخفض
+LIDAR_SAFETY_MM=550.0
 ```
 
 ---
 
-### 🟡 مشكلة 6 — قيم `.env` متضاربة مع المنطق
+## ملخص ما يتغير
 
-```ini
-POST_RECOVERY_GRACE_S=0.4   # قصير جداً → STOP↔FREE loop
-SIDE_PREFER_MARGIN=0.35     # عالٍ جداً → نادراً ما يتجنب الجوانب
-FREE_STICKY_SECONDS=0.5     # جيد
-```
+| المشكلة | السبب | الحل |
+|---------|-------|------|
+| LiDAR يرى عوائق وهمية | ارتفاعه منخفض يرى أرجل الكراسي | veto يحتاج موافقة الكاميرا |
+| Latch لا يُفك | لا يوجد شرط صريح للإفراج | فحص كلا الحساسين قبل الاستمرار |
+| قرارات يمين/يسار تتقلب | SIDE_PREFER_MARGIN على حافة النيف | رفعه من 0.18 إلى 0.28 |
 
-الإصلاح الموصى به:
-```ini
-POST_RECOVERY_GRACE_S=2.0   # وقت كافٍ للتعافي
-SIDE_PREFER_MARGIN=0.18     # توازن بين الاستقرار والاستجابة
-STOP_HOLD_SECONDS=1.2       # بدلاً من 0.8 — وقت كافٍ للتوقف الفعلي
-```
-
----
-
-### 🟡 مشكلة 7 — `_is_free_candidate` تراكم streak ببطء مع أنها تُرسّل FREE بسرعة
-
-```python
-# الكود الحالي: يحتاج FREE_STABLE_FRAMES=6 frames ثم في _apply_mode_hysteresis:
-if self._last_stable != "FREE" and now - self._last_change_time < 0.2:  # COMMAND_CHANGE_COOLDOWN_S
-    return self._last_stable  # يرفض FREE حتى بعد 6 إطارات!
-```
-
-يعني: تحصل على 6 إطارات `_is_free_candidate=True` لكن الـ hysteresis يرفض الانتقال لـ FREE بسبب الـ cooldown. **الإصلاح:** اجعل cooldown للـ FREE أقل:
-
-```python
-# في _apply_mode_hysteresis
-if raw == "FREE":
-    self._free_streak += 1
-    self._go_streak = 0
-    self._go_candidate = ""
-    # cooldown أقل للـ FREE لأنه أآمن من GO
-    free_cooldown = self._command_change_cooldown_s * 0.5
-    if (self._last_stable != "FREE" and 
-        now - self._last_change_time < free_cooldown):
-        return self._last_stable, self._free_streak
-    if self._last_stable != "FREE":
-        self._last_stable = "FREE"
-        self._last_change_time = now
-    return self._last_stable, self._free_streak
-```
-
----
-
-### ملخص الأولويات
-
-| الأولوية | المشكلة | الملف | الخطورة |
-|---|---|---|---|
-| 1 | FLIP_LR في `_is_left/right_command` | `command_publisher.py` | حرجة |
-| 2 | `confirmed_centered` يُسكت التوجيه | `decision_engine.py` | حرجة |
-| 3 | `stickiness` 80% عالية جداً | `decision_engine.py` | عالية |
-| 4 | `oak_front_mm` يُعيد 0 | `fusion_layer.py` | عالية |
-| 5 | EMA alpha بطيء | `.env` | متوسطة |
-| 6 | قيم `.env` متضاربة | `.env` | متوسطة |
-
-ابدأ بالمشكلتين الأوليين — هما اللتان تسببان "القرار العكسي 70%". هل تريدني أكتب لك الملفات المُصلحة كاملة بعد مراجعة الـ `arduino_serial.py` وكود الأردوينو أيضاً؟
+نفّذ التعديلات بهذا الترتيب: **config → fusion → decision → env**، ثم اختبر وأعطني الـ log الجديد.

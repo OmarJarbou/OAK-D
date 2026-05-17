@@ -90,6 +90,8 @@ class DecisionEngine:
         # This prevents the walker from flip-flopping between left and right
         # mid-escape when sensor noise shifts the apparent clearance.
         self._escape_latch_side: str = ""
+        self._escape_latch_clear_streak: int = 0  # consecutive non-escape frames
+        self._escape_latch_clear_required: int = 3  # frames needed to clear latch
 
         # Lightweight temporal smoothing (EMA) for stability without vision changes.
         self._ema_alpha: float = float(cfg.TEMP_EMA_ALPHA)
@@ -176,6 +178,7 @@ class DecisionEngine:
         side_escape_left: bool = False,
         side_escape_right: bool = False,
         fusion_reason: str = "",
+        lidar_front_mm: float = 0.0,
     ) -> DecisionResult:
         """Main entry point. Returns a DecisionResult."""
         cfg = self.cfg
@@ -264,6 +267,17 @@ class DecisionEngine:
         # When fusion reports a LiDAR front obstacle with a side escape
         # available, bypass normal group scoring and steer directly toward
         # the open side. This avoids the STOP->FREE->STOP infinite loop.
+        # ── Proactive escape latch release ───────────────────────────────────────
+        # Release when LiDAR front is genuinely clear again.
+        # Uses lidar_front_mm (passed from fused.front_clear_mm) — not
+        # lidar_left/right_mm which are side arcs (30-90°), not front.
+        if self._escape_latch_side and lidar_front_mm > cfg.LIDAR_SAFETY_MM:
+            print(
+                f"[Decision] Escape latch RELEASED (front clear): "
+                f"lidar_front={lidar_front_mm:.0f}mm > {cfg.LIDAR_SAFETY_MM:.0f}mm"
+            )
+            self._escape_latch_side = ""
+
         if fusion_reason == "lidar_veto_side_escape":
             # Use latched direction if already committed; pick fresh only if none.
             if self._escape_latch_side == "left" and locked_left:
@@ -285,6 +299,7 @@ class DecisionEngine:
                     force_side = "right"
                 if force_side:
                     self._escape_latch_side = force_side  # lock in direction
+                    self._escape_latch_clear_streak = 0  # reset clear counter
 
             if force_side is not None:
                 # Determine zone key (L1/L2/R1/R2) then translate via
@@ -316,8 +331,12 @@ class DecisionEngine:
                     allow_recenter=False,
                 )
         else:
-            # Not in side-escape mode: clear the latch so next escape starts fresh.
-            self._escape_latch_side = ""
+            # Not in side-escape mode: require N consecutive non-escape frames
+            # before clearing latch (prevents single-frame noise from resetting).
+            self._escape_latch_clear_streak += 1
+            if self._escape_latch_clear_streak >= self._escape_latch_clear_required:
+                self._escape_latch_side = ""
+                self._escape_latch_clear_streak = 0
 
         # Determine LiDAR directional preference for low-confidence frames.
         lidar_pref = self._lidar_side_preference(
@@ -908,3 +927,4 @@ class DecisionEngine:
         self._last_non_center_go = ""
         self._effective_go_frames = self._go_frames_required
         self._escape_latch_side = ""
+        self._escape_latch_clear_streak = 0

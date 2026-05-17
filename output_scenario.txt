@@ -1,0 +1,562 @@
+[Publisher] COOLDOWN FREE -> STOP held=527ms < 800ms stable=3
+[Decision] LiDAR side-escape -> GO:R2 (L=1185mm R=538mm latch=right)
+[Publisher] COOLDOWN FREE -> STOP held=641ms < 800ms stable=1
+[LiDAR-Bias] conf=0.40 left=1196mm right=594mm gap=+602mm -> prefer left
+[Publisher] COOLDOWN FREE -> STOP held=769ms < 800ms stable=1
+[LiDAR-Bias] conf=0.41 left=1136mm right=572mm gap=+564mm -> prefer left
+[Publisher] FREE -> STOP | STOP: no valid group width | stable_count=2 | depth_mm=392
+[Serial -> Arduino] CMD:STOP
+[Publisher] STOP_HOLD 0.12s / 0.8s stable=3
+[Decision] Side zone RIGHT preferred: safety=1.07 vs CENTER=0.81
+[Publisher] STOP_HOLD 0.24s / 0.8s stable=1
+[Decision] Side zone RIGHT preferred: safety=1.15 vs CENTER=0.70
+[Publisher] COOLDOWN STOP -> GO:RIGHT held=329ms < 800ms stable=2
+[TTS] speaking: Hard right
+[TTS worker] saying: Hard right
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Hard right
+[Decision] Side zone RIGHT preferred: safety=1.17 vs CENTER=0.90
+[Publisher] COOLDOWN STOP -> GO:RIGHT held=492ms < 800ms stable=3
+[Publisher] COOLDOWN STOP -> GO:RIGHT held=677ms < 800ms stable=4
+[Publisher] STOP -> GO:RIGHT | GO:CENTER: active recenter needed (p20=1567mm streak=1/6 conf=0.77) | stable_count=1 | depth_mm=1005
+[Serial -> Arduino] CMD:GO:RIGHT
+[Publisher] COOLDOWN GO:RIGHT -> GO:CENTER held=99ms < 800ms stable=2
+[Publisher] COOLDOWN GO:RIGHT -> GO:CENTER held=197ms < 800ms stable=3
+[Publisher] COOLDOWN GO:RIGHT -> GO:CENTER held=286ms < 800ms stable=1
+[Publisher] COOLDOWN GO:RIGHT -> GO:CENTER held=382ms < 800ms stable=2
+[Arduino -> Pi] STATUS:STOPPED
+[Arduino -> Pi] STATUS:MOVING:RIGHT
+[Publisher] COOLDOWN GO:RIGHT -> GO:CENTER held=484ms < 800ms stable=3
+[Publisher] COOLDOWN GO:RIGHT -> STOP held=617ms < 800ms stable=4
+[Publisher] COOLDOWN GO:RIGHT -> STOP held=719ms < 800ms stable=5
+[Publisher] GO:RIGHT -> STOP | STOP: no valid group width | stable_count=6 | depth_mm=1329
+[Serial -> Arduino] CMD:STOP
+[Publisher] STOP_HOLD 0.10s / 0.8s stable=7
+[Arduino -> Pi] STATUS:REACHED
+[Decision] Side zone L1 preferred: safety=1.25 vs CENTER=1.13
+[Publisher] STOP_HOLD 0.20s / 0.8s stable=1
+[Publisher] STOP_HOLD 0.28s / 0.8s stable=1
+[Publisher] STOP_HOLD 0.37s / 0.8s stable=2
+[Publisher] STOP_HOLD 0.59s / 0.8s stable=3
+[Publisher] COOLDOWN STOP -> GO:CENTER held=696ms < 800ms stable=4
+[Publisher] COOLDOWN STOP -> GO:CENTER held=770ms < 800ms stable=5
+[Publisher] STOP -> GO:CENTER | FREE: clear path (p20=1472mm streak=6/6 conf=0.83) | stable_count=1 | depth_mm=1423
+[Serial -> Arduino] CMD:GO:CENTER
+[Publisher] COOLDOWN GO:CENTER -> FREE held=85ms < 800ms stable=2
+[Publisher] COOLDOWN GO:CENTER -> FREE held=149ms < 800ms stable=3
+[Publisher] COOLDOWN GO:CENTER -> FREE held=224ms < 800ms stable=4
+[Arduino -> Pi] STATUS:STOPPED
+[Arduino -> Pi] STATUS:MOVING:CENTER
+[Publisher] COOLDOWN GO:CENTER -> FREE held=328ms < 800ms stable=5
+[Publisher] COOLDOWN GO:CENTER -> FREE held=428ms < 800ms stable=6
+[Publisher] COOLDOWN GO:CENTER -> FREE held=510ms < 800ms stable=7
+[Publisher] COOLDOWN GO:CENTER -> FREE held=599ms < 800ms stable=8
+[Publisher] COOLDOWN GO:CENTER -> FREE held=708ms < 800ms stable=9
+[Publisher] COOLDOWN GO:CENTER -> FREE held=777ms < 800ms stable=10
+[Publisher] GO:CENTER -> FREE | FREE: clear path (p20=1477mm streak=16/6 conf=0.90) | stable_count=11 | depth_mm=1419
+[TTS] speaking: Free mode
+[Serial -> Arduino] CMD:FREE
+[TTS worker] saying: Free mode
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Free mode
+[Arduino -> Pi] STATUS:REACHED
+[Arduino -> Pi] STATUS:FREE
+[Publisher] FREE -> FREE | FREE: clear path (p20=1479mm streak=43/6 conf=0.90) | stable_count=38 | depth_mm=1438
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[Status] f=1400 auth=True ready=True cmd=FREE conf=90% groups=1/1 target=CENTER lidar_front=1259mm
+[Publisher] FREE -> FREE | FREE: clear path (p20=1483mm streak=75/6 conf=0.90) | stable_count=70 | depth_mm=1434
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[Publisher] FREE -> FREE | FREE: clear path (p20=1481mm streak=108/6 conf=0.90) | stable_count=103 | depth_mm=1436
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[Publisher] FREE -> FREE | FREE: clear path (p20=1483mm streak=141/6 conf=0.90) | stable_count=136 | depth_mm=1437
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[Publisher] FREE -> FREE | FREE: clear path (p20=1476mm streak=175/6 conf=0.90) | stable_count=170 | depth_mm=1429
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[Publisher] FREE -> FREE | FREE: clear path (p20=1470mm streak=207/6 conf=0.90) | stable_count=202 | depth_mm=1410
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[Publisher] FREE -> FREE | FREE: clear path (p20=1451mm streak=242/6 conf=0.90) | stable_count=237 | depth_mm=1412
+[Serial -> Arduino] CMD:FREE
+[Decision] Side zone LEFT preferred: safety=1.22 vs CENTER=1.09
+[Arduino -> Pi] STATUS:FREE
+[Decision] Side zone RIGHT preferred: safety=1.16 vs CENTER=1.02
+[Decision] Side zone RIGHT preferred: safety=1.17 vs CENTER=1.01
+[Status] f=1600 auth=True ready=True cmd=FREE conf=78% groups=1/1 target=RIGHT lidar_front=1141mm
+[Decision] Side zone R1 preferred: safety=1.16 vs CENTER=0.98
+[Decision] Side zone R2 preferred: safety=1.15 vs CENTER=1.00
+[Publisher] FREE -> FREE | STOP: no valid group width | stable_count=1 | depth_mm=1050
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[Decision] LiDAR side-escape -> GO:L1 (L=1190mm R=582mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1180mm R=561mm latch=left)
+[Publisher] FREE -> FREE | GO:L1: LiDAR side-escape (front blocked, left open) | stable_count=2 | depth_mm=558
+[Serial -> Arduino] CMD:FREE
+[Decision] LiDAR side-escape -> GO:L1 (L=1176mm R=540mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1176mm R=540mm latch=left)
+[Publisher] COOLDOWN FREE -> GO:L1 held=212ms < 800ms stable=4
+[TTS] speaking: Slight left
+[TTS worker] saying: Slight left
+[Arduino -> Pi] STATUS:FREE
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Slight left
+[Decision] LiDAR side-escape -> GO:L1 (L=1167mm R=501mm latch=left)
+[Publisher] COOLDOWN FREE -> GO:L1 held=359ms < 800ms stable=5
+[Decision] LiDAR side-escape -> GO:L1 (L=1144mm R=445mm latch=left)
+[Publisher] COOLDOWN FREE -> GO:L1 held=628ms < 800ms stable=6
+[Decision] LiDAR side-escape -> GO:L1 (L=1144mm R=445mm latch=left)
+[Publisher] COOLDOWN FREE -> GO:L1 held=732ms < 800ms stable=7
+[Decision] LiDAR side-escape -> GO:L1 (L=1137mm R=406mm latch=left)
+[Publisher] FREE -> GO:L1 | GO:L1: LiDAR side-escape (front blocked, left open) | stable_count=8 | depth_mm=390
+[Serial -> Arduino] CMD:GO:L1
+[Decision] LiDAR side-escape -> GO:L1 (L=1260mm R=375mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1130mm R=354mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1134mm R=312mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1134mm R=312mm latch=left)
+[Arduino -> Pi] STATUS:ASSIST
+[Arduino -> Pi] STATUS:MOVING:L1
+[Decision] LiDAR side-escape -> GO:L1 (L=1126mm R=294mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1132mm R=280mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1132mm R=280mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1145mm R=266mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1140mm R=251mm latch=left)
+[Arduino -> Pi] STATUS:REACHED
+[Decision] LiDAR side-escape -> GO:L1 (L=1138mm R=246mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1138mm R=246mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1146mm R=241mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1152mm R=240mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1138mm R=242mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1140mm R=248mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1150mm R=249mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1150mm R=249mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1138mm R=252mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1139mm R=255mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1139mm R=255mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1135mm R=260mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1142mm R=262mm latch=left)
+[Publisher] GO:L1 -> GO:L1 | GO:L1: LiDAR side-escape (front blocked, left open) | stable_count=30 | depth_mm=569
+[Serial -> Arduino] CMD:GO:L1
+[Decision] LiDAR side-escape -> GO:L1 (L=1134mm R=264mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1134mm R=264mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1142mm R=268mm latch=left)
+[Arduino -> Pi] STATUS:MOVING:L1
+[Arduino -> Pi] STATUS:REACHED
+[Decision] LiDAR side-escape -> GO:L1 (L=1145mm R=278mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1145mm R=278mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1142mm R=280mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1135mm R=284mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1135mm R=284mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1136mm R=290mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1138mm R=298mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1138mm R=298mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1130mm R=324mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1134mm R=338mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1136mm R=356mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1136mm R=356mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1128mm R=407mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1128mm R=407mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1120mm R=434mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2144mm R=463mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2144mm R=463mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1128mm R=488mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1130mm R=542mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=1130mm R=542mm latch=left)
+[Publisher] GO:L1 -> GO:L1 | GO:CENTER: active recenter needed (p20=1430mm streak=1/6 conf=0.88) | stable_count=1 | depth_mm=823
+[Serial -> Arduino] CMD:GO:L1
+[Publisher] COOLDOWN GO:L1 -> GO:CENTER held=87ms < 800ms stable=2
+[TTS] speaking: Go forward
+[TTS worker] saying: Go forward
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Go forward
+[Publisher] COOLDOWN GO:L1 -> GO:CENTER held=224ms < 800ms stable=3
+[Arduino -> Pi] STATUS:MOVING:L1
+[Arduino -> Pi] STATUS:AT_TARGET
+[Publisher] COOLDOWN GO:L1 -> GO:CENTER held=441ms < 800ms stable=4
+[Publisher] COOLDOWN GO:L1 -> GO:CENTER held=572ms < 800ms stable=5
+[Publisher] COOLDOWN GO:L1 -> FREE held=658ms < 800ms stable=1
+[Publisher] COOLDOWN GO:L1 -> FREE held=746ms < 800ms stable=2
+[Publisher] GO:L1 -> FREE | FREE: clear path (p20=1429mm streak=8/6 conf=0.82) | stable_count=3 | depth_mm=949
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[Publisher] FREE -> FREE | FREE: clear path (p20=1430mm streak=38/6 conf=0.89) | stable_count=33 | depth_mm=842
+[Serial -> Arduino] CMD:FREE
+[TTS] speaking: Free mode
+[TTS worker] saying: Free mode
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Free mode
+[Arduino -> Pi] STATUS:FREE
+[Decision] Side zone LEFT preferred: safety=1.20 vs CENTER=1.07
+[Decision] Side zone LEFT preferred: safety=1.21 vs CENTER=1.07
+[Decision] Side zone LEFT preferred: safety=1.21 vs CENTER=1.07
+[Decision] Side zone LEFT preferred: safety=1.21 vs CENTER=1.07
+[Decision] Side zone LEFT preferred: safety=1.20 vs CENTER=1.07
+[Decision] Side zone LEFT preferred: safety=1.20 vs CENTER=1.07
+[Decision] Side zone LEFT preferred: safety=1.20 vs CENTER=1.07
+[Decision] Side zone LEFT preferred: safety=1.20 vs CENTER=1.08
+[Decision] Side zone RIGHT preferred: safety=1.24 vs CENTER=1.07
+[Publisher] FREE -> FREE | FREE: exit-hold bad_streak=1/2 | stable_count=1 | depth_mm=1447
+[Serial -> Arduino] CMD:FREE
+[Decision] Side zone RIGHT preferred: safety=1.25 vs CENTER=1.08
+[Decision] Side zone RIGHT preferred: safety=1.25 vs CENTER=1.08
+[Decision] Side zone RIGHT preferred: safety=1.26 vs CENTER=1.08
+[Decision] Side zone RIGHT preferred: safety=1.25 vs CENTER=1.07
+[Decision] Side zone RIGHT preferred: safety=1.25 vs CENTER=1.07
+[Arduino -> Pi] STATUS:FREE
+[Decision] Side zone RIGHT preferred: safety=1.25 vs CENTER=1.08
+[Decision] Side zone RIGHT preferred: safety=1.21 vs CENTER=1.08
+[Decision] Side zone LEFT preferred: safety=1.22 vs CENTER=1.08
+[Decision] Side zone R2 preferred: safety=1.20 vs CENTER=1.08
+[Decision] Side zone R2 preferred: safety=1.21 vs CENTER=1.07
+[Decision] Side zone R2 preferred: safety=1.21 vs CENTER=1.08
+[Decision] Side zone RIGHT preferred: safety=1.23 vs CENTER=1.08
+[Decision] Side zone RIGHT preferred: safety=1.24 vs CENTER=1.08
+[Decision] Side zone RIGHT preferred: safety=1.22 vs CENTER=1.08
+[Decision] Side zone RIGHT preferred: safety=1.23 vs CENTER=1.08
+[Decision] Side zone RIGHT preferred: safety=1.24 vs CENTER=1.09
+[Decision] Side zone RIGHT preferred: safety=1.22 vs CENTER=1.09
+[Decision] Side zone RIGHT preferred: safety=1.21 vs CENTER=1.08
+[Decision] Side zone RIGHT preferred: safety=1.20 vs CENTER=1.08
+[Decision] Side zone LEFT preferred: safety=1.26 vs CENTER=1.09
+[Decision] Side zone LEFT preferred: safety=1.26 vs CENTER=1.08
+[Publisher] FREE -> FREE | FREE: exit-hold bad_streak=1/2 | stable_count=1 | depth_mm=1455
+[Serial -> Arduino] CMD:FREE
+[Decision] Side zone LEFT preferred: safety=1.26 vs CENTER=1.08
+[Decision] Side zone L2 preferred: safety=1.26 vs CENTER=1.08
+[Decision] Side zone LEFT preferred: safety=1.26 vs CENTER=1.09
+[Decision] Side zone LEFT preferred: safety=1.26 vs CENTER=1.08
+[Arduino -> Pi] STATUS:FREE
+[Decision] Side zone LEFT preferred: safety=1.25 vs CENTER=1.08
+[Decision] Side zone LEFT preferred: safety=1.25 vs CENTER=1.08
+[Decision] Side zone LEFT preferred: safety=1.24 vs CENTER=1.08
+[Decision] Side zone L2 preferred: safety=1.24 vs CENTER=1.09
+[Decision] Side zone LEFT preferred: safety=1.24 vs CENTER=1.09
+[Decision] Side zone LEFT preferred: safety=1.24 vs CENTER=1.08
+[Decision] Side zone LEFT preferred: safety=1.23 vs CENTER=1.08
+[Decision] Side zone L2 preferred: safety=1.24 vs CENTER=1.09
+[Decision] Side zone L2 preferred: safety=1.24 vs CENTER=1.08
+[Decision] Side zone LEFT preferred: safety=1.24 vs CENTER=1.08
+[Decision] Side zone L2 preferred: safety=1.24 vs CENTER=1.08
+[Decision] Side zone LEFT preferred: safety=1.24 vs CENTER=1.09
+[Decision] Side zone LEFT preferred: safety=1.24 vs CENTER=1.09
+[Decision] Side zone L2 preferred: safety=1.24 vs CENTER=1.10
+[Decision] Side zone L2 preferred: safety=1.24 vs CENTER=1.10
+[Decision] Side zone L1 preferred: safety=1.23 vs CENTER=1.11
+[Status] f=1800 auth=True ready=True cmd=FREE conf=79% groups=1/1 target=CENTER lidar_front=3419mm
+[Publisher] FREE -> FREE | FREE: clear path (p20=1475mm streak=6/6 conf=0.76) | stable_count=1 | depth_mm=1423
+[Serial -> Arduino] CMD:FREE
+[Decision] Side zone L1 preferred: safety=1.23 vs CENTER=1.11
+[Arduino -> Pi] STATUS:FREE
+[Decision] Side zone L2 preferred: safety=1.24 vs CENTER=1.12
+[Decision] Side zone L1 preferred: safety=1.24 vs CENTER=1.12
+[Decision] Side zone L1 preferred: safety=1.24 vs CENTER=1.12
+[Decision] Side zone L1 preferred: safety=1.23 vs CENTER=1.11
+[Publisher] FREE -> FREE | FREE: exit-hold bad_streak=1/2 | stable_count=1 | depth_mm=1446
+[Serial -> Arduino] CMD:FREE
+[Decision] Side zone L1 preferred: safety=1.24 vs CENTER=1.12
+[Arduino -> Pi] STATUS:FREE
+[Decision] Side zone L1 preferred: safety=1.22 vs CENTER=1.10
+[Decision] Side zone R1 preferred: safety=1.22 vs CENTER=1.10
+[Decision] Side zone R1 preferred: safety=1.23 vs CENTER=1.10
+[Decision] Side zone R1 preferred: safety=1.23 vs CENTER=1.10
+[Decision] Side zone R1 preferred: safety=1.23 vs CENTER=1.09
+[Decision] Side zone R1 preferred: safety=1.23 vs CENTER=1.07
+[Decision] Side zone L1 preferred: safety=1.21 vs CENTER=1.08
+[Decision] Side zone R1 preferred: safety=1.23 vs CENTER=1.07
+[Decision] Side zone R1 preferred: safety=1.22 vs CENTER=1.07
+[Decision] Side zone R1 preferred: safety=1.23 vs CENTER=1.07
+[Decision] Side zone R1 preferred: safety=1.22 vs CENTER=1.07
+[Decision] Side zone R1 preferred: safety=1.23 vs CENTER=1.04
+[Decision] Side zone R1 preferred: safety=1.22 vs CENTER=1.03
+[Decision] Side zone R1 preferred: safety=1.22 vs CENTER=0.95
+[Decision] Side zone R1 preferred: safety=1.23 vs CENTER=0.96
+[Publisher] FREE -> FREE | FREE: exit-hold bad_streak=1/2 | stable_count=1 | depth_mm=876
+[Serial -> Arduino] CMD:FREE
+[Decision] Side zone R1 preferred: safety=1.21 vs CENTER=1.00
+[Decision] Side zone R1 preferred: safety=1.22 vs CENTER=1.07
+[Decision] Side zone R1 preferred: safety=1.21 vs CENTER=1.09
+[Arduino -> Pi] STATUS:FREE
+[Decision] LiDAR side-escape -> GO:L1 (L=2353mm R=458mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2353mm R=458mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2338mm R=437mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2327mm R=421mm latch=left)
+[Publisher] FREE -> GO:L1 | GO:L1: LiDAR side-escape (front blocked, left open) | stable_count=4 | depth_mm=513
+[TTS] speaking: Slight left
+[TTS worker] saying: Slight left
+[Serial -> Arduino] CMD:GO:L1
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Slight left
+[Decision] LiDAR side-escape -> GO:L1 (L=2318mm R=402mm latch=left)
+[Arduino -> Pi] STATUS:ASSIST
+[Arduino -> Pi] STATUS:MOVING:L1
+[Decision] LiDAR side-escape -> GO:L1 (L=2311mm R=348mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2311mm R=348mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2311mm R=334mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2316mm R=321mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2316mm R=321mm latch=left)
+[Arduino -> Pi] STATUS:REACHED
+[Decision] LiDAR side-escape -> GO:L1 (L=2324mm R=298mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2328mm R=288mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2328mm R=288mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2352mm R=296mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2364mm R=526mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2364mm R=526mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2375mm R=191mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2382mm R=174mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2382mm R=174mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2390mm R=172mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2390mm R=170mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2390mm R=170mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2384mm R=174mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2388mm R=174mm latch=left)
+[Publisher] GO:L1 -> GO:L1 | GO:L1: LiDAR side-escape (front blocked, left open) | stable_count=24 | depth_mm=371
+[Serial -> Arduino] CMD:GO:L1
+[Decision] LiDAR side-escape -> GO:L1 (L=2388mm R=174mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2389mm R=171mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2390mm R=162mm latch=left)
+[Arduino -> Pi] STATUS:MOVING:L1
+[Arduino -> Pi] STATUS:AT_TARGET
+[Decision] LiDAR side-escape -> GO:L1 (L=2392mm R=162mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2392mm R=162mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2400mm R=158mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2396mm R=155mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2396mm R=155mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2394mm R=158mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2396mm R=156mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2397mm R=158mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2397mm R=158mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2396mm R=471mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2398mm R=154mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2398mm R=154mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2396mm R=157mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2398mm R=152mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2395mm R=155mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2395mm R=155mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2395mm R=153mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2395mm R=159mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2395mm R=159mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2399mm R=159mm latch=left)
+[Publisher] GO:L1 -> GO:L1 | GO:L1: LiDAR side-escape (front blocked, left open) | stable_count=47 | depth_mm=360
+[Serial -> Arduino] CMD:GO:L1
+[Decision] LiDAR side-escape -> GO:L1 (L=2397mm R=156mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2395mm R=156mm latch=left)
+[Arduino -> Pi] STATUS:MOVING:L1
+[Arduino -> Pi] STATUS:AT_TARGET
+[Decision] LiDAR side-escape -> GO:L1 (L=2397mm R=159mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2397mm R=159mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2396mm R=161mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2400mm R=156mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2400mm R=156mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2400mm R=469mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2396mm R=159mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2396mm R=159mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2396mm R=151mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2396mm R=157mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2396mm R=157mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2396mm R=152mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2400mm R=158mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2400mm R=158mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2400mm R=161mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2398mm R=158mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2398mm R=158mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2395mm R=162mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2396mm R=162mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2396mm R=162mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2393mm R=487mm latch=left)
+[Publisher] GO:L1 -> GO:L1 | GO:L1: LiDAR side-escape (front blocked, left open) | stable_count=70 | depth_mm=347
+[Serial -> Arduino] CMD:GO:L1
+[Decision] LiDAR side-escape -> GO:L1 (L=2385mm R=490mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2385mm R=490mm latch=left)
+[Arduino -> Pi] STATUS:MOVING:L1
+[Arduino -> Pi] STATUS:AT_TARGET
+[Decision] LiDAR side-escape -> GO:L1 (L=2374mm R=504mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2364mm R=514mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2364mm R=514mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2358mm R=524mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2348mm R=296mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2348mm R=296mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2334mm R=284mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2329mm R=288mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2329mm R=288mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2325mm R=296mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2321mm R=307mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2321mm R=307mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2320mm R=310mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2318mm R=312mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2318mm R=312mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2315mm R=318mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2315mm R=318mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2312mm R=330mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2312mm R=330mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2312mm R=338mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2308mm R=348mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2308mm R=348mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2306mm R=358mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2308mm R=374mm latch=left)
+[Publisher] GO:L1 -> GO:L1 | GO:L1: LiDAR side-escape (front blocked, left open) | stable_count=96 | depth_mm=784
+[Serial -> Arduino] CMD:GO:L1
+[Decision] LiDAR side-escape -> GO:L1 (L=2308mm R=374mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2304mm R=376mm latch=left)
+[Arduino -> Pi] STATUS:MOVING:L1
+[Arduino -> Pi] STATUS:AT_TARGET
+[Decision] LiDAR side-escape -> GO:L1 (L=2302mm R=380mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2302mm R=380mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2303mm R=377mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2303mm R=377mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2303mm R=376mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2304mm R=374mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2304mm R=374mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2304mm R=376mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2304mm R=376mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2302mm R=376mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2303mm R=375mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2303mm R=375mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2305mm R=375mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2305mm R=375mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2304mm R=375mm latch=left)
+[Status] f=2000 auth=True ready=True cmd=GO:L1 conf=82% groups=1/1 target=L1 lidar_front=450mm
+[Decision] LiDAR side-escape -> GO:L1 (L=2303mm R=373mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2303mm R=373mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2303mm R=374mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2303mm R=376mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2303mm R=376mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2304mm R=374mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2304mm R=374mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2304mm R=375mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2304mm R=375mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2304mm R=375mm latch=left)
+[Publisher] GO:L1 -> GO:L1 | GO:L1: LiDAR side-escape (front blocked, left open) | stable_count=123 | depth_mm=852
+[Serial -> Arduino] CMD:GO:L1
+[Decision] LiDAR side-escape -> GO:L1 (L=2304mm R=374mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2304mm R=374mm latch=left)
+[Arduino -> Pi] STATUS:MOVING:L1
+[Arduino -> Pi] STATUS:AT_TARGET
+[Decision] LiDAR side-escape -> GO:L1 (L=2304mm R=376mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2304mm R=376mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2304mm R=376mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2304mm R=376mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2305mm R=375mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2305mm R=375mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2305mm R=374mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2305mm R=374mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2304mm R=376mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2303mm R=375mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2303mm R=375mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2304mm R=374mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2304mm R=374mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2304mm R=374mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2304mm R=374mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2305mm R=374mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2305mm R=374mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2305mm R=376mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2305mm R=376mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2304mm R=374mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2304mm R=374mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2304mm R=374mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2304mm R=374mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2305mm R=376mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2305mm R=376mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2306mm R=374mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2306mm R=374mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2305mm R=376mm latch=left)
+[Publisher] GO:L1 -> GO:L1 | GO:L1: LiDAR side-escape (front blocked, left open) | stable_count=153 | depth_mm=847
+[Serial -> Arduino] CMD:GO:L1
+[Decision] LiDAR side-escape -> GO:L1 (L=2303mm R=375mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2303mm R=375mm latch=left)
+[Arduino -> Pi] STATUS:MOVING:L1
+[Arduino -> Pi] STATUS:REACHED
+[Decision] LiDAR side-escape -> GO:L1 (L=2307mm R=376mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2307mm R=376mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2305mm R=374mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2305mm R=374mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2303mm R=371mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2304mm R=366mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2304mm R=366mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2304mm R=358mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2304mm R=358mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2294mm R=350mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2290mm R=351mm latch=left)
+[Decision] LiDAR side-escape -> GO:L1 (L=2290mm R=351mm latch=left)
+[Publisher] GO:L1 -> FREE | FREE: clear path (p20=1478mm streak=15/6 conf=0.89) | stable_count=1 | depth_mm=799
+[TTS] speaking: Free mode
+[TTS worker] saying: Free mode
+[Serial -> Arduino] CMD:FREE
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Free mode
+[Arduino -> Pi] STATUS:FREE
+[Decision] Side zone L1 preferred: safety=1.21 vs CENTER=1.07
+[Decision] Side zone L1 preferred: safety=1.21 vs CENTER=1.07
+[Decision] Side zone L1 preferred: safety=1.21 vs CENTER=1.06
+[Publisher] FREE -> FREE | FREE: exit-hold bad_streak=1/2 | stable_count=1 | depth_mm=1404
+[Serial -> Arduino] CMD:FREE
+[Decision] Side zone LEFT preferred: safety=1.20 vs CENTER=1.04
+[Decision] Side zone L2 preferred: safety=1.24 vs CENTER=1.10
+[Decision] Side zone LEFT preferred: safety=1.24 vs CENTER=1.10
+[Arduino -> Pi] STATUS:FREE
+[Decision] Side zone LEFT preferred: safety=1.24 vs CENTER=1.12
+[Decision] Side zone LEFT preferred: safety=1.22 vs CENTER=1.10
+[Decision] Side zone LEFT preferred: safety=1.25 vs CENTER=1.12
+[Decision] Side zone LEFT preferred: safety=1.23 vs CENTER=1.10
+[Decision] Side zone LEFT preferred: safety=1.23 vs CENTER=1.09
+[Decision] Side zone L2 preferred: safety=1.23 vs CENTER=1.09
+[Publisher] FREE -> FREE | GO:CENTER: active recenter needed (p20=1455mm streak=1/6 conf=0.84) | stable_count=1 | depth_mm=1212
+[Serial -> Arduino] CMD:FREE
+[Decision] Side zone L1 preferred: safety=1.21 vs CENTER=1.09
+[Arduino -> Pi] STATUS:FREE
+[Decision] Side zone L1 preferred: safety=1.22 vs CENTER=1.03
+[Decision] Side zone L1 preferred: safety=1.20 vs CENTER=1.01
+[Decision] Side zone L1 preferred: safety=1.18 vs CENTER=0.99
+[Decision] Side zone L1 preferred: safety=1.16 vs CENTER=0.91
+[Publisher] FREE -> FREE | STOP: no valid group width | stable_count=1 | depth_mm=662
+[Serial -> Arduino] CMD:FREE
+[LiDAR-Bias] conf=0.48 left=1060mm right=627mm gap=+432mm -> prefer left
+[Arduino -> Pi] STATUS:FREE
+[LiDAR-Bias] conf=0.42 left=1060mm right=627mm gap=+432mm -> prefer left
+[LiDAR-Bias] conf=0.49 left=1041mm right=606mm gap=+436mm -> prefer left
+[LiDAR-Bias] conf=0.45 left=1038mm right=600mm gap=+438mm -> prefer left
+[LiDAR-Bias] conf=0.43 left=1034mm right=601mm gap=+433mm -> prefer left
+[LiDAR-Bias] conf=0.43 left=1058mm right=605mm gap=+454mm -> prefer left
+[LiDAR-Bias] conf=0.43 left=1058mm right=605mm gap=+454mm -> prefer left
+[LiDAR-Bias] conf=0.44 left=1056mm right=616mm gap=+440mm -> prefer left
+[LiDAR-Bias] conf=0.35 left=1077mm right=647mm gap=+430mm -> prefer left
+[LiDAR-Bias] conf=0.41 left=1108mm right=664mm gap=+444mm -> prefer left
+[LiDAR-Bias] conf=0.45 left=1108mm right=664mm gap=+444mm -> prefer left
+[LiDAR-Bias] conf=0.48 left=1128mm right=673mm gap=+455mm -> prefer left
+[Publisher] FREE -> FREE | FREE: exit-hold bad_streak=1/2 | stable_count=1 | depth_mm=690
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[LiDAR-Bias] conf=0.49 left=1886mm right=858mm gap=+1028mm -> prefer left
+[Decision] Side zone L2 preferred: safety=1.30 vs CENTER=1.01
+[Decision] Side zone LEFT preferred: safety=1.30 vs CENTER=1.01
+[Publisher] FREE -> FREE | FREE: exit-hold bad_streak=1/2 | stable_count=1 | depth_mm=1244
+[Serial -> Arduino] CMD:FREE
+[Decision] Side zone L2 preferred: safety=1.30 vs CENTER=1.14
+[Decision] Side zone L2 preferred: safety=1.30 vs CENTER=1.15
+[Decision] Side zone LEFT preferred: safety=1.30 vs CENTER=1.13
+[Decision] Side zone LEFT preferred: safety=1.29 vs CENTER=1.11
+[Arduino -> Pi] STATUS:FREE
+[Decision] Side zone LEFT preferred: safety=1.24 vs CENTER=1.08
+[Decision] Side zone L2 preferred: safety=1.21 vs CENTER=1.08
+[Decision] Side zone LEFT preferred: safety=1.22 vs CENTER=1.06
+[Decision] Side zone LEFT preferred: safety=1.22 vs CENTER=1.07
+[Decision] Side zone LEFT preferred: safety=1.23 vs CENTER=1.08
+[Decision] Side zone LEFT preferred: safety=1.23 vs CENTER=1.09
+[Decision] Side zone RIGHT preferred: safety=1.23 vs CENTER=1.09
+[Decision] Side zone LEFT preferred: safety=1.23 vs CENTER=1.10
+[Decision] Side zone LEFT preferred: safety=1.24 vs CENTER=1.10
+[Decision] Side zone RIGHT preferred: safety=1.23 vs CENTER=1.11
+[Decision] Side zone RIGHT preferred: safety=1.23 vs CENTER=1.11
+[Status] f=2200 auth=True ready=True cmd=FREE conf=79% groups=1/1 target=RIGHT lidar_front=3186mm
+[Decision] Side zone LEFT preferred: safety=1.24 vs CENTER=1.11
+[Decision] Side zone LEFT preferred: safety=1.23 vs CENTER=1.10
+[Decision] Side zone RIGHT preferred: safety=1.25 vs CENTER=1.12
+[Publisher] FREE -> FREE | FREE: exit-hold bad_streak=1/2 | stable_count=1 | depth_mm=1447
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+^CInterrupted.
+[Serial] Read error: 'NoneType' object cannot be interpreted as an integer
+[System] Shutdown complete.
+(oak2-env) lama@Lama-pi:~/OAK-D/oak-template $ 
