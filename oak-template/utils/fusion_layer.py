@@ -23,7 +23,9 @@ class FusedAnalysis:
 
 
 class FusionLayer:
-    DISAGREEMENT_TRUST_THRESHOLD_MM = 800.0
+    # Raised from 800 → 2000 mm so LiDAR never overrides a camera emergency
+    # unless the camera sees a truly distant clear path (> 2 m).
+    DISAGREEMENT_TRUST_THRESHOLD_MM = 2000.0
 
     def __init__(self, lidar: LidarAnalyzer, cfg=None):
         self._lidar = lidar
@@ -134,22 +136,38 @@ class FusionLayer:
             )
 
         # 4) OAK says emergency, LiDAR says clear.
+        # -----------------------------------------------------------------
+        # FIX: We now ALWAYS trust the camera's emergency when it fires.
+        # LiDAR may not see glass, dark surfaces, or angled obstacles that
+        # the OAK-D depth camera detects clearly.  The old logic suppressed
+        # has_emergency and added a positive confidence_boost for obstacles
+        # 800–1200 mm away, causing the walker to drive straight into them.
+        #
+        # Only dismiss the camera's emergency when the obstacle is genuinely
+        # very distant (> DISAGREEMENT_TRUST_THRESHOLD_MM = 2000 mm), which
+        # strongly suggests a false-positive (e.g. specular reflection).
+        # -----------------------------------------------------------------
         if (not lidar_emergency) and oak_emergency:
             if float(oak_front_mm) < self.DISAGREEMENT_TRUST_THRESHOLD_MM:
+                # Camera sees a real obstacle — keep emergency, slight
+                # confidence penalty because sensors disagree.
                 fused_oak = self._override_emergency(oak_analysis, True)
                 return FusedAnalysis(
                     oak_analysis=fused_oak,
                     has_emergency=True,
-                    front_clear_mm=min(float(oak_front_mm), lidar_front_mm),
+                    front_clear_mm=float(oak_front_mm),
                     side_escape_left=bool(scan.side_escape_left),
                     side_escape_right=bool(scan.side_escape_right),
                     lidar_active=True,
-                    confidence_boost=0.0,
-                    fusion_reason="oak_trusted_close_obstacle",
+                    confidence_boost=-0.05,  # penalty: sensors disagree
+                    fusion_reason="oak_trusted_over_lidar",
                     lidar_left_mm=float(scan.left_min_mm),
                     lidar_right_mm=float(scan.right_min_mm),
                 )
 
+            # Obstacle is very far away (> 2 m) — likely a false alarm from
+            # the camera (specular reflection, bad stereo match).  Safe to
+            # let the walker continue, but still penalise confidence.
             fused_oak = self._override_emergency(oak_analysis, False)
             return FusedAnalysis(
                 oak_analysis=fused_oak,
@@ -158,8 +176,8 @@ class FusionLayer:
                 side_escape_left=bool(scan.side_escape_left),
                 side_escape_right=bool(scan.side_escape_right),
                 lidar_active=True,
-                confidence_boost=+0.08,
-                fusion_reason="oak_suppressed_false_stop",
+                confidence_boost=-0.03,  # small penalty: minor disagreement
+                fusion_reason="oak_false_alarm_far_obstacle",
                 lidar_left_mm=float(scan.left_min_mm),
                 lidar_right_mm=float(scan.right_min_mm),
             )
@@ -195,7 +213,9 @@ class FusionLayer:
                 if v > 0.0 and float(m.valid_ratio or 0.0) >= 0.14:
                     vals.append(v)
         if not vals:
-            return 9999.0  # No data → assume path clear, don't stop
+            # 5000 mm = max supported depth; avoids triggering emergency
+            # on missing data while keeping the value within sensor range.
+            return 5000.0
         return float(min(vals))
 
     @staticmethod

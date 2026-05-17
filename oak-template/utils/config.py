@@ -169,7 +169,9 @@ class WalkerConfig:
     # Height compensation: LiDAR (30cm) veto ignored when camera front >
     # this value — camera sees clear path, LiDAR seeing low obstacle.
     LIDAR_CAMERA_AGREE_MM: float = 1200.0
-    FUSION_DISAGREEMENT_THRESHOLD_MM: float = 800.0
+    # Raised from 800 → 2000: camera emergency is trusted up to 2 m even
+    # when LiDAR reports clear.  Prevents walker driving into real obstacles.
+    FUSION_DISAGREEMENT_THRESHOLD_MM: float = 2000.0
 
     # ── LiDAR Side-Distance Directional Bias ─────────────────
     # Applied only when OAK-D confidence < this threshold.
@@ -220,7 +222,7 @@ class WalkerConfig:
             LIDAR_SIDE_ESCAPE_MM=float(os.getenv("LIDAR_SIDE_ESCAPE_MM", "800.0")),
             LIDAR_CAMERA_AGREE_MM=float(os.getenv("LIDAR_CAMERA_AGREE_MM", "1200.0")),
             FUSION_DISAGREEMENT_THRESHOLD_MM=float(
-                os.getenv("FUSION_DISAGREEMENT_THRESHOLD_MM", "800.0")
+                os.getenv("FUSION_DISAGREEMENT_THRESHOLD_MM", "2000.0")
             ),
             LIDAR_SIDE_BIAS_CONF_THRESHOLD=float(
                 os.getenv("LIDAR_SIDE_BIAS_CONF_THRESHOLD", "0.50")

@@ -302,8 +302,10 @@ class CorridorAnalyzer:
             + center_bonus
         )
 
+        # Use p20 (not p25) for safety_score: more sensitive to thin/close obstacles
+        # such as chair legs or narrow poles that p25 may partially miss.
         depth_norm_25 = float(np.clip(
-            (p25_depth - cfg.MIN_DEPTH_MM) / (cfg.SAFE_CORRIDOR_MM - cfg.MIN_DEPTH_MM),
+            (p20_depth - cfg.MIN_DEPTH_MM) / (cfg.SAFE_CORRIDOR_MM - cfg.MIN_DEPTH_MM),
             0.0, 1.0,
         ))
         floor_invalid_ratio = 1.0 - valid_ratio
