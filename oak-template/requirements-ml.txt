@@ -1,0 +1,2 @@
+# ML navigation (install on PC for training; optional on Pi for inference)
+torch>=2.0.0

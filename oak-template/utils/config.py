@@ -185,6 +185,13 @@ class WalkerConfig:
     # Kept small so it only breaks near-ties, not overrides strong OAK-D scores.
     LIDAR_SIDE_BIAS_BONUS: float = 0.08
 
+    # ── ML Navigation (replaces rules engine when NAV_MODE=ml) ──
+    NAV_MODE: str = "rules"  # "rules" | "ml"
+    ML_MODEL_PATH: str = "models/navigator.pth"
+    ML_HISTORY_SIZE: int = 7
+    ML_MIN_STABLE_COUNT: int = 4
+    ML_STOP_FRAMES: int = 3
+
     # ── Visualization / Optional Features ────────────────────
     DEBUG_DISPLAY: bool = True
     USE_TTS: bool = True
@@ -276,6 +283,11 @@ class WalkerConfig:
             GO_FAST_FRAMES_REQUIRED=int(os.getenv("GO_FAST_FRAMES_REQUIRED", "2")),
             FLIP_LR=os.getenv("FLIP_LR", "0") == "1",
             LIDAR_FLIP_LR=os.getenv("LIDAR_FLIP_LR", "0") == "1",
+            NAV_MODE=os.getenv("NAV_MODE", "rules").strip().lower(),
+            ML_MODEL_PATH=os.getenv("ML_MODEL_PATH", "models/navigator.pth"),
+            ML_HISTORY_SIZE=int(os.getenv("ML_HISTORY_SIZE", "7")),
+            ML_MIN_STABLE_COUNT=int(os.getenv("ML_MIN_STABLE_COUNT", "4")),
+            ML_STOP_FRAMES=int(os.getenv("ML_STOP_FRAMES", "3")),
         )
 
     def __post_init__(self) -> None:

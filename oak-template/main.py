@@ -4,13 +4,16 @@ Smart Walker — OAK-D Navigation System v3.0
 ════════════════════════════════════════════
 Full integration with Arduino Mega via Serial1.
 
-Architecture:
+Architecture (NAV_MODE=rules):
   WalkerConfig        → all tunable parameters
   ArduinoSerial       → bidirectional serial (reader + writer threads)
   CorridorAnalyzer    → 7-zone depth + merged free-space groups
   DecisionEngine      → safety gates, group selection, temporal smoothing
   CommandPublisher    → rate-limited command dispatch
-  Visualizer          → OpenCV debug overlay (optional)
+
+Architecture (NAV_MODE=ml):
+  MLNavigator         → depth CNN + LiDAR/depth safety + temporal smoothing
+  CommandPublisher    → rate-limited command dispatch
 """
 
 import os
@@ -30,11 +33,8 @@ from depthai_nodes.node import ApplyDepthColormap
 # ── Local Modules ─────────────────────────────────────────────
 from utils.config import WalkerConfig
 from utils.arduino_serial import ArduinoSerial
-from utils.corridor_analyzer import CorridorAnalyzer
-from utils.decision_engine import DecisionEngine
 from utils.command_publisher import CommandPublisher
 from utils.lidar_analyzer import LidarAnalyzer
-from utils.fusion_layer import FusionLayer
 from utils.tts_player import TTSPlayer
 
 # ── SnapsProducer ─────────────────────────────────────────────
@@ -358,13 +358,44 @@ def build_debug_frame(depth_frame, analysis, result, arduino_state,
     return vis
 
 
+def build_debug_frame_ml(depth_frame, result: "MLDecisionResult", arduino_state,
+                         last_sent, cfg_ref):
+    """Minimal debug overlay for ML navigation mode."""
+    clipped = np.clip(depth_frame, cfg_ref.MIN_DEPTH_MM, cfg_ref.MAX_DEPTH_MM)
+    norm = (
+        (clipped - cfg_ref.MIN_DEPTH_MM)
+        / max(cfg_ref.MAX_DEPTH_MM - cfg_ref.MIN_DEPTH_MM, 1)
+        * 255.0
+    ).astype(np.uint8)
+    norm = 255 - norm
+    vis = cv2.applyColorMap(norm, cv2.COLORMAP_JET)
+    h, w = depth_frame.shape
+    font = cv2.FONT_HERSHEY_SIMPLEX
+
+    raw_color = (0, 0, 255) if "STOP" in result.raw_command else (0, 200, 255)
+    cv2.putText(vis, f"ML:{result.model_label}", (10, 28), font, 0.7, (255, 255, 255), 2)
+    cv2.putText(vis, f"RAW: {result.raw_command}", (10, 56), font, 0.55, raw_color, 2)
+    stable_color = (0, 0, 255) if result.stable_command == "STOP" else (0, 255, 0)
+    cv2.putText(vis, f"CMD: {result.stable_command}", (10, 84), font, 0.65, stable_color, 2)
+    cv2.putText(vis, f"Conf: {result.confidence:.0%}", (10, 112), font, 0.5, (200, 200, 200), 2)
+    cv2.putText(vis, f"Fwd: {result.forward_min_depth_mm:.0f}mm", (10, 136),
+                font, 0.45, (200, 200, 200), 1)
+    cv2.putText(vis, result.reason[:72], (10, h - 12), font, 0.38, (200, 200, 200), 1)
+    cv2.putText(vis, f"Sent: {last_sent or '-'}", (w - 160, 28), font, 0.45, (200, 200, 200), 1)
+    auth_txt = "AUTH" if arduino_state.get("authorized") else "LOCKED"
+    auth_color = (0, 255, 0) if arduino_state.get("authorized") else (0, 0, 255)
+    cv2.putText(vis, auth_txt, (w - 100, 56), font, 0.55, auth_color, 2)
+    return vis
+
+
 # ══════════════════════════════════════════════════════════════
 # Main
 # ══════════════════════════════════════════════════════════════
 
 def main():
     print("=" * 60)
-    print("  Smart Walker - OAK-D Navigation System v3.0")
+    use_ml = cfg.NAV_MODE == "ml"
+    print(f"  Smart Walker - OAK-D Navigation v3.0 ({cfg.NAV_MODE.upper()})")
     print("=" * 60)
     print(f"  Arduino port : {cfg.ARDUINO_PORT}")
     print(f"  Walker width : {cfg.WALKER_WIDTH_M}m + 2x{cfg.SIDE_MARGIN_M}m margin"
@@ -381,8 +412,10 @@ def main():
         _tts_player.pregenerate()   # generate WAV files once at startup
 
     arduino = ArduinoSerial(port=cfg.ARDUINO_PORT, baud=cfg.ARDUINO_BAUD)
-    corridor_analyzer = CorridorAnalyzer(cfg)
-    decision_engine = DecisionEngine(cfg)
+    corridor_analyzer = None
+    decision_engine = None
+    fusion = None
+    ml_navigator = None
     publisher = CommandPublisher(cfg, arduino)
     lidar_mock = cfg.LIDAR_PORT.upper() == "MOCK"
     _lb = cfg.LIDAR_BACKEND.lower().strip()
@@ -403,7 +436,17 @@ def main():
         side_arc_end_deg=cfg.LIDAR_SIDE_ARC_END_DEG,
         lidar_flip_lr=cfg.LIDAR_FLIP_LR,
     )
-    fusion = FusionLayer(lidar, cfg)
+    if use_ml:
+        from utils.ml_navigator import MLNavigator
+        ml_navigator = MLNavigator(cfg)
+        print(f"  ML model     : {cfg.ML_MODEL_PATH}")
+    else:
+        from utils.corridor_analyzer import CorridorAnalyzer
+        from utils.decision_engine import DecisionEngine
+        from utils.fusion_layer import FusionLayer
+        corridor_analyzer = CorridorAnalyzer(cfg)
+        decision_engine = DecisionEngine(cfg)
+        fusion = FusionLayer(lidar, cfg)
 
     visualizer = None
     if use_visualizer:
@@ -534,76 +577,152 @@ def main():
                         was_authorized = True
                     elif not state["authorized"] and was_authorized:
                         print("[System] DEAUTHORIZED - navigation stopped")
-                        decision_engine.reset()
+                        if use_ml:
+                            ml_navigator.reset()
+                        else:
+                            decision_engine.reset()
                         publisher.reset()
                         speak("System locked")
                         was_authorized = False
 
-                    # Corridor analysis (merged groups)
-                    analysis = corridor_analyzer.analyze(depth_frame)
-                    fused = fusion.fuse(analysis)
-                    # Apply fusion results back to analysis for decision engine
-                    if fused.has_emergency != analysis.has_emergency:
-                        from dataclasses import replace
-                        analysis = replace(analysis, has_emergency=fused.has_emergency)
+                    lidar_scan = lidar.latest_scan
+                    lidar_front = (
+                        float(lidar_scan.front_min_mm) if lidar_scan else None
+                    )
 
-                    # Fix 2: LiDAR veto → immediate Stop announcement,
-                    # Cooldown added to prevent spamming every frame.
-                    # Only announce if the system is actually authorized and ready to move.
-                    if state.get("authorized") and state.get("ready"):
-                        if fused.fusion_reason == "lidar_veto_emergency" and cfg.USE_TTS:
+                    if use_ml:
+                        result = ml_navigator.decide(
+                            depth_frame, state, lidar_front_mm=lidar_front,
+                        )
+                        min_depth = result.forward_min_depth_mm
+
+                        if (
+                            state.get("authorized") and state.get("ready")
+                            and result.model_label == "STOP"
+                            and lidar_front is not None
+                            and lidar_front < cfg.LIDAR_SAFETY_MM
+                            and cfg.USE_TTS
+                        ):
                             now_t = time.time()
                             if now_t - getattr(main, "last_lidar_stop_time", 0.0) >= NAV_TTS_COOLDOWN:
                                 speak("Stop")
                                 main.last_lidar_stop_time = now_t
 
-                    # Decision (uses merged groups + LiDAR side-distance bias)
-                    # When FLIP_LR=True, mirror LiDAR side distances to match
-                    # the camera's flipped perspective.
-                    _ll = fused.lidar_left_mm
-                    _lr = fused.lidar_right_mm
-                    _sel = fused.side_escape_left
-                    _ser = fused.side_escape_right
-                    if cfg.FLIP_LR:
-                        _ll, _lr = _lr, _ll
-                        _sel, _ser = _ser, _sel
+                        publisher.publish(
+                            result.stable_command,
+                            state,
+                            reason=result.reason,
+                            min_p20_depth=min_depth,
+                            stable_count=result.stable_count,
+                            critical_stop=result.critical_stop,
+                            allow_recenter=result.allow_recenter,
+                        )
 
-                    result = decision_engine.decide(
-                        analysis,
-                        state,
-                        fusion_boost=fused.confidence_boost,
-                        lidar_left_mm=_ll,
-                        lidar_right_mm=_lr,
-                        side_escape_left=_sel,
-                        side_escape_right=_ser,
-                        fusion_reason=fused.fusion_reason,
-                        lidar_front_mm=fused.front_clear_mm,
-                    )
+                        if cfg.DEBUG_DISPLAY:
+                            debug_frame = build_debug_frame_ml(
+                                depth_frame, result, state,
+                                publisher.last_command or "-", cfg)
+                            cv2.imshow("Smart Walker Navigation", debug_frame)
+                            if (cv2.waitKey(1) & 0xFF) == ord("q"):
+                                print("Quit key pressed.")
+                                pipeline.stop()
+                                break
 
-                    # Compute min p20 depth across ALL zones for critical stop check.
-                    # Side escape paths should prevent CRITICAL_STOP from latching.
-                    min_p20 = min(
-                        (m.p20_depth for m in analysis.corridors.values() if m.p20_depth > 0),
-                        default=0.0,
-                    )
+                        if frame_count % 200 == 0:
+                            lidar_str = (
+                                f"lidar_front={lidar_front:.0f}mm"
+                                if lidar_front is not None else "lidar=stale"
+                            )
+                            print(
+                                f"[Status/ML] f={frame_count} "
+                                f"auth={state['authorized']} "
+                                f"ready={state['ready']} "
+                                f"cmd={result.stable_command} "
+                                f"label={result.model_label} "
+                                f"conf={result.confidence:.0%} {lidar_str}"
+                            )
+                    else:
+                        analysis = corridor_analyzer.analyze(depth_frame)
+                        fused = fusion.fuse(analysis)
+                        if fused.has_emergency != analysis.has_emergency:
+                            from dataclasses import replace
+                            analysis = replace(analysis, has_emergency=fused.has_emergency)
 
-                    sent = publisher.publish(
-                        result.stable_command,
-                        state,
-                        reason=result.reason,
-                        min_p20_depth=min_p20,
-                        stable_count=result.stable_count,
-                        critical_stop=result.critical_stop,
-                        allow_recenter=result.allow_recenter,
-                    )
+                        if state.get("authorized") and state.get("ready"):
+                            if fused.fusion_reason == "lidar_veto_emergency" and cfg.USE_TTS:
+                                now_t = time.time()
+                                if now_t - getattr(main, "last_lidar_stop_time", 0.0) >= NAV_TTS_COOLDOWN:
+                                    speak("Stop")
+                                    main.last_lidar_stop_time = now_t
 
-                    # TTS on stable command change
+                        _ll = fused.lidar_left_mm
+                        _lr = fused.lidar_right_mm
+                        _sel = fused.side_escape_left
+                        _ser = fused.side_escape_right
+                        if cfg.FLIP_LR:
+                            _ll, _lr = _lr, _ll
+                            _sel, _ser = _ser, _sel
+
+                        result = decision_engine.decide(
+                            analysis,
+                            state,
+                            fusion_boost=fused.confidence_boost,
+                            lidar_left_mm=_ll,
+                            lidar_right_mm=_lr,
+                            side_escape_left=_sel,
+                            side_escape_right=_ser,
+                            fusion_reason=fused.fusion_reason,
+                            lidar_front_mm=fused.front_clear_mm,
+                        )
+
+                        min_p20 = min(
+                            (m.p20_depth for m in analysis.corridors.values() if m.p20_depth > 0),
+                            default=0.0,
+                        )
+
+                        publisher.publish(
+                            result.stable_command,
+                            state,
+                            reason=result.reason,
+                            min_p20_depth=min_p20,
+                            stable_count=result.stable_count,
+                            critical_stop=result.critical_stop,
+                            allow_recenter=result.allow_recenter,
+                        )
+
+                        if cfg.DEBUG_DISPLAY:
+                            debug_frame = build_debug_frame(
+                                depth_frame, analysis, result, state,
+                                publisher.last_command or "-", cfg)
+                            cv2.imshow("Smart Walker Navigation", debug_frame)
+                            if (cv2.waitKey(1) & 0xFF) == ord("q"):
+                                print("Quit key pressed.")
+                                pipeline.stop()
+                                break
+
+                        if frame_count % 200 == 0:
+                            n_grp = len(analysis.groups)
+                            n_val = len(analysis.valid_groups)
+                            lidar_str = (
+                                f"lidar_front={lidar_scan.front_min_mm:.0f}mm"
+                                if lidar_scan else "lidar=stale"
+                            )
+                            print(
+                                f"[Status] f={frame_count} "
+                                f"auth={state['authorized']} "
+                                f"ready={state['ready']} "
+                                f"cmd={result.stable_command} "
+                                f"conf={result.confidence:.0%} "
+                                f"groups={n_grp}/{n_val} "
+                                f"target={result.chosen_corridor or '-'}"
+                                f" {lidar_str}"
+                            )
+
+                    # TTS on stable command change (both modes)
                     if result.stable_command != "NONE":
                         now_t = time.time()
-
                         if not hasattr(main, "last_spoken_command"):
                             main.last_spoken_command = None
-
                         if (
                             result.stable_command != main.last_spoken_command
                             and now_t - last_nav_tts_time >= NAV_TTS_COOLDOWN
@@ -611,41 +730,8 @@ def main():
                             tts_text = TTS_MAP.get(result.stable_command, result.stable_command)
                             print(f"[TTS] speaking: {tts_text}")
                             speak(tts_text)
-
                             main.last_spoken_command = result.stable_command
                             last_nav_tts_time = now_t
-
-                    # Debug visualization
-                    if cfg.DEBUG_DISPLAY:
-                        debug_frame = build_debug_frame(
-                            depth_frame, analysis, result, state,
-                            publisher.last_command or "-", cfg)
-                        cv2.imshow("Smart Walker Navigation", debug_frame)
-                        key = cv2.waitKey(1) & 0xFF
-                        if key == ord("q"):
-                            print("Quit key pressed.")
-                            pipeline.stop()
-                            break
-
-                    # Periodic log
-                    if frame_count % 200 == 0:
-                        n_grp = len(analysis.groups)
-                        n_val = len(analysis.valid_groups)
-                        lidar_scan = lidar.latest_scan
-                        lidar_str = (
-                            f"lidar_front={lidar_scan.front_min_mm:.0f}mm"
-                            if lidar_scan else "lidar=stale"
-                        )
-                        print(
-                            f"[Status] f={frame_count} "
-                            f"auth={state['authorized']} "
-                            f"ready={state['ready']} "
-                            f"cmd={result.stable_command} "
-                            f"conf={result.confidence:.0%} "
-                            f"groups={n_grp}/{n_val} "
-                            f"target={result.chosen_corridor or '-'}"
-                            f" {lidar_str}"
-                        )
 
                 except KeyboardInterrupt:
                     print("Interrupted.")
