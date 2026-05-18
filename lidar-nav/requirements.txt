@@ -1,0 +1,6 @@
+# Smart Walker — LiDAR Navigator dependencies
+# Install on Raspberry Pi:
+#   pip install -r requirements.txt
+
+rplidar-roboticia>=0.9.2    # RPLIDAR A/C series driver (supports C1)
+pyserial>=3.5               # Serial communication with Arduino

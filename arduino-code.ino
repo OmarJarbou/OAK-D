@@ -2,8 +2,8 @@
 //  Smart Walker — Full Integration v1.0
 //  Arduino Mega
 //
-//  Serial  (USB, 9600) = debug monitor
-//  Serial1 (pins 18/19)  = Pi / camera communication
+//  Serial  (USB, 115200) = debug monitor
+//  Serial1 (pins 18/19)   = Pi / LiDAR-nav communication
 //
 //  Subsystems:
 //    - RFID authorization gate
@@ -42,6 +42,8 @@
 // | `CMD:BRAKE:ON`  | Activate brake only (no vibration stop) |
 // | `CMD:BRAKE:OFF` | Release brake                           |
 // | `CMD:UNLOCK`    | Unlock stepper limits                   |
+// | `CMD:ANGLE:<n>` | Steer to angle n (-100=full left, 0=center, +100=full right) |
+// | `CMD:POT`       | Reply with current pot ADC → STATUS:POT:<n> |
 
 // 🔹 Arduino → Pi Status Messages
 // | Message               | Meaning                              |
@@ -54,6 +56,7 @@
 // | `STATUS:FREE`         | Switched to FREE mode                |
 // | `STATUS:ASSIST`       | Switched to ASSIST mode              |
 // | `STATUS:SENSOR_ERROR` | Potentiometer disconnected / invalid |
+// | `STATUS:POT:<n>`      | Current potentiometer ADC value      |
 // | `BANK:20 ILS`         | Banknote detected and identified     |
 // | `BANK:REMOVED`        | Banknote removed                     |
 
@@ -843,6 +846,45 @@ void executeCommand(String cmd) {
     }
   }
 
+  // ── CMD:ANGLE:<n>  (-100=full left, 0=center, +100=full right) ──────
+  if (cmd.startsWith("CMD:ANGLE:")) {
+    if (!authorized) { Serial.println("[CMD] Not authorized"); return; }
+    if (CENTER_ADC == -1 || LEFT_ADC == -1 || RIGHT_ADC == -1) {
+      Serial.println("[CMD:ANGLE] Not calibrated");
+      Serial1.println("STATUS:NOT_CALIBRATED");
+      return;
+    }
+    if (currentMode == MODE_FREE) setAssistMode(true);
+    stopLatched = false;
+    brakeRelease();
+
+    int angle = cmd.substring(10).toInt();   // handles negatives
+    angle = constrain(angle, -100, 100);
+
+    int targetADC;
+    if (angle == 0) {
+      targetADC = CENTER_ADC;
+    } else if (angle < 0) {
+      targetADC = map(-angle, 0, 100, CENTER_ADC, LEFT_ADC);  // steer left
+    } else {
+      targetADC = map( angle, 0, 100, CENTER_ADC, RIGHT_ADC); // steer right
+    }
+    targetADC = clampToRange(targetADC);
+
+    Serial.print("[CMD:ANGLE] angle="); Serial.print(angle);
+    Serial.print(" -> ADC=");          Serial.println(targetADC);
+    moveToADC(targetADC);
+    return;
+  }
+
+  // ── CMD:POT  — report current potentiometer ADC ────────────────────
+  if (cmd == "CMD:POT" || cmd == "POT") {
+    int pot = readPot();
+    Serial.print("[CMD:POT] ADC="); Serial.println(pot);
+    Serial1.print("STATUS:POT:"); Serial1.println(pot);
+    return;
+  }
+
   Serial.print("[CMD] Unknown: "); Serial.println(cmd);
 }
 
@@ -900,8 +942,8 @@ void handlePiSerial() {
 //  SETUP
 // ================================================================
 void setup() {
-  Serial.begin(9600);
-  Serial1.begin(9600);
+  Serial.begin(115200);
+  Serial1.begin(115200);
   delay(200);
 
   startupTime = millis();
