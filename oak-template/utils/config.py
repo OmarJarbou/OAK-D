@@ -16,8 +16,8 @@ class WalkerConfig:
 
     # ── Walker Physical Dimensions ────────────────────────────
     # Required free width = walker body + safety margin on both sides (eligible corridor).
-    WALKER_WIDTH_M: float = 0.64
-    SIDE_MARGIN_M: float = 0.15
+    WALKER_WIDTH_M: float = 0.54
+    SIDE_MARGIN_M: float = 0.05
 
     @property
     def REQUIRED_CLEAR_WIDTH_M(self) -> float:
@@ -35,8 +35,8 @@ class WalkerConfig:
     # ── Depth Thresholds (millimeters) ────────────────────────
     MIN_DEPTH_MM: int = 300  # Ignore closer (noise)
     MAX_DEPTH_MM: int = 5000  # Ignore further (irrelevant)
-    EMERGENCY_STOP_MM: int = 600  # Very close → emergency stop
-    CLOSE_OBSTACLE_MM: int = 1200  # Nearby obstacle warning
+    EMERGENCY_STOP_MM: int = 500  # Very close → emergency stop
+    CLOSE_OBSTACLE_MM: int = 1400  # Nearby obstacle warning
     SAFE_CORRIDOR_MM: int = 1800  # Min depth to consider "safe"
     # Low percentile for clearance (catches thin poles: p20 stays “far”, tail is close)
     THIN_OBSTACLE_PERCENTILE: float = 2.0
@@ -112,7 +112,7 @@ class WalkerConfig:
     STOP_REPEAT_INTERVAL_S: float = 1.0  # Re-send STOP more often
 
     # ── STOP Recovery ────────────────────────────────────────────
-    STOP_HOLD_SECONDS: float = 1.5
+    STOP_HOLD_SECONDS: float = 0.5
     CRITICAL_STOP_DISTANCE_MM: float = 600.0
 
     # ── Decision Hysteresis / Mode Switching ────────────────
@@ -123,13 +123,13 @@ class WalkerConfig:
     MIN_COMMAND_HOLD_MS: float = 800.0  # minimum ms before any non-critical transition
     UNSAFE_CONF_THRESHOLD: float = 0.35
     FREE_CONF_THRESHOLD: float = 0.55
-    FREE_CENTER_CLOSE_OBS_MAX: float = 0.10
-    FREE_CENTER_MIN_VALID_RATIO: float = 0.40
-    FREE_CENTER_MIN_P20_MM: float = 1600.0
+    FREE_CENTER_CLOSE_OBS_MAX: float = 0.30
+    FREE_CENTER_MIN_VALID_RATIO: float = 0.20
+    FREE_CENTER_MIN_P20_MM: float = 800.0
 
     # ── FREE Mode Stability ───────────────────────────────────────
     FREE_STABLE_FRAMES: int = 6
-    FREE_CLEAR_DISTANCE_MM: float = 1200.0
+    FREE_CLEAR_DISTANCE_MM: float = 800.0
     FREE_STICKY_SECONDS: float = 3.0  # how long FREE resists GO:CENTER re-entry
     SIDE_PREFER_MARGIN: float = 0.15  # side wins if safety beats CENTER by this much
     POST_RECOVERY_GRACE_S: float = 3.0  # grace after STOP->FREE recovery
@@ -214,8 +214,8 @@ class WalkerConfig:
     def from_env(cls) -> "WalkerConfig":
         """Create config from environment variables with sensible defaults."""
         return cls(
-            WALKER_WIDTH_M=float(os.getenv("WALKER_WIDTH_M", "0.64")),
-            SIDE_MARGIN_M=float(os.getenv("SIDE_MARGIN_M", "0.15")),
+            WALKER_WIDTH_M=float(os.getenv("WALKER_WIDTH_M", "0.54")),
+            SIDE_MARGIN_M=float(os.getenv("SIDE_MARGIN_M", "0.05")),
             ARDUINO_PORT=os.getenv("ARDUINO_PORT", "MOCK"),
             ARDUINO_BAUD=int(os.getenv("ARDUINO_BAUD", "9600")),
             LIDAR_PORT=os.getenv("LIDAR_PORT", "MOCK"),
@@ -250,20 +250,20 @@ class WalkerConfig:
             UNSAFE_CONF_THRESHOLD=float(os.getenv("UNSAFE_CONF_THRESHOLD", "0.35")),
             FREE_CONF_THRESHOLD=float(os.getenv("FREE_CONF_THRESHOLD", "0.55")),
             FREE_CENTER_CLOSE_OBS_MAX=float(
-                os.getenv("FREE_CENTER_CLOSE_OBS_MAX", "0.10")
+                os.getenv("FREE_CENTER_CLOSE_OBS_MAX", "0.30")
             ),
             FREE_CENTER_MIN_VALID_RATIO=float(
-                os.getenv("FREE_CENTER_MIN_VALID_RATIO", "0.40")
+                os.getenv("FREE_CENTER_MIN_VALID_RATIO", "0.20")
             ),
-            FREE_CENTER_MIN_P20_MM=float(os.getenv("FREE_CENTER_MIN_P20_MM", "1600.0")),
+            FREE_CENTER_MIN_P20_MM=float(os.getenv("FREE_CENTER_MIN_P20_MM", "800.0")),
             FREE_STABLE_FRAMES=int(os.getenv("FREE_STABLE_FRAMES", "6")),
-            FREE_CLEAR_DISTANCE_MM=float(os.getenv("FREE_CLEAR_DISTANCE_MM", "1200.0")),
+            FREE_CLEAR_DISTANCE_MM=float(os.getenv("FREE_CLEAR_DISTANCE_MM", "800.0")),
             FREE_STICKY_SECONDS=float(os.getenv("FREE_STICKY_SECONDS", "3.0")),
             SIDE_PREFER_MARGIN=float(os.getenv("SIDE_PREFER_MARGIN", "0.15")),
             POST_RECOVERY_GRACE_S=float(os.getenv("POST_RECOVERY_GRACE_S", "3.0")),
             CENTER_SAFETY_BIAS=float(os.getenv("CENTER_SAFETY_BIAS", "0.10")),
             CENTER_ACCEPT_RATIO=float(os.getenv("CENTER_ACCEPT_RATIO", "0.85")),
-            STOP_HOLD_SECONDS=float(os.getenv("STOP_HOLD_SECONDS", "1.5")),
+            STOP_HOLD_SECONDS=float(os.getenv("STOP_HOLD_SECONDS", "0.5")),
             CRITICAL_STOP_DISTANCE_MM=float(
                 os.getenv("CRITICAL_STOP_DISTANCE_MM", "600.0")
             ),

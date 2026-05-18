@@ -291,10 +291,9 @@ def build_debug_frame(depth_frame, analysis, result, arduino_state,
         lines = [
             name,
             f"p20:{int(m.p20_depth)}",
-            f"cc:{m.largest_close_blob_px}",
-            f"v:{m.vertical_close_run_frac:.2f}",
+            f"sc:{m.score:.2f}",
+            f"vr:{m.valid_ratio:.2f}",
             f"sf:{m.safety_score:.2f}",
-            f"w:{m.zone_width_m:.2f}m",
             f"{'CLR' if m.is_clear else 'BLK'}",
         ]
         for j, txt in enumerate(lines):
@@ -538,27 +537,11 @@ def main():
                         speak("System locked")
                         was_authorized = False
 
-                    # Corridor analysis (merged groups)
+                    # Corridor analysis
                     analysis = corridor_analyzer.analyze(depth_frame)
                     fused = fusion.fuse(analysis)
-                    # Apply fusion results back to analysis for decision engine
-                    if fused.has_emergency != analysis.has_emergency:
-                        from dataclasses import replace
-                        analysis = replace(analysis, has_emergency=fused.has_emergency)
 
-                    # Fix 2: LiDAR veto → immediate Stop announcement,
-                    # Cooldown added to prevent spamming every frame.
-                    # Only announce if the system is actually authorized and ready to move.
-                    if state.get("authorized") and state.get("ready"):
-                        if fused.fusion_reason == "lidar_veto_emergency" and cfg.USE_TTS:
-                            now_t = time.time()
-                            if now_t - getattr(main, "last_lidar_stop_time", 0.0) >= NAV_TTS_COOLDOWN:
-                                speak("Stop")
-                                main.last_lidar_stop_time = now_t
-
-                    # Decision (uses merged groups + LiDAR side-distance bias)
-                    # When FLIP_LR=True, mirror LiDAR side distances to match
-                    # the camera's flipped perspective.
+                    # Mirror LiDAR side distances when camera is physically flipped
                     _ll = fused.lidar_left_mm
                     _lr = fused.lidar_right_mm
                     _sel = fused.side_escape_left
@@ -567,6 +550,7 @@ def main():
                         _ll, _lr = _lr, _ll
                         _sel, _ser = _ser, _sel
 
+                    # Decision
                     result = decision_engine.decide(
                         analysis,
                         state,
@@ -579,13 +563,13 @@ def main():
                         lidar_front_mm=fused.front_clear_mm,
                     )
 
-                    # Compute min p20 depth across ALL zones for critical stop check.
-                    # Side escape paths should prevent CRITICAL_STOP from latching.
+                    # Compute min p20 for publisher telemetry
                     min_p20 = min(
                         (m.p20_depth for m in analysis.corridors.values() if m.p20_depth > 0),
                         default=0.0,
                     )
 
+                    # Publish: STOP goes immediately; others respect min-switch interval
                     sent = publisher.publish(
                         result.stable_command,
                         state,
@@ -594,6 +578,11 @@ def main():
                         stable_count=result.stable_count,
                         critical_stop=result.critical_stop,
                         allow_recenter=result.allow_recenter,
+                    )
+
+                    print(
+                        f"[CMD] {result.stable_command} | {result.reason} "
+                        f"| conf={result.confidence:.2f}"
                     )
 
                     # TTS on stable command change
@@ -628,12 +617,14 @@ def main():
 
                     # Periodic log
                     if frame_count % 200 == 0:
-                        n_grp = len(analysis.groups)
-                        n_val = len(analysis.valid_groups)
                         lidar_scan = lidar.latest_scan
                         lidar_str = (
                             f"lidar_front={lidar_scan.front_min_mm:.0f}mm"
                             if lidar_scan else "lidar=stale"
+                        )
+                        center_p20 = int(
+                            analysis.corridors.get("CENTER", object()).p20_depth
+                            if "CENTER" in analysis.corridors else 0
                         )
                         print(
                             f"[Status] f={frame_count} "
@@ -641,7 +632,7 @@ def main():
                             f"ready={state['ready']} "
                             f"cmd={result.stable_command} "
                             f"conf={result.confidence:.0%} "
-                            f"groups={n_grp}/{n_val} "
+                            f"center_p20={center_p20}mm "
                             f"target={result.chosen_corridor or '-'}"
                             f" {lidar_str}"
                         )
