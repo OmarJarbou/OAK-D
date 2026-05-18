@@ -1,7 +1,8 @@
 # utils/arduino.py
 """
-Smart Walker v8.0 — Arduino Serial
-بسيط: thread يقرأ من الأردوينو، وfunction تبعث أوامر.
+Smart Walker v4.0 — Arduino Serial
+الإصلاح الرئيسي: نتابع حالة is_moving.
+ما نبعث GO جديد حتى نستقبل REACHED / AT_TARGET / FREE.
 """
 
 import threading
@@ -15,37 +16,72 @@ class ArduinoState:
     def __init__(self):
         self._lock = threading.Lock()
         self.authorized: bool = False
-        self.ready: bool = False      # False إثناء auth sequence
+        self.ready: bool = False
         self.mode: str = "FREE"
+        self.is_moving: bool = False      # ← هل الـ stepper شغال الحين؟
+        self._move_start: float = 0.0
+        self.MOVE_TIMEOUT_S: float = 4.0  # حماية: إذا ما رد الأردوينو بعد 4 ثواني
 
     def update(self, msg: str):
         with self._lock:
             if msg == "STATUS:AUTHORIZED":
                 self.authorized = True
-                self.ready = False    # لازم ننتظر نهاية الـ auth sequence
+                self.ready = False
+                self.is_moving = False
                 print("[Arduino] Authorized — waiting for auth sequence...")
+
             elif msg == "STATUS:UNAUTHORIZED":
                 self.authorized = False
                 self.ready = False
+                self.is_moving = False
                 print("[Arduino] Unauthorized")
+
             elif msg == "STATUS:FREE":
                 self.mode = "FREE"
-                self.ready = True     # auth sequence خلصت
-                print("[Arduino] Ready (FREE mode)")
+                self.ready = True
+                self.is_moving = False    # ← الـ stepper وقف، عاد لـ FREE
+
             elif msg == "STATUS:ASSIST":
                 self.mode = "ASSIST"
-                print("[Arduino] ASSIST mode")
-            elif msg == "STATUS:STOPPED":
-                print("[Arduino] Stopped")
-            elif msg.startswith("STATUS:REACHED") or msg.startswith("STATUS:AT_TARGET"):
+                # is_moving بيتعدل لما يبدأ STATUS:MOVING
+
+            elif msg.startswith("STATUS:MOVING:"):
+                self.is_moving = True     # ← الـ stepper بدأ
+                self._move_start = time.time()
+                pos = msg.replace("STATUS:MOVING:", "")
+                print(f"[Arduino] Moving → {pos}")
+
+            elif msg in ("STATUS:REACHED", "STATUS:AT_TARGET"):
+                self.is_moving = False    # ← وصل الهدف
                 print(f"[Arduino] {msg}")
+
+            elif msg == "STATUS:STOPPED":
+                self.is_moving = False
+                print("[Arduino] Stopped")
+
+            elif msg.startswith("STATUS:LOCKED"):
+                self.is_moving = False    # ← وصل الحد الميكانيكي
+                print(f"[Arduino] ⚠️ {msg}")
+
+            elif msg == "STATUS:SENSOR_ERROR":
+                self.is_moving = False
+                print("[Arduino] ⚠️ Sensor error!")
+
             elif msg.startswith("BANK:"):
                 print(f"[Arduino] Banknote: {msg}")
-            elif msg.startswith("STATUS:SENSOR_ERROR"):
-                print("[Arduino] ⚠️ Sensor error!")
-            # باقي الرسائل نطبعها فقط
+
             else:
                 print(f"[Arduino] {msg}")
+
+    def check_move_timeout(self):
+        """استدعيها من الـ main loop — تحرر is_moving لو انتهى الـ timeout."""
+        with self._lock:
+            if (
+                self.is_moving
+                and (time.time() - self._move_start) > self.MOVE_TIMEOUT_S
+            ):
+                print("[Arduino] ⚠️ Move timeout — assuming done")
+                self.is_moving = False
 
     def snapshot(self) -> dict:
         with self._lock:
@@ -53,13 +89,14 @@ class ArduinoState:
                 "authorized": self.authorized,
                 "ready": self.ready,
                 "mode": self.mode,
+                "is_moving": self.is_moving,
             }
 
 
 class ArduinoSerial:
     """
     Thread يقرأ من الأردوينو باستمرار.
-    في حال MOCK: يشتغل بدون serial حقيقي (للتطوير على الكمبيوتر).
+    MOCK: يشتغل بدون serial حقيقي.
     """
 
     def __init__(self, port: str = "MOCK", baud: int = 9600):
@@ -74,9 +111,7 @@ class ArduinoSerial:
         self._last_sent_time: float = 0.0
         self._send_lock = threading.Lock()
 
-        # Rate limiting: ما نعيد إرسال نفس الأمر قبل X ثانية
-        self.MIN_INTERVAL_S: float = 0.3
-        self.REPEAT_INTERVAL_S: float = 2.5   # إعادة إرسال نفس الأمر كل 2.5 ثانية
+        self.REPEAT_INTERVAL_S: float = 3.0  # إعادة إرسال نفس الأمر بعد كم ثانية
 
     def start(self):
         if not self.mock:
@@ -88,8 +123,7 @@ class ArduinoSerial:
                 print(f"[Arduino] Serial open failed: {e}")
                 self._ser = None
         else:
-            print("[Arduino] MOCK mode — simulating authorized state")
-            # في MOCK: نعطي authorized + ready مباشرة بعد ثانية
+            print("[Arduino] MOCK mode")
             def _mock_authorize():
                 time.sleep(1.0)
                 self.state.update("STATUS:AUTHORIZED")
@@ -113,22 +147,27 @@ class ArduinoSerial:
     def send(self, command: str, force: bool = False) -> bool:
         """
         بعث أمر للأردوينو.
-        force=True: يتجاوز الـ rate limiting (للـ STOP مثلاً).
-        يرجع True إذا بعثنا فعلاً.
+
+        القاعدة الأساسية:
+        ← إذا is_moving=True → لا نبعث GO جديد (إلا force=True للـ STOP)
+        ← إذا نفس الأمر بُعث مؤخراً → ننتظر REPEAT_INTERVAL_S
         """
         now = time.time()
+        state = self.state.snapshot()
+
+        if not force:
+            # ← الإصلاح: لا نبعث GO وهو شغال
+            if state["is_moving"] and command.startswith("GO:"):
+                return False
+
+            with self._send_lock:
+                if (
+                    command == self._last_sent
+                    and (now - self._last_sent_time) < self.REPEAT_INTERVAL_S
+                ):
+                    return False
 
         with self._send_lock:
-            # Rate limiting
-            if not force:
-                same_cmd = command == self._last_sent
-                elapsed = now - self._last_sent_time
-
-                if same_cmd and elapsed < self.REPEAT_INTERVAL_S:
-                    return False  # نفس الأمر وما مضى وقت كافي
-                if not same_cmd and elapsed < self.MIN_INTERVAL_S:
-                    return False  # أمر مختلف لكن لسا سريع جداً
-
             self._last_sent = command
             self._last_sent_time = now
 
@@ -136,6 +175,14 @@ class ArduinoSerial:
 
         if self.mock:
             print(f"[Arduino MOCK] → {command}")
+            # نسيمول الحركة في MOCK عشان نختبر الـ blocking
+            if command.startswith("GO:"):
+                def _mock_move():
+                    self.state.update(f"STATUS:MOVING:{command[3:]}")
+                    time.sleep(0.8)
+                    self.state.update("STATUS:REACHED")
+                    self.state.update("STATUS:FREE")
+                threading.Thread(target=_mock_move, daemon=True).start()
             return True
 
         if self._ser and self._ser.is_open:
@@ -151,7 +198,7 @@ class ArduinoSerial:
         buf = ""
         while not self._stop.is_set():
             if self.mock:
-                time.sleep(0.1)
+                time.sleep(0.05)
                 continue
 
             if self._ser is None or not self._ser.is_open:

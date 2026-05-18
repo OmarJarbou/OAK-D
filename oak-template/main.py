@@ -1,6 +1,6 @@
 # main.py
 """
-Smart Walker v8.0 — Clean Architecture
+Smart Walker v4.0 — Clean Architecture
 ═══════════════════════════════════════
 
 اعتمد على SpatialLocationCalculator المدمج في OAK-D:
@@ -132,8 +132,11 @@ def _draw_debug(left_z, center_z, right_z, result, state):
     auth_txt = "AUTH" if state["authorized"] else "LOCKED"
     auth_clr = (0, 255, 0) if state["authorized"] else (0, 0, 255)
     ready_txt = "READY" if state["ready"] else "WAIT"
-    cv2.putText(img, auth_txt, (w - 120, h - 45), font, 0.6, auth_clr, 2)
-    cv2.putText(img, ready_txt, (w - 120, h - 15), font, 0.5, (200, 200, 200), 1)
+    moving_txt = "MOVING" if state.get("is_moving") else "IDLE"
+    moving_clr = (0, 200, 255) if state.get("is_moving") else (100, 100, 100)
+    cv2.putText(img, auth_txt,   (w - 120, h - 60), font, 0.55, auth_clr, 2)
+    cv2.putText(img, ready_txt,  (w - 120, h - 35), font, 0.45, (200, 200, 200), 1)
+    cv2.putText(img, moving_txt, (w - 120, h - 12), font, 0.45, moving_clr, 1)
 
     return img
 
@@ -206,7 +209,7 @@ def main():
             stereo = pipeline.create(dai.node.StereoDepth).build(
                 left=left_out, right=right_out)
             stereo.setDefaultProfilePreset(
-                dai.node.StereoDepth.PresetMode.FAST_DENSITY)
+                dai.node.StereoDepth.PresetMode.HIGH_DENSITY)
             stereo.setLeftRightCheck(True)
             stereo.setSubpixel(True)
             stereo.setExtendedDisparity(False)
@@ -288,6 +291,10 @@ def main():
 
                     result = navigator.update(left_z, center_z, right_z)
 
+                    # ── Timeout protection ─────────────────────
+                    # لو الأردوينو ما رد بعد 4 ثواني → نحرر is_moving
+                    arduino.state.check_move_timeout()
+
                     # ── Send to Arduino ────────────────────────
                     cmd = result.command
                     if cmd != "NONE":
@@ -295,12 +302,11 @@ def main():
                         sent = arduino.send(cmd, force=force)
 
                         if sent and cmd != last_cmd:
-                            print(
-                                f"[Nav] → {cmd:12s} | {result.reason}"
-                            )
+                            snap = arduino.state.snapshot()
+                            tag = " ⏳" if snap["is_moving"] else ""
+                            print(f"[Nav] → {cmd:12s} | {result.reason}{tag}")
                             if cfg.USE_TTS:
-                                tts_text = TTS_MAP.get(cmd, cmd)
-                                speak(tts_text)
+                                speak(TTS_MAP.get(cmd, cmd))
                             last_cmd = cmd
 
                     # ── Debug Display ──────────────────────────
