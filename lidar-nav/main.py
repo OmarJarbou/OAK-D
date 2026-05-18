@@ -32,7 +32,7 @@ from lidar_scanner import LidarScanner
 from navigator     import decide
 
 # ── Serial (Pi → Arduino) ─────────────────────────────────────────────
-SERIAL_PORT  = '/dev/ttyAMA0'    # Pi UART → Arduino Serial1 (TX1/RX1)
+SERIAL_PORT  = '/dev/serial0'    # Pi UART → Arduino Serial1 (TX1/RX1)
                                   # use '/dev/ttyUSB0' if connected via USB cable
 SERIAL_BAUD  = 115200
 
