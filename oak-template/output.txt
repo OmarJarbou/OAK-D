@@ -1,0 +1,1034 @@
+============================================================
+  Smart Walker - OAK-D Navigation System v3.0
+============================================================
+  Arduino port : /dev/serial0
+  Walker width : 0.64m + 2x0.05m margin = 0.74m
+  Debug display: OFF
+  TTS          : ON
+  Snaps        : OFF
+============================================================
+[TTS] Cached: stop.wav
+[TTS] Cached: free_mode.wav
+[TTS] Cached: go_forward.wav
+[TTS] Cached: slight_left.wav
+[TTS] Cached: turn_left.wav
+[TTS] Cached: hard_left.wav
+[TTS] Cached: slight_right.wav
+[TTS] Cached: turn_right.wav
+[TTS] Cached: hard_right.wav
+[TTS] Cached: system_authorized.wav
+[TTS] Cached: system_locked.wav
+[TTS] Pre-cache complete: 11/11 phrases ready
+[Visualizer] Disabled
+[Serial] Connected: /dev/serial0 @ 9600
+[LiDAR] backend=auto: trying direct serial (RPLIDAR C1)...[TTS] Engine ready
+[LiDAR] direct-serial: port='/dev/ttyUSB0' baud=460800
+
+[LiDAR] Flushing '/dev/ttyUSB0' and waiting 3 s for C1 motor spin-up...
+[Pipeline] Creating...
+[LiDAR] direct-serial: descriptor OK - scan running
+[Snaps] Disabled
+[Pipeline] Created. Starting...
+[Pipeline] Running. Waiting for RFID authorization...
+[Arduino -> Pi] STATUS:AUTHORIZED
+[System] [OK] AUTHORIZED - navigation begins when ready
+[TTS worker] saying: System authorized
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: System authorized
+[Arduino -> Pi] STATUS:FREE
+[Publisher] (none) -> STOP | GO:RIGHT: center weak, right safer (conf=0.72) | stable_count=1 | depth_mm=1247
+[TTS] speaking: Stop
+[Serial -> Arduino] CMD:STOP
+[TTS worker] saying: Stop
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[Publisher] STOP_HOLD 0.16s / 1.0s stable=2
+[Publisher] STOP_HOLD 0.33s / 1.0s stable=3
+[Publisher] COOLDOWN STOP -> GO:LEFT held=444ms < 800ms stable=4
+[Publisher] COOLDOWN STOP -> GO:LEFT held=531ms < 800ms stable=5
+[Publisher] COOLDOWN STOP -> GO:LEFT held=624ms < 800ms stable=6
+[Publisher] COOLDOWN STOP -> GO:LEFT held=726ms < 800ms stable=7
+[Publisher] STOP -> GO:LEFT | GO:RIGHT: center weak, right safer (conf=0.85) | stable_count=8 | depth_mm=1256
+[Serial -> Arduino] CMD:GO:LEFT
+[Arduino -> Pi] STATUS:STOPPED
+[Arduino -> Pi] STATUS:MOVING:LEFT
+[Arduino -> Pi] STATUS:AT_TARGET
+[Publisher] GO:LEFT -> GO:LEFT | GO:RIGHT: center weak, right safer (conf=0.77) | stable_count=5 | depth_mm=1245[Serial -> Arduino] CMD:GO:LEFT
+
+[TTS] speaking: Hard left
+[TTS worker] saying: Hard left
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Hard left
+[Arduino -> Pi] STATUS:MOVING:LEFT
+[Arduino -> Pi] STATUS:AT_TARGET
+[Publisher] GO:LEFT -> GO:RIGHT | GO:LEFT: center weak, left safer (conf=0.80) | stable_count=4 | depth_mm=1382
+[Serial -> Arduino] CMD:GO:RIGHT
+[Arduino -> Pi] STATUS:MOVING:RIGHT
+[Decision] Side zone R1 preferred: safety=1.26 vs CENTER=1.04
+[Status] f=200 auth=True ready=True cmd=GO:RIGHT conf=84% groups=2/2 target=RIGHT lidar_front=1868mm
+[Publisher] COOLDOWN GO:RIGHT -> GO:CENTER held=727ms < 800ms stable=2
+[Publisher] GO:RIGHT -> GO:CENTER | GO:CENTER: active recenter needed (p20=1458mm streak=3/6 conf=0.75) | stable_count=3 | depth_mm=1426
+[Serial -> Arduino] CMD:GO:CENTER
+[Publisher] COOLDOWN GO:CENTER -> FREE held=271ms < 800ms stable=1
+[Publisher] COOLDOWN GO:CENTER -> FREE held=376ms < 800ms stable=2
+[Decision] Side zone R1 preferred: safety=1.27 vs CENTER=1.06
+[Publisher] COOLDOWN GO:CENTER -> FREE held=497ms < 800ms stable=3
+[TTS] speaking: Free mode
+[TTS worker] saying: Free mode
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Free mode
+[Publisher] COOLDOWN GO:CENTER -> FREE held=744ms < 800ms stable=1
+[Publisher] GO:CENTER -> FREE | FREE: exit-hold bad_streak=1/2 | stable_count=1 | depth_mm=1372
+[Serial -> Arduino] CMD:FREE
+[Decision] Side zone R2 preferred: safety=1.24 vs CENTER=1.02
+[Decision] Side zone R2 preferred: safety=1.25 vs CENTER=1.02
+[Decision] Side zone R2 preferred: safety=1.25 vs CENTER=1.02
+[Arduino -> Pi] STATUS:LOCKED_RIGHT
+[Arduino -> Pi] STATUS:MOVING:CENTER
+[Arduino -> Pi] STATUS:FREE
+[Publisher] FREE -> FREE | FREE: exit-hold bad_streak=1/2 | stable_count=1 | depth_mm=1380
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[Publisher] FREE -> FREE | FREE: exit-hold bad_streak=1/2 | stable_count=1 | depth_mm=1256[Serial -> Arduino] CMD:FREE
+
+[Arduino -> Pi] STATUS:FREE
+[Decision] Side zone L2 preferred: safety=1.20 vs CENTER=1.00
+[Decision] Side zone L2 preferred: safety=1.22 vs CENTER=1.00
+[Decision] Side zone L1 preferred: safety=1.23 vs CENTER=1.00
+[Decision] Side zone L1 preferred: safety=1.25 vs CENTER=0.98
+[Decision] Side zone L1 preferred: safety=1.26 vs CENTER=0.97
+[Decision] Side zone L1 preferred: safety=1.25 vs CENTER=0.96
+[Decision] Side zone L1 preferred: safety=1.25 vs CENTER=0.91
+[Decision] Side zone L1 preferred: safety=1.27 vs CENTER=0.89
+[Decision] Side zone L1 preferred: safety=1.27 vs CENTER=0.86
+[Publisher] FREE -> FREE | FREE: exit-hold bad_streak=1/2 | stable_count=1 | depth_mm=812
+[Serial -> Arduino] CMD:FREE
+[Decision] Side zone L1 preferred: safety=1.27 vs CENTER=0.81
+[Decision] Side zone L1 preferred: safety=1.25 vs CENTER=0.78
+[Arduino -> Pi] STATUS:FREE
+[Decision] Side zone L1 preferred: safety=1.27 vs CENTER=0.77
+[Decision] Side zone L1 preferred: safety=1.27 vs CENTER=0.75
+[Decision] Side zone L1 preferred: safety=1.26 vs CENTER=0.73
+[Decision] Side zone L1 preferred: safety=1.26 vs CENTER=0.70
+[Decision] Side zone L1 preferred: safety=1.26 vs CENTER=0.68
+[Decision] Side zone L1 preferred: safety=1.25 vs CENTER=0.66
+[Decision] Side zone L1 preferred: safety=1.25 vs CENTER=0.64
+[Decision] Side zone L1 preferred: safety=1.24 vs CENTER=0.55
+[Decision] LiDAR side-escape -> GO:R1 (L=1372mm R=498mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1372mm R=498mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1356mm R=475mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1342mm R=450mm latch=left)
+[Publisher] FREE -> GO:R1 | GO:R1: LiDAR side-escape (front blocked, left open) | stable_count=4 | depth_mm=430
+[TTS] speaking: Slight right
+[TTS worker] saying: Slight right
+[Serial -> Arduino] CMD:GO:R1
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Slight right
+[Decision] LiDAR side-escape -> GO:R1 (L=1572mm R=410mm latch=left)
+[Arduino -> Pi] STATUS:ASSIST
+[Arduino -> Pi] STATUS:MOVING:R1
+[Decision] LiDAR side-escape -> GO:R1 (L=1335mm R=405mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1318mm R=403mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1316mm R=403mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1318mm R=404mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1308mm R=406mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1308mm R=407mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1308mm R=407mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1311mm R=409mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1306mm R=408mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1306mm R=408mm latch=left)[Arduino -> Pi] STATUS:REACHED
+
+[Decision] LiDAR side-escape -> GO:R1 (L=1302mm R=404mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1528mm R=405mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1314mm R=403mm latch=left)
+[Decision] Escape latch RELEASED (front clear): lidar_front=1203mm > 650mm
+[Decision] LiDAR side-escape -> GO:R1 (L=1306mm R=403mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1307mm R=403mm latch=left)
+[Publisher] GO:R1 -> GO:R1 | GO:R1: LiDAR side-escape (front blocked, left open) | stable_count=2 | depth_mm=364[Serial -> Arduino] CMD:GO:R1
+
+[Decision] LiDAR side-escape -> GO:R1 (L=1297mm R=403mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1297mm R=403mm latch=left)
+[Arduino -> Pi] STATUS:MOVING:R1
+[Arduino -> Pi] STATUS:AT_TARGET
+[Decision] Escape latch RELEASED (front clear): lidar_front=1203mm > 650mm
+[Decision] LiDAR side-escape -> GO:R1 (L=1308mm R=403mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1300mm R=404mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1296mm R=403mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1546mm R=403mm latch=left)
+[Decision] Escape latch RELEASED (front clear): lidar_front=1218mm > 650mm
+[Decision] LiDAR side-escape -> GO:R1 (L=1312mm R=402mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1312mm R=403mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1527mm R=403mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1527mm R=403mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1309mm R=403mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1296mm R=403mm latch=left)
+[Decision] Escape latch RELEASED (front clear): lidar_front=1215mm > 650mm
+[Decision] LiDAR side-escape -> GO:R1 (L=1300mm R=403mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1296mm R=402mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1307mm R=403mm latch=left)
+[Publisher] GO:R1 -> GO:R1 | GO:R1: LiDAR side-escape (front blocked, left open) | stable_count=3 | depth_mm=364
+[Serial -> Arduino] CMD:GO:R1
+[Decision] Escape latch RELEASED (front clear): lidar_front=1202mm > 650mm
+[Arduino -> Pi] STATUS:MOVING:R1
+[Arduino -> Pi] STATUS:AT_TARGET
+[Decision] LiDAR side-escape -> GO:R1 (L=1296mm R=403mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1296mm R=403mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1297mm R=403mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1298mm R=402mm latch=left)
+[Decision] Escape latch RELEASED (front clear): lidar_front=1203mm > 650mm
+[Decision] LiDAR side-escape -> GO:R1 (L=1301mm R=402mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1299mm R=403mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1302mm R=403mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1306mm R=403mm latch=left)
+[Decision] Escape latch RELEASED (front clear): lidar_front=1212mm > 650mm
+[Decision] Side zone L2 preferred: safety=1.23 vs CENTER=1.01
+[Decision] LiDAR side-escape -> GO:R1 (L=1301mm R=402mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1302mm R=402mm latch=left)
+[Decision] Escape latch RELEASED (front clear): lidar_front=1201mm > 650mm
+[Decision] LiDAR side-escape -> GO:R1 (L=1298mm R=404mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1296mm R=402mm latch=left)
+[Decision] Escape latch RELEASED (front clear): lidar_front=1206mm > 650mm
+[Decision] Side zone L2 preferred: safety=1.22 vs CENTER=1.02
+[Publisher] GO:R1 -> GO:R1 | GO:L2: center weak, left safer (conf=0.56) | stable_count=2 | depth_mm=364[Serial -> Arduino] CMD:GO:R1
+
+[Arduino -> Pi] STATUS:MOVING:R1
+[Arduino -> Pi] STATUS:AT_TARGET
+[Decision] LiDAR side-escape -> GO:R1 (L=1525mm R=403mm latch=left)
+[Decision] Escape latch RELEASED (front clear): lidar_front=1220mm > 650mm
+[Decision] LiDAR side-escape -> GO:R1 (L=1302mm R=403mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1305mm R=404mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1305mm R=404mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1301mm R=403mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1301mm R=403mm latch=left)
+[Decision] Escape latch RELEASED (front clear): lidar_front=1201mm > 650mm
+[Decision] LiDAR side-escape -> GO:R1 (L=1308mm R=403mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1300mm R=402mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1302mm R=402mm latch=left)
+[Decision] Escape latch RELEASED (front clear): lidar_front=1208mm > 650mm
+[Decision] LiDAR side-escape -> GO:R1 (L=1522mm R=403mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1296mm R=403mm latch=left)
+[Decision] Escape latch RELEASED (front clear): lidar_front=1215mm > 650mm
+[Decision] LiDAR side-escape -> GO:R1 (L=1297mm R=402mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1303mm R=403mm latch=left)
+[Decision] Escape latch RELEASED (front clear): lidar_front=1214mm > 650mm
+[Publisher] GO:R1 -> GO:R1 | GO:L2: center weak, left safer (conf=0.60) | stable_count=1 | depth_mm=365
+[Serial -> Arduino] CMD:GO:R1
+[Decision] Side zone L2 preferred: safety=1.23 vs CENTER=1.02
+[Publisher] COOLDOWN GO:R1 -> GO:R2 held=287ms < 800ms stable=4
+[TTS] speaking: Turn right
+[TTS worker] saying: Turn right
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Turn right
+[Decision] Side zone L2 preferred: safety=1.22 vs CENTER=1.02
+[Publisher] COOLDOWN GO:R1 -> GO:R2 held=437ms < 800ms stable=5
+[Arduino -> Pi] STATUS:MOVING:R1
+[Arduino -> Pi] STATUS:AT_TARGET
+[Publisher] COOLDOWN GO:R1 -> GO:R2 held=655ms < 800ms stable=1
+[Publisher] GO:R1 -> GO:R2 | GO:CENTER: active recenter needed (p20=1309mm streak=1/6 conf=0.72) | stable_count=1 | depth_mm=1264
+[Serial -> Arduino] CMD:GO:R2
+[Arduino -> Pi] STATUS:MOVING:R2
+[Publisher] COOLDOWN GO:R2 -> GO:CENTER held=234ms < 800ms stable=4
+[Publisher] COOLDOWN GO:R2 -> GO:CENTER held=338ms < 800ms stable=5
+[Publisher] COOLDOWN GO:R2 -> GO:CENTER held=454ms < 800ms stable=1
+[Publisher] COOLDOWN GO:R2 -> GO:CENTER held=560ms < 800ms stable=2
+[Publisher] COOLDOWN GO:R2 -> FREE held=660ms < 800ms stable=3
+[Arduino -> Pi] STATUS:REACHED
+[Publisher] COOLDOWN GO:R2 -> FREE held=773ms < 800ms stable=4
+[Publisher] GO:R2 -> FREE | FREE: clear path (p20=1432mm streak=10/6 conf=0.74) | stable_count=5 | depth_mm=1132
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[Status] f=400 auth=True ready=True cmd=FREE conf=85% groups=1/1 target=CENTER lidar_front=1141mm
+[TTS] speaking: Free mode
+[TTS worker] saying: Free mode
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Free mode
+[Decision] Side zone L2 preferred: safety=1.29 vs CENTER=1.08
+[Decision] Side zone L2 preferred: safety=1.29 vs CENTER=1.07
+[Publisher] FREE -> FREE | GO:L2: center weak, left safer (conf=0.85) | stable_count=1 | depth_mm=1290
+[Serial -> Arduino] CMD:FREE
+[Decision] Side zone L2 preferred: safety=1.29 vs CENTER=1.07
+[Decision] Side zone L2 preferred: safety=1.28 vs CENTER=1.07
+[Arduino -> Pi] STATUS:FREE
+[Decision] Side zone L2 preferred: safety=1.29 vs CENTER=1.07
+[Decision] Side zone L2 preferred: safety=1.29 vs CENTER=1.07
+[Decision] Side zone L2 preferred: safety=1.29 vs CENTER=1.07
+[Decision] Side zone L2 preferred: safety=1.29 vs CENTER=1.07
+[Decision] Side zone L2 preferred: safety=1.28 vs CENTER=1.07
+[Decision] Side zone L2 preferred: safety=1.29 vs CENTER=1.07
+[Decision] Side zone L2 preferred: safety=1.29 vs CENTER=1.06
+[Decision] Side zone L2 preferred: safety=1.28 vs CENTER=1.07
+[Decision] Side zone L2 preferred: safety=1.28 vs CENTER=1.07
+[Decision] Side zone L2 preferred: safety=1.28 vs CENTER=1.08
+[Decision] Side zone L2 preferred: safety=1.29 vs CENTER=1.08
+[Decision] Side zone L2 preferred: safety=1.29 vs CENTER=1.08
+[Decision] Side zone L2 preferred: safety=1.29 vs CENTER=1.08
+[Decision] Side zone L2 preferred: safety=1.29 vs CENTER=1.02
+[Decision] Side zone L2 preferred: safety=1.27 vs CENTER=1.06
+[Serial -> Arduino] CMD:FREE
+[Publisher] FREE -> FREE | FREE: exit-hold bad_streak=1/2 | stable_count=1 | depth_mm=1415
+[Arduino -> Pi] STATUS:FREE
+[Publisher] FREE -> FREE | STOP: no valid group width | stable_count=1 | depth_mm=1365[Serial -> Arduino] CMD:FREE
+
+[Arduino -> Pi] STATUS:FREE
+[Decision] Side zone L1 preferred: safety=1.27 vs CENTER=1.06
+[Decision] Side zone L2 preferred: safety=1.25 vs CENTER=1.04
+[Publisher] FREE -> FREE | FREE: exit-hold bad_streak=1/2 | stable_count=1 | depth_mm=999
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[Decision] Side zone LEFT preferred: safety=1.02 vs CENTER=0.80
+[Decision] Side zone LEFT preferred: safety=1.01 vs CENTER=0.77
+[Decision] Side zone LEFT preferred: safety=1.01 vs CENTER=0.75
+[Decision] Side zone LEFT preferred: safety=1.02 vs CENTER=0.71
+[Decision] Side zone LEFT preferred: safety=1.00 vs CENTER=0.71
+[Decision] Side zone LEFT preferred: safety=1.01 vs CENTER=0.69
+[Decision] Side zone LEFT preferred: safety=1.00 vs CENTER=0.68
+[Decision] Side zone LEFT preferred: safety=0.99 vs CENTER=0.64
+[Decision] Side zone LEFT preferred: safety=0.99 vs CENTER=0.64
+[Decision] Side zone LEFT preferred: safety=0.98 vs CENTER=0.64
+[Decision] Side zone LEFT preferred: safety=0.99 vs CENTER=0.62
+[Decision] Side zone LEFT preferred: safety=0.99 vs CENTER=0.59
+[Decision] Side zone LEFT preferred: safety=1.00 vs CENTER=0.57
+[Decision] Side zone LEFT preferred: safety=0.99 vs CENTER=0.56
+[Decision] Side zone LEFT preferred: safety=0.99 vs CENTER=0.53
+[Publisher] FREE -> FREE | GO:LEFT: center weak, left safer (conf=0.71) | stable_count=1 | depth_mm=673[Serial -> Arduino] CMD:FREE
+
+[Arduino -> Pi] STATUS:FREE
+[Decision] Side zone LEFT preferred: safety=0.98 vs CENTER=0.53
+[Decision] Side zone LEFT preferred: safety=0.99 vs CENTER=0.53
+[Decision] Side zone LEFT preferred: safety=0.98 vs CENTER=0.51
+[Publisher] FREE -> FREE | STOP: no valid group width | stable_count=1 | depth_mm=602
+[Serial -> Arduino] CMD:FREE
+[Decision] Side zone LEFT preferred: safety=0.99 vs CENTER=0.64
+[Arduino -> Pi] STATUS:FREE
+[Decision] Side zone LEFT preferred: safety=1.01 vs CENTER=0.73
+[Decision] Side zone LEFT preferred: safety=1.01 vs CENTER=0.73
+[Decision] Side zone LEFT preferred: safety=1.01 vs CENTER=0.65
+[Decision] Side zone LEFT preferred: safety=0.99 vs CENTER=0.59
+[Decision] Side zone LEFT preferred: safety=1.00 vs CENTER=0.58
+[Decision] LiDAR side-escape -> GO:R1 (L=1428mm R=1207mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1402mm R=986mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1402mm R=986mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1396mm R=658mm latch=left)
+[Publisher] FREE -> GO:R1 | GO:R1: LiDAR side-escape (front blocked, left open) | stable_count=4 | depth_mm=432
+[TTS] speaking: Slight right
+[TTS worker] saying: Slight right
+[Serial -> Arduino] CMD:GO:R1
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Slight right
+[Arduino -> Pi] STATUS:ASSIST
+[Arduino -> Pi] STATUS:MOVING:R1
+[Decision] LiDAR side-escape -> GO:R1 (L=1396mm R=648mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1355mm R=628mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1340mm R=406mm latch=left)
+[Publisher] GO:R1 -> STOP | STOP: no valid group width | stable_count=4 | depth_mm=477
+[Serial -> Arduino] CMD:STOP
+[Publisher] CRITICAL_STOP held=0.13s depth=452mm stable=5
+[Arduino -> Pi] STATUS:REACHED
+[Publisher] CRITICAL_STOP held=0.26s depth=443mm stable=6
+[Publisher] STOP_HOLD 0.39s / 1.0s stable=7
+[Publisher] STOP_HOLD 0.51s / 1.0s stable=8
+[Publisher] STOP_HOLD 0.61s / 1.0s stable=9
+[Publisher] STOP_HOLD 0.74s / 1.0s stable=10
+[Publisher] STOP_HOLD 0.87s / 1.0s stable=11
+[Publisher] STOP -> FREE reason=RECOVERY_FREE held=1.08s stable=12
+[Publisher] STOP -> FREE | RECOVERY_FREE | stable_count=12 | depth_mm=1225
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:STOPPED
+[Arduino -> Pi] STATUS:FREE
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[TTS] speaking: Stop
+[TTS worker] saying: Stop
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] FREE -> STOP | STOP: no valid group width | stable_count=38 | depth_mm=1281
+[Serial -> Arduino] CMD:STOP
+[Publisher] STOP_HOLD 0.13s / 1.0s stable=39
+[Publisher] STOP_HOLD 0.23s / 1.0s stable=40
+[Publisher] STOP_HOLD 0.35s / 1.0s stable=41
+[Publisher] STOP_HOLD 0.46s / 1.0s stable=42
+[Publisher] STOP_HOLD 0.58s / 1.0s stable=43
+[Publisher] STOP_HOLD 0.69s / 1.0s stable=44
+[Publisher] STOP_HOLD 0.80s / 1.0s stable=45
+[Publisher] STOP_HOLD 0.88s / 1.0s stable=46
+[Publisher] STOP -> FREE reason=RECOVERY_FREE held=1.00s stable=47
+[Publisher] STOP -> FREE | RECOVERY_FREE | stable_count=47 | depth_mm=1277
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:STOPPED
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Status] f=600 auth=True ready=True cmd=STOP conf=69% groups=0/0 target=- lidar_front=218mm
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Arduino -> Pi] STATUS:FREE
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] COOLDOWN FREE -> STOP held=720ms < 800ms stable=53
+[Publisher] FREE -> STOP | STOP: no valid group width | stable_count=54 | depth_mm=484
+[Serial -> Arduino] CMD:STOP
+[Decision] LiDAR side-escape -> GO:R1 (L=1264mm R=364mm latch=left)
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Decision] Escape latch RELEASED (front clear): lidar_front=1219mm > 650mm
+[LiDAR-Bias] conf=0.43 left=1264mm right=364mm gap=+900mm -> prefer left
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] CRITICAL_STOP held=0.33s depth=339mm stable=2
+[Decision] LiDAR side-escape -> GO:R1 (L=1256mm R=361mm latch=left)
+[Publisher] CRITICAL_STOP held=0.43s depth=559mm stable=1
+[Decision] LiDAR side-escape -> GO:R1 (L=1260mm R=362mm latch=left)
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Decision] LiDAR side-escape -> GO:R1 (L=1253mm R=360mm latch=left)
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Decision] LiDAR side-escape -> GO:R1 (L=1251mm R=372mm latch=left)
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] STOP -> GO:R1 | GO:R1: LiDAR side-escape (front blocked, left open) | stable_count=4 | depth_mm=757
+[TTS] speaking: Slight right
+[Serial -> Arduino] CMD:GO:R1
+[TTS worker] saying: Slight right
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Slight right
+[Decision] LiDAR side-escape -> GO:R1 (L=1256mm R=362mm latch=left)
+[Decision] Escape latch RELEASED (front clear): lidar_front=1203mm > 650mm
+[Arduino -> Pi] STATUS:STOPPED
+[Arduino -> Pi] STATUS:MOVING:R1
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Arduino -> Pi] STATUS:REACHED
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] GO:R1 -> STOP | STOP: no valid group width | stable_count=1 | depth_mm=1145
+[Serial -> Arduino] CMD:STOP
+[Publisher] STOP_HOLD 0.13s / 1.0s stable=2
+[Publisher] STOP_HOLD 0.28s / 1.0s stable=3
+[Publisher] STOP_HOLD 0.46s / 1.0s stable=4
+[Publisher] STOP_HOLD 0.56s / 1.0s stable=5
+[Publisher] STOP_HOLD 0.66s / 1.0s stable=6
+[Publisher] STOP_HOLD 0.76s / 1.0s stable=7
+[Publisher] STOP_HOLD 0.87s / 1.0s stable=8
+[Publisher] STOP_HOLD 0.98s / 1.0s stable=9
+[Publisher] STOP -> FREE reason=RECOVERY_FREE held=1.08s stable=10
+[Publisher] STOP -> FREE | RECOVERY_FREE | stable_count=10 | depth_mm=1336
+[Serial -> Arduino] CMD:FREE
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Arduino -> Pi] STATUS:STOPPED
+[Arduino -> Pi] STATUS:FREE
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[TTS] speaking: Stop
+[TTS worker] saying: Stop
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] FREE -> STOP | STOP: no valid group width | stable_count=37 | depth_mm=1240
+[Serial -> Arduino] CMD:STOP
+[Publisher] STOP_HOLD 0.11s / 1.0s stable=38
+[Publisher] STOP_HOLD 0.23s / 1.0s stable=39
+[Publisher] STOP_HOLD 0.35s / 1.0s stable=40
+[Publisher] CRITICAL_STOP held=0.46s depth=514mm stable=41
+[Publisher] CRITICAL_STOP held=0.56s depth=482mm stable=42
+[Publisher] CRITICAL_STOP held=0.66s depth=434mm stable=43
+[Publisher] CRITICAL_STOP held=0.79s depth=381mm stable=44[TTS worker] saying: Stop
+
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[Publisher] CRITICAL_STOP held=0.99s depth=464mm stable=45
+[Publisher] CRITICAL_STOP held=1.22s depth=418mm stable=46
+[Publisher] CRITICAL_STOP held=1.33s depth=383mm stable=47
+[Arduino -> Pi] STATUS:STOPPED
+[Publisher] CRITICAL_STOP held=1.43s depth=382mm stable=48
+[Publisher] CRITICAL_STOP held=1.58s depth=382mm stable=49
+[Publisher] CRITICAL_STOP held=1.70s depth=382mm stable=50
+[Publisher] CRITICAL_STOP held=1.81s depth=383mm stable=51
+[Publisher] CRITICAL_STOP held=1.91s depth=387mm stable=52
+[Publisher] CRITICAL_STOP held=2.03s depth=391mm stable=53
+[Publisher] CRITICAL_STOP held=2.22s depth=395mm stable=54
+[Publisher] CRITICAL_STOP held=2.38s depth=394mm stable=55
+[Publisher] CRITICAL_STOP held=2.49s depth=427mm stable=56
+[Decision] Side zone LEFT preferred: safety=1.02 vs CENTER=0.61
+[Publisher] STOP -> FREE reason=RECOVERY_FREE held=2.57s stable=1
+[Publisher] STOP -> FREE | RECOVERY_FREE | stable_count=1 | depth_mm=693
+[Serial -> Arduino] CMD:FREE
+[Decision] Side zone LEFT preferred: safety=1.01 vs CENTER=0.57
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Arduino -> Pi] STATUS:FREE
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Decision] Side zone L2 preferred: safety=1.26 vs CENTER=0.62
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Decision] Side zone L1 preferred: safety=1.25 vs CENTER=1.04
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] FREE -> GO:CENTER | GO:CENTER: active recenter needed (p20=2025mm streak=4/6 conf=0.66) | stable_count=4 | depth_mm=1646
+[TTS] speaking: Go forward
+[TTS worker] saying: Go forward
+[Serial -> Arduino] CMD:GO:CENTER
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Go forward
+[Decision] Side zone L2 preferred: safety=1.29 vs CENTER=1.04
+[Decision] Side zone L2 preferred: safety=1.36 vs CENTER=1.05
+[Arduino -> Pi] STATUS:ASSIST
+[Arduino -> Pi] STATUS:MOVING:CENTER
+[Decision] Side zone L2 preferred: safety=1.34 vs CENTER=1.07
+[Publisher] COOLDOWN GO:CENTER -> FREE held=464ms < 800ms stable=2
+[Decision] Side zone L2 preferred: safety=1.34 vs CENTER=1.08
+[Publisher] COOLDOWN GO:CENTER -> FREE held=554ms < 800ms stable=3
+[Decision] Side zone L2 preferred: safety=1.32 vs CENTER=1.06
+[Publisher] COOLDOWN GO:CENTER -> FREE held=639ms < 800ms stable=1
+[Decision] Side zone L2 preferred: safety=1.29 vs CENTER=1.07
+[Publisher] COOLDOWN GO:CENTER -> FREE held=742ms < 800ms stable=1
+[Publisher] GO:CENTER -> FREE | STOP: no valid group width | stable_count=1 | depth_mm=1261
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:REACHED
+[Arduino -> Pi] STATUS:FREE
+[Publisher] FREE -> FREE | FREE: exit-hold bad_streak=1/2 | stable_count=1 | depth_mm=953
+[Serial -> Arduino] CMD:FREE
+[TTS] speaking: Free mode
+[TTS worker] saying: Free mode
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Free mode
+[Arduino -> Pi] STATUS:FREE
+[Publisher] FREE -> FREE | STOP: no valid group width | stable_count=1 | depth_mm=1128[Serial -> Arduino] CMD:FREE
+
+[Arduino -> Pi] STATUS:FREE
+[Publisher] FREE -> FREE | STOP: no valid group width | stable_count=1 | depth_mm=695
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[Publisher] FREE -> FREE | STOP: no valid group width | stable_count=1 | depth_mm=438
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[Status] f=800 auth=True ready=True cmd=FREE conf=58% groups=1/1 target=- lidar_front=449mm
+[Publisher] FREE -> FREE | FREE: exit-hold bad_streak=1/2 | stable_count=1 | depth_mm=411[Serial -> Arduino] CMD:FREE
+
+[Arduino -> Pi] STATUS:FREE
+[Publisher] FREE -> FREE | FREE: exit-hold bad_streak=1/2 | stable_count=1 | depth_mm=631[Serial -> Arduino] CMD:FREE
+
+[Arduino -> Pi] STATUS:FREE
+[Publisher] FREE -> FREE | STOP: no valid group width | stable_count=1 | depth_mm=560
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[LiDAR-Bias] conf=0.49 left=263mm right=1140mm gap=-877mm -> prefer right
+[LiDAR-Bias] conf=0.49 left=266mm right=1138mm gap=-872mm -> prefer right
+[Publisher] FREE -> FREE | FREE: exit-hold bad_streak=1/2 | stable_count=1 | depth_mm=1367
+[Serial -> Arduino] CMD:FREE
+[LiDAR-Bias] conf=0.49 left=274mm right=1141mm gap=-867mm -> prefer right
+[LiDAR-Bias] conf=0.49 left=286mm right=1144mm gap=-858mm -> prefer right
+[Arduino -> Pi] STATUS:FREE
+[LiDAR-Bias] conf=0.49 left=302mm right=1140mm gap=-838mm -> prefer right
+[LiDAR-Bias] conf=0.50 left=347mm right=1133mm gap=-786mm -> prefer right
+[Publisher] FREE -> FREE | FREE: exit-hold bad_streak=1/2 | stable_count=1 | depth_mm=1215
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[Publisher] FREE -> FREE | GO:LEFT: center weak, left safer (conf=0.74) | stable_count=1 | depth_mm=1180
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[Publisher] FREE -> FREE | STOP: no valid group width | stable_count=1 | depth_mm=827
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[Status] f=1000 auth=True ready=True cmd=FREE conf=66% groups=0/0 target=- lidar_front=888mm
+[Publisher] FREE -> FREE | FREE: exit-hold bad_streak=1/2 | stable_count=1 | depth_mm=727
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[Publisher] FREE -> FREE | FREE: exit-hold bad_streak=1/2 | stable_count=1 | depth_mm=1396
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[Publisher] FREE -> FREE | FREE: exit-hold bad_streak=1/2 | stable_count=1 | depth_mm=1396
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[Publisher] FREE -> FREE | GO:L2: center weak, left safer (conf=0.83) | stable_count=1 | depth_mm=1400
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[Publisher] FREE -> FREE | GO:LEFT: center weak, left safer (conf=0.73) | stable_count=1 | depth_mm=1209
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[Decision] Side zone L1 preferred: safety=1.22 vs CENTER=0.99
+[Publisher] FREE -> FREE | GO:L1: center weak, left safer (conf=0.65) | stable_count=1 | depth_mm=543
+[Serial -> Arduino] CMD:FREE
+[Arduino -> Pi] STATUS:FREE
+[Decision] LiDAR side-escape -> GO:R1 (L=1144mm R=536mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1766mm R=522mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1766mm R=522mm latch=left)
+[Publisher] COOLDOWN FREE -> GO:R1 held=299ms < 800ms stable=4
+[TTS] speaking: Slight right
+[TTS worker] saying: Slight right
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Slight right
+[Decision] LiDAR side-escape -> GO:R1 (L=1810mm R=507mm latch=left)
+[Publisher] COOLDOWN FREE -> GO:R1 held=493ms < 800ms stable=5
+[Decision] LiDAR side-escape -> GO:R1 (L=2092mm R=576mm latch=left)
+[Publisher] COOLDOWN FREE -> GO:R1 held=642ms < 800ms stable=6
+[Decision] LiDAR side-escape -> GO:R1 (L=2086mm R=552mm latch=left)
+[Publisher] FREE -> GO:R1 | GO:R1: LiDAR side-escape (front blocked, left open) | stable_count=7 | depth_mm=570[Serial -> Arduino] CMD:GO:R1
+
+[Decision] LiDAR side-escape -> GO:R1 (L=2088mm R=530mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2086mm R=496mm latch=left)
+[Arduino -> Pi] STATUS:ASSIST
+[Arduino -> Pi] STATUS:MOVING:R1
+[Decision] LiDAR side-escape -> GO:R1 (L=2080mm R=202mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2081mm R=176mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2081mm R=176mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2082mm R=173mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2084mm R=174mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2078mm R=180mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2066mm R=182mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2066mm R=182mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2062mm R=182mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2068mm R=184mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2064mm R=184mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2068mm R=183mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2068mm R=183mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2068mm R=186mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2070mm R=199mm latch=left)
+[Arduino -> Pi] STATUS:REACHED
+[Decision] LiDAR side-escape -> GO:R1 (L=2072mm R=193mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2072mm R=193mm latch=left)
+[Publisher] GO:R1 -> GO:R1 | GO:R1: LiDAR side-escape (front blocked, left open) | stable_count=26 | depth_mm=426
+[Status] f=1200 auth=True ready=True cmd=GO:R1 conf=70% groups=1/1 target=L1 lidar_front=460mm
+[Serial -> Arduino] CMD:GO:R1
+[Decision] LiDAR side-escape -> GO:R1 (L=2064mm R=192mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2057mm R=192mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2055mm R=190mm latch=left)
+[Arduino -> Pi] STATUS:MOVING:R1
+[Arduino -> Pi] STATUS:REACHED
+[Decision] LiDAR side-escape -> GO:R1 (L=2048mm R=193mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2040mm R=194mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2040mm R=194mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2036mm R=192mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2038mm R=192mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2042mm R=191mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2042mm R=191mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2041mm R=192mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2044mm R=190mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2043mm R=190mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2035mm R=201mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2016mm R=194mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2016mm R=199mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2010mm R=191mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2000mm R=202mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2008mm R=194mm latch=left)
+[Publisher] GO:R1 -> GO:R1 | GO:R1: LiDAR side-escape (front blocked, left open) | stable_count=45 | depth_mm=427
+[Serial -> Arduino] CMD:GO:R1
+[Decision] LiDAR side-escape -> GO:R1 (L=2014mm R=190mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2019mm R=192mm latch=left)
+[Arduino -> Pi] STATUS:MOVING:R1
+[Arduino -> Pi] STATUS:REACHED
+[Decision] LiDAR side-escape -> GO:R1 (L=2018mm R=191mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2016mm R=194mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2008mm R=192mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2008mm R=192mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2006mm R=190mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=2004mm R=192mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1998mm R=195mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1988mm R=190mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1977mm R=190mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1977mm R=190mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1968mm R=182mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1954mm R=180mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1954mm R=180mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1774mm R=184mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1759mm R=190mm latch=left)
+[Decision] LiDAR side-escape -> GO:R1 (L=1759mm R=190mm latch=left)
+[Decision] Escape latch RELEASED (front clear): lidar_front=706mm > 650mm
+[Publisher] GO:R1 -> GO:CENTER | GO:CENTER: active recenter needed (p20=1461mm streak=2/6 conf=0.89) | stable_count=2 | depth_mm=686
+[TTS] speaking: Go forward
+[TTS worker] saying: Go forward[Serial -> Arduino] CMD:GO:CENTER
+
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Go forward
+[Arduino -> Pi] STATUS:MOVING:CENTER
+[Arduino -> Pi] STATUS:REACHED
+[Publisher] GO:CENTER -> GO:RIGHT | GO:LEFT: center weak, left safer (conf=0.83) | stable_count=4 | depth_mm=1400
+[Serial -> Arduino] CMD:GO:RIGHT
+[Publisher] COOLDOWN GO:RIGHT -> STOP held=339ms < 800ms stable=4
+[Publisher] COOLDOWN GO:RIGHT -> STOP held=429ms < 800ms stable=5
+[Arduino -> Pi] STATUS:MOVING:RIGHT
+[Publisher] COOLDOWN GO:RIGHT -> STOP held=573ms < 800ms stable=6
+[Publisher] COOLDOWN GO:RIGHT -> STOP held=742ms < 800ms stable=7
+[Publisher] GO:RIGHT -> STOP | STOP: no valid group width | stable_count=8 | depth_mm=1271
+[Serial -> Arduino] CMD:STOP
+[Publisher] STOP_HOLD 0.11s / 1.0s stable=9
+[Publisher] STOP_HOLD 0.21s / 1.0s stable=10
+[Publisher] STOP_HOLD 0.32s / 1.0s stable=11
+[Publisher] STOP_HOLD 0.41s / 1.0s stable=12
+[Publisher] STOP_HOLD 0.51s / 1.0s stable=13
+[Publisher] STOP_HOLD 0.61s / 1.0s stable=14
+[Publisher] STOP_HOLD 0.70s / 1.0s stable=15
+[Publisher] STOP_HOLD 0.78s / 1.0s stable=16
+[Publisher] STOP_HOLD 0.87s / 1.0s stable=17
+[Publisher] STOP_HOLD 0.96s / 1.0s stable=1
+[TTS] speaking: Stop
+[TTS worker] saying: Stop
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[Publisher] STOP -> FREE reason=RECOVERY_FREE held=1.13s stable=2
+[Publisher] STOP -> FREE | RECOVERY_FREE | stable_count=2 | depth_mm=1386
+[Serial -> Arduino] CMD:FREE
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Arduino -> Pi] STATUS:LOCKED_RIGHT
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Arduino -> Pi] STATUS:STOPPED
+[Arduino -> Pi] STATUS:FREE
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] FREE -> STOP | STOP: no valid group width | stable_count=27 | depth_mm=1021
+[Serial -> Arduino] CMD:STOP
+[Publisher] STOP_HOLD 0.13s / 1.0s stable=28
+[Publisher] STOP_HOLD 0.23s / 1.0s stable=29
+[Publisher] STOP_HOLD 0.35s / 1.0s stable=30
+[Publisher] STOP_HOLD 0.46s / 1.0s stable=31
+[Publisher] STOP_HOLD 0.55s / 1.0s stable=32
+[Publisher] STOP_HOLD 0.65s / 1.0s stable=33
+[Publisher] STOP_HOLD 0.76s / 1.0s stable=34
+[Publisher] STOP_HOLD 0.86s / 1.0s stable=35
+[Publisher] STOP_HOLD 0.97s / 1.0s stable=36
+[Arduino -> Pi] STATUS:STOPPED[Publisher] STOP -> FREE reason=RECOVERY_FREE held=1.08s stable=37
+
+[Publisher] STOP -> FREE | RECOVERY_FREE | stable_count=37 | depth_mm=964
+[Serial -> Arduino] CMD:FREE
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Arduino -> Pi] STATUS:FREE
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] FREE -> STOP | STOP: no valid group width | stable_count=67 | depth_mm=972
+[Serial -> Arduino] CMD:STOP
+[Publisher] STOP_HOLD 0.09s / 1.0s stable=68
+[Publisher] STOP_HOLD 0.17s / 1.0s stable=69
+[Publisher] STOP_HOLD 0.25s / 1.0s stable=70
+[Publisher] STOP_HOLD 0.33s / 1.0s stable=71
+[Publisher] STOP_HOLD 0.41s / 1.0s stable=72
+[Publisher] STOP_HOLD 0.51s / 1.0s stable=73
+[Publisher] STOP_HOLD 0.59s / 1.0s stable=74
+[Publisher] STOP_HOLD 0.68s / 1.0s stable=75
+[Publisher] STOP_HOLD 0.76s / 1.0s stable=76
+[Publisher] STOP_HOLD 0.85s / 1.0s stable=77
+[Publisher] STOP_HOLD 0.94s / 1.0s stable=78
+[Publisher] STOP -> FREE reason=RECOVERY_FREE held=1.02s stable=79
+[Publisher] STOP -> FREE | RECOVERY_FREE | stable_count=79 | depth_mm=983
+[Serial -> Arduino] CMD:FREE
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Arduino -> Pi] STATUS:STOPPED
+[Arduino -> Pi] STATUS:FREE
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] FREE -> STOP | STOP: no valid group width | stable_count=5 | depth_mm=1364
+[Serial -> Arduino] CMD:STOP
+[Publisher] STOP_HOLD 0.09s / 1.0s stable=1
+[Publisher] STOP_HOLD 0.18s / 1.0s stable=1
+[Publisher] STOP_HOLD 0.27s / 1.0s stable=2
+[Publisher] STOP_HOLD 0.36s / 1.0s stable=1
+[Publisher] STOP_HOLD 0.44s / 1.0s stable=1
+[Publisher] STOP_HOLD 0.54s / 1.0s stable=1
+[Publisher] STOP_HOLD 0.64s / 1.0s stable=2
+[Publisher] STOP_HOLD 0.74s / 1.0s stable=3
+[Publisher] STOP_HOLD 0.82s / 1.0s stable=1
+[Publisher] STOP_HOLD 0.91s / 1.0s stable=2
+[Publisher] STOP_HOLD 0.99s / 1.0s stable=1
+[Publisher] STOP -> FREE reason=RECOVERY_FREE held=1.10s stable=1
+[Publisher] STOP -> FREE | RECOVERY_FREE | stable_count=1 | depth_mm=1378
+[Serial -> Arduino] CMD:FREE
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Arduino -> Pi] STATUS:STOPPED
+[Arduino -> Pi] STATUS:FREE
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] FREE -> GO:RIGHT | GO:LEFT: center weak, left safer (conf=0.84) | stable_count=4 | depth_mm=1368
+[TTS] speaking: Hard right
+[Serial -> Arduino] CMD:GO:RIGHT[TTS worker] saying: Hard right
+
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Hard right
+[Status] f=1400 auth=True ready=True cmd=GO:RIGHT conf=79% groups=1/1 target=- lidar_front=2124mm
+[Arduino -> Pi] STATUS:ASSIST
+[Arduino -> Pi] STATUS:MOVING:RIGHT
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] GO:RIGHT -> STOP | STOP: no valid group width | stable_count=14 | depth_mm=1364
+[Serial -> Arduino] CMD:STOP
+[Publisher] STOP_HOLD 0.11s / 1.0s stable=15
+[Publisher] STOP_HOLD 0.22s / 1.0s stable=16
+[Arduino -> Pi] STATUS:LOCKED_RIGHT
+[Publisher] STOP_HOLD 0.32s / 1.0s stable=17
+[TTS] speaking: Stop
+[TTS worker] saying: Stop
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[Publisher] STOP_HOLD 0.50s / 1.0s stable=18
+[Publisher] STOP_HOLD 0.73s / 1.0s stable=19
+[Publisher] STOP_HOLD 0.88s / 1.0s stable=20
+[Publisher] STOP_HOLD 0.99s / 1.0s stable=21
+[Publisher] STOP -> FREE reason=RECOVERY_FREE held=1.08s stable=22
+[Publisher] STOP -> FREE | RECOVERY_FREE | stable_count=22 | depth_mm=1365
+[Serial -> Arduino] CMD:FREE
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Arduino -> Pi] STATUS:STOPPED
+[Arduino -> Pi] STATUS:FREE
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] FREE -> STOP | GO:LEFT: center weak, left safer (conf=0.79) | stable_count=2 | depth_mm=1364[Serial -> Arduino] CMD:STOP
+
+[Publisher] STOP_HOLD 0.10s / 1.0s stable=1
+[Publisher] STOP_HOLD 0.20s / 1.0s stable=2
+[Publisher] STOP_HOLD 0.30s / 1.0s stable=3
+[Publisher] STOP_HOLD 0.41s / 1.0s stable=4
+[Publisher] STOP_HOLD 0.50s / 1.0s stable=5
+[Publisher] STOP_HOLD 0.57s / 1.0s stable=6
+[Publisher] STOP_HOLD 0.66s / 1.0s stable=1
+[Publisher] STOP_HOLD 0.77s / 1.0s stable=1
+[Publisher] STOP_HOLD 0.88s / 1.0s stable=1
+[Publisher] STOP_HOLD 0.97s / 1.0s stable=2
+[Publisher] STOP -> FREE reason=RECOVERY_FREE held=1.06s stable=3
+[Serial -> Arduino] CMD:FREE
+[Publisher] STOP -> FREE | RECOVERY_FREE | stable_count=3 | depth_mm=1068
+[Arduino -> Pi] STATUS:STOPPED
+[Arduino -> Pi] STATUS:FREE
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Serial -> Arduino] CMD:GO:RIGHT
+[Publisher] FREE -> GO:RIGHT | GO:LEFT: center weak, left safer (conf=0.75) | stable_count=4 | depth_mm=1056
+[TTS] speaking: Hard right
+[TTS worker] saying: Hard right
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Hard right
+[Arduino -> Pi] STATUS:ASSIST
+[Arduino -> Pi] STATUS:MOVING:RIGHT
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] GO:RIGHT -> STOP | STOP: no valid group width | stable_count=1 | depth_mm=1076
+[Serial -> Arduino] CMD:STOP
+[Arduino -> Pi] STATUS:LOCKED_RIGHT
+[Publisher] STOP_HOLD 0.14s / 1.0s stable=1
+[TTS] speaking: Stop
+[TTS worker] saying: Stop
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[Publisher] STOP_HOLD 0.32s / 1.0s stable=1
+[Publisher] STOP_HOLD 0.49s / 1.0s stable=1
+[Publisher] STOP_HOLD 0.63s / 1.0s stable=2
+[Publisher] STOP_HOLD 0.72s / 1.0s stable=3
+[Publisher] STOP_HOLD 0.82s / 1.0s stable=1
+[Publisher] STOP_HOLD 0.91s / 1.0s stable=1
+[Publisher] STOP_HOLD 1.00s / 1.0s stable=1
+[Publisher] STOP -> FREE reason=RECOVERY_FREE held=1.09s stable=1
+[Publisher] STOP -> FREE | RECOVERY_FREE | stable_count=1 | depth_mm=1084
+[Serial -> Arduino] CMD:FREE
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Arduino -> Pi] STATUS:STOPPED
+[Arduino -> Pi] STATUS:FREE
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] POST_RECOVERY grace: blocking STOP, allowing GO
+[Publisher] FREE -> GO:RIGHT | GO:LEFT: center weak, left safer (conf=0.74) | stable_count=4 | depth_mm=1081
+[Serial -> Arduino] CMD:GO:RIGHT
+[Arduino -> Pi] STATUS:ASSIST
+[Arduino -> Pi] STATUS:MOVING:RIGHT
+[TTS] speaking: Hard right
+[TTS worker] saying: Hard right
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Hard right
+[Publisher] GO:RIGHT -> GO:RIGHT | STOP: no valid group width | stable_count=1 | depth_mm=1073
+[Serial -> Arduino] CMD:GO:RIGHT
+[Arduino -> Pi] STATUS:LOCKED_RIGHT
+[Arduino -> Pi] STATUS:MOVING:RIGHT
+[Publisher] GO:RIGHT -> STOP | STOP: no valid group width | stable_count=4 | depth_mm=1082
+[Serial -> Arduino] CMD:STOP
+[Publisher] STOP_HOLD 0.09s / 1.0s stable=5
+[Publisher] STOP_HOLD 0.21s / 1.0s stable=6
+[Publisher] STOP_HOLD 0.31s / 1.0s stable=1
+[Publisher] STOP_HOLD 0.43s / 1.0s stable=1
+[Publisher] STOP_HOLD 0.54s / 1.0s stable=1
+[Publisher] STOP_HOLD 0.64s / 1.0s stable=1
+[Publisher] STOP_HOLD 0.72s / 1.0s stable=1
+[Publisher] STOP_HOLD 0.83s / 1.0s stable=2
+[Publisher] STOP_HOLD 0.91s / 1.0s stable=3
+[Publisher] STOP -> GO:RIGHT | GO:LEFT: center weak, left safer (conf=0.86) | stable_count=4 | depth_mm=1079
+[Serial -> Arduino] CMD:GO:RIGHT
+[Arduino -> Pi] STATUS:LOCKED_RIGHT
+[Publisher] GO:RIGHT -> STOP | STOP: no valid group width | stable_count=4 | depth_mm=1081
+[TTS] speaking: Stop
+[Serial -> Arduino] CMD:STOP
+[TTS worker] saying: Stop
+[TTS] aplay failed (1): aplay: main:850: audio open error: Unknown error 524
+[TTS] falling back to espeak-ng for: Stop
+[Publisher] STOP_HOLD 0.17s / 1.0s stable=1
+[Publisher] STOP_HOLD 0.41s / 1.0s stable=1
+[Publisher] STOP_HOLD 0.53s / 1.0s stable=2
+[Arduino -> Pi] STATUS:STOPPED
+[Arduino -> Pi] STATUS:MOVING:RIGHT
+[Publisher] STOP_HOLD 0.65s / 1.0s stable=3
+[Publisher] STOP_HOLD 0.75s / 1.0s stable=1
+[Publisher] STOP_HOLD 0.86s / 1.0s stable=2
+[Publisher] STOP_HOLD 0.96s / 1.0s stable=3
+[Publisher] STOP -> GO:RIGHT | GO:LEFT: center weak, left safer (conf=0.83) | stable_count=4 | depth_mm=1083
+[Serial -> Arduino] CMD:GO:RIGHT
