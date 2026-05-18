@@ -218,6 +218,8 @@ String localBuffer = "";
 // Forward declarations used before function definitions
 void setFreeMode(bool sendStatus = true);
 void setAssistMode(bool sendStatus = true);
+void executeCommand(String cmd, bool fromFlush = false);
+String flushPiBufferKeepLatest();
 
 // ================================================================
 //  BRAKE / VIBRATION
@@ -736,7 +738,7 @@ void printHelp() {
 //  COMMAND EXECUTOR
 //  Used by both USB and Pi — single source of truth
 // ================================================================
-void executeCommand(String cmd) {
+void executeCommand(String cmd, bool fromFlush) {
   cmd.trim();
   cmd.toUpperCase();
 
@@ -874,6 +876,10 @@ void executeCommand(String cmd) {
     Serial.print("[CMD:ANGLE] angle="); Serial.print(angle);
     Serial.print(" -> ADC=");          Serial.println(targetADC);
     moveToADC(targetADC);
+    if (!fromFlush) {
+      String latest = flushPiBufferKeepLatest();
+      if (latest.length() > 0) executeCommand(latest, true);
+    }
     return;
   }
 
@@ -905,6 +911,33 @@ void handleLocalSerial() {
       localBuffer += c;
     }
   }
+}
+
+// ================================================================
+//  SERIAL BUFFER FLUSH — discard stale commands, keep only latest
+// ================================================================
+String flushPiBufferKeepLatest() {
+  String buf = piBuffer;
+  piBuffer = "";
+  while (Serial1.available()) buf += (char)Serial1.read();
+  if (buf.length() == 0) return "";
+
+  String lastCmd = "";
+  String partial  = "";
+  for (int i = 0; i < (int)buf.length(); i++) {
+    char c = buf[i];
+    if (c == '\n' || c == '\r') {
+      if (partial.length() > 0) { lastCmd = partial; partial = ""; }
+    } else {
+      partial += c;
+    }
+  }
+  if (partial.length() > 0) piBuffer = partial;  // preserve trailing partial
+
+  if (lastCmd.length() > 0) {
+    Serial.print("[FLUSH] Latest cmd: "); Serial.println(lastCmd);
+  }
+  return lastCmd;
 }
 
 // Pi (Serial1) — camera commands
