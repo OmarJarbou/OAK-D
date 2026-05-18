@@ -212,7 +212,8 @@ const int NUM_NOTES = sizeof(notes) / sizeof(notes[0]);
 // ================================================================
 //  Pi SERIAL BUFFER
 // ================================================================
-String piBuffer   = "";
+String piBuffer    = "";    // accumulates incoming bytes
+String lastPiCmd   = "";    // last COMPLETE command received
 String localBuffer = "";
 
 // Forward declarations used before function definitions
@@ -907,35 +908,51 @@ void handleLocalSerial() {
   }
 }
 
-// Pi (Serial1) — camera commands
+// Pi (Serial1) — LiDAR-nav commands
+//
+// KEY FIX: drain the ENTIRE Serial1 buffer on each call, then execute
+// only the LAST complete command.  This discards stale commands that
+// piled up in the hardware buffer while the stepper was blocking.
+// CMD:STOP is "sticky" — if it appears anywhere in the batch it wins.
 void handlePiSerial() {
+  bool stopSeen = false;
+
+  // ── Read all available bytes, keep the last complete line ──────────
   while (Serial1.available()) {
     char c = Serial1.read();
     if (c == '\n' || c == '\r') {
       if (piBuffer.length() > 0) {
-    Serial.print("[Pi] Received: "); Serial.println(piBuffer);
-
-        // Only execute if authorized and auth sequence done
-        if (!authorized) {
-          Serial.println("[Pi] Ignored - unauthorized");
-          Serial1.println("STATUS:UNAUTHORIZED");
-          piBuffer = "";
-          return;
-        }
-        if (authSequenceActive) {
-          Serial.println("[Pi] Ignored - not ready");
-          Serial1.println("STATUS:NOT_READY");
-          piBuffer = "";
-          return;
-        }
-
-        executeCommand(piBuffer);
-        piBuffer = "";
+        String up = piBuffer;
+        up.trim(); up.toUpperCase();
+        if (up.indexOf("STOP") >= 0) stopSeen = true;
+        lastPiCmd = piBuffer;          // overwrite — keep only newest
+        piBuffer  = "";
       }
     } else {
       piBuffer += c;
     }
   }
+
+  if (stopSeen)             lastPiCmd = "CMD:STOP";  // STOP always wins
+  if (lastPiCmd.length() == 0) return;
+
+  String toExec = lastPiCmd;
+  lastPiCmd = "";                      // consume
+
+  Serial.print("[Pi] Received: "); Serial.println(toExec);
+
+  if (!authorized) {
+    Serial.println("[Pi] Ignored - unauthorized");
+    Serial1.println("STATUS:UNAUTHORIZED");
+    return;
+  }
+  if (authSequenceActive) {
+    Serial.println("[Pi] Ignored - not ready");
+    Serial1.println("STATUS:NOT_READY");
+    return;
+  }
+
+  executeCommand(toExec);
 }
 
 // ================================================================

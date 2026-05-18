@@ -42,8 +42,17 @@ LIDAR_BAUD   = 460800
 
 # ── Loop tuning ───────────────────────────────────────────────────────
 LOOP_HZ          = 10    # steering decisions per second
-ANGLE_DEAD_BAND  =  5    # don't resend if angle changed by less than this
+ANGLE_DEAD_BAND  =  5    # don't resend if smoothed angle changed < this
 STOP_HOLD_SEC    =  0.8  # hold CMD:STOP for this long before re-evaluating
+
+# ── EMA angle smoothing ────────────────────────────────────────────────
+# Prevents the noisy LiDAR scan from causing rapid oscillation in the
+# steering output (e.g. -90 / 0 / -90 / 0 every cycle).
+# Formula: smooth = ALPHA * raw + (1 - ALPHA) * smooth
+#   ALPHA = 0.0  → angle never changes   (too sluggish)
+#   ALPHA = 1.0  → no smoothing          (raw, oscillates)
+#   ALPHA = 0.35 → good balance for a walker at walking speed
+EMA_ALPHA        = 0.35
 
 
 # ── Serial helpers ────────────────────────────────────────────────────
@@ -114,6 +123,7 @@ def main():
     last_angle_sent  = None
     stop_until       = 0.0
     interval         = 1.0 / LOOP_HZ
+    ema_angle        = 0.0      # running EMA of the steering angle
 
     print("[MAIN] Navigation running. Press Ctrl+C to stop.\n")
 
@@ -122,7 +132,7 @@ def main():
         scan = scanner.get_scan()
         drain_rx(ser)
 
-        action, angle = decide(scan)
+        action, raw_angle = decide(scan)
 
         now = time.time()
 
@@ -130,7 +140,17 @@ def main():
         if action == 'STOP':
             stop_until = now + STOP_HOLD_SEC
         if now < stop_until:
-            action, angle = 'STOP', 0
+            action, raw_angle = 'STOP', 0
+
+        # ── EMA smoothing ─────────────────────────────────────────────
+        if action == 'STOP':
+            ema_angle = 0.0         # reset so recovery starts from centre
+            angle     = 0
+        elif action in ('STEER', 'CENTER'):
+            ema_angle = EMA_ALPHA * raw_angle + (1.0 - EMA_ALPHA) * ema_angle
+            angle     = int(ema_angle)
+        else:
+            angle = 0               # NODATA — don't update EMA
 
         # ── Decide what to transmit ───────────────────────────────────
         cmd_str = None
@@ -140,7 +160,7 @@ def main():
                 cmd_str = "CMD:STOP"
 
         elif action in ('STEER', 'CENTER'):
-            # Send angle only if it moved more than ANGLE_DEAD_BAND
+            # Send only when smoothed angle changed by more than dead-band
             if (last_angle_sent is None or
                     abs(angle - last_angle_sent) > ANGLE_DEAD_BAND):
                 cmd_str = f"CMD:ANGLE:{angle}"
