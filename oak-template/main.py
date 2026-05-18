@@ -209,7 +209,7 @@ def main():
             stereo = pipeline.create(dai.node.StereoDepth).build(
                 left=left_out, right=right_out)
             stereo.setDefaultProfilePreset(
-                dai.node.StereoDepth.PresetMode.HIGH_DENSITY)
+                dai.node.StereoDepth.PresetMode.FAST_DENSITY)
             stereo.setLeftRightCheck(True)
             stereo.setSubpixel(True)
             stereo.setExtendedDisparity(False)
