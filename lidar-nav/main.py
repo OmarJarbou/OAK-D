@@ -44,6 +44,9 @@ LIDAR_BAUD   = 460800
 LOOP_HZ          = 10    # steering decisions per second
 ANGLE_DEAD_BAND  =  5    # don't resend if angle changed by less than this
 STOP_HOLD_SEC    =  0.8  # hold CMD:STOP for this long before re-evaluating
+SMOOTH_ALPHA     =  0.35 # EMA weight for new angle (lower = smoother, 0 = frozen)
+CLEAR_FRAMES_CTR =  4    # consecutive CENTER frames before decaying toward 0
+LOCK_UNLOCK_DELAY = 1.5  # seconds: auto-send CMD:UNLOCK after a motor lock
 
 
 # ── Serial helpers ────────────────────────────────────────────────────
@@ -55,15 +58,19 @@ def send(ser: serial.Serial, cmd: str):
     print(f"[TX] {cmd}")
 
 
-def drain_rx(ser: serial.Serial):
-    """Read and print any incoming messages from Arduino (non-blocking)."""
+def drain_rx(ser: serial.Serial) -> str:
+    """Read and print any incoming messages from Arduino (non-blocking).
+    Returns the last non-empty line received."""
+    last = ""
     while ser.in_waiting:
         try:
             line = ser.readline().decode(errors='replace').strip()
             if line:
                 print(f"[RX] {line}")
+                last = line
         except Exception:
             pass
+    return last
 
 
 # ── Main ──────────────────────────────────────────────────────────────
@@ -113,6 +120,10 @@ def main():
     last_action      = None
     last_angle_sent  = None
     stop_until       = 0.0
+    smoothed_angle   = 0.0
+    clear_count      = 0
+    locked_dir       = None   # 'left' | 'right' | None
+    lock_time        = 0.0
     interval         = 1.0 / LOOP_HZ
 
     print("[MAIN] Navigation running. Press Ctrl+C to stop.\n")
@@ -120,17 +131,45 @@ def main():
     while True:
         t0   = time.time()
         scan = scanner.get_scan()
-        drain_rx(ser)
-
-        action, angle = decide(scan)
+        rx   = drain_rx(ser)
 
         now = time.time()
+
+        # ── Parse Arduino lock feedback ───────────────────────────────
+        if 'LOCKED_LEFT' in rx:
+            locked_dir = 'left';  lock_time = now
+        elif 'LOCKED_RIGHT' in rx:
+            locked_dir = 'right'; lock_time = now
+        elif any(k in rx for k in ('REACHED', 'AT_TARGET', 'UNLOCKED', 'STOPPED', 'FREE')):
+            locked_dir = None
+
+        # Auto-unlock after delay so the motor can retry movement
+        if locked_dir and (now - lock_time) > LOCK_UNLOCK_DELAY:
+            send(ser, "CMD:UNLOCK")
+            locked_dir = None
+
+        action, raw_angle = decide(scan)
 
         # ── STOP holdoff: once triggered, keep it for STOP_HOLD_SEC ──
         if action == 'STOP':
             stop_until = now + STOP_HOLD_SEC
         if now < stop_until:
-            action, angle = 'STOP', 0
+            action, raw_angle = 'STOP', 0
+
+        # ── Smooth steering (EMA + clear-path hysteresis) ─────────────
+        if action == 'STEER':
+            clear_count    = 0
+            smoothed_angle = SMOOTH_ALPHA * raw_angle + (1 - SMOOTH_ALPHA) * smoothed_angle
+        elif action == 'CENTER':
+            clear_count += 1
+            if clear_count >= CLEAR_FRAMES_CTR:
+                smoothed_angle = (1 - SMOOTH_ALPHA) * smoothed_angle  # decay toward 0
+
+        angle = int(round(smoothed_angle)) if action in ('STEER', 'CENTER') else raw_angle
+
+        # ── Respect motor lock direction ──────────────────────────────
+        if   locked_dir == 'right' and angle > 0: angle = 0
+        elif locked_dir == 'left'  and angle < 0: angle = 0
 
         # ── Decide what to transmit ───────────────────────────────────
         cmd_str = None
@@ -140,7 +179,6 @@ def main():
                 cmd_str = "CMD:STOP"
 
         elif action in ('STEER', 'CENTER'):
-            # Send angle only if it moved more than ANGLE_DEAD_BAND
             if (last_angle_sent is None or
                     abs(angle - last_angle_sent) > ANGLE_DEAD_BAND):
                 cmd_str = f"CMD:ANGLE:{angle}"
