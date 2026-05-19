@@ -460,15 +460,61 @@ void singleStep(bool dirRight, int delayUs) {
   delayMicroseconds(delayUs);
 }
 
+// bool moveToADC(int targetADC) {
+//   if (!authorized) {
+//     Serial.println("[STEER] Not authorized");
+//     return false;
+//   }
+//   if (currentMode == MODE_FREE) {
+//     Serial.println("[STEER] In FREE mode - send M:ASSIST first");
+//     return false;
+//   }
+
+//   int current = readPot();
+//   if (!sensorOK(current)) return false;
+
+//   int error = targetADC - current;
+//   if (abs(error) <= POT_DEADBAND) {
+//     Serial.println("[STEER] Already at target");
+//     Serial1.println("STATUS:AT_TARGET");
+//     return true;
+//   }
+
+//   bool dirRight = (error < 0);
+//   if (isLocked(dirRight)) return false;
+
+//   int safety = 0;
+//   while (safety < MAX_STEPS) {
+//     current = readPot();
+//     if (!sensorOK(current)) return false;
+
+//     error = targetADC - current;
+//     if (abs(error) <= POT_DEADBAND) {
+//       Serial.print("[STEER] Reached. potADC=");
+//       Serial.print(current);
+//       Serial.print(" target=");
+//       Serial.print(targetADC);
+//       Serial.print(" steps=");
+//       Serial.println(safety);
+//       Serial1.println("STATUS:REACHED");
+//       lockedAtLeft  = false;
+//       lockedAtRight = false;
+//       return true;
+//     }
+
+//     dirRight = (error < 0);
+//     if (isLocked(dirRight)) return false;
+
+//     singleStep(dirRight, speedForError(error, safety));
+//     safety++;
+//   }
+
+//   lockMotor(dirRight);
+//   return false;
+// }
 bool moveToADC(int targetADC) {
-  if (!authorized) {
-    Serial.println("[STEER] Not authorized");
-    return false;
-  }
-  if (currentMode == MODE_FREE) {
-    Serial.println("[STEER] In FREE mode - send M:ASSIST first");
-    return false;
-  }
+  if (!authorized) { Serial.println("[STEER] Not authorized"); return false; }
+  if (currentMode == MODE_FREE) { Serial.println("[STEER] In FREE mode"); return false; }
 
   int current = readPot();
   if (!sensorOK(current)) return false;
@@ -488,14 +534,18 @@ bool moveToADC(int targetADC) {
     current = readPot();
     if (!sensorOK(current)) return false;
 
+    // ══ الجديد: تحقق من أوامر جديدة وافق عليها فوراً ══
+    if (Serial1.available()) {
+      Serial.println("[STEER] Interrupted by new command");
+      Serial1.println("STATUS:INTERRUPTED");
+      break;   // اخرج من الحركة الحالية، handlePiSerial سيأخذ الأمر الجديد
+    }
+
     error = targetADC - current;
     if (abs(error) <= POT_DEADBAND) {
-      Serial.print("[STEER] Reached. potADC=");
-      Serial.print(current);
-      Serial.print(" target=");
-      Serial.print(targetADC);
-      Serial.print(" steps=");
-      Serial.println(safety);
+      Serial.print("[STEER] Reached. potADC="); Serial.print(current);
+      Serial.print(" target="); Serial.print(targetADC);
+      Serial.print(" steps="); Serial.println(safety);
       Serial1.println("STATUS:REACHED");
       lockedAtLeft  = false;
       lockedAtRight = false;
@@ -509,10 +559,9 @@ bool moveToADC(int targetADC) {
     safety++;
   }
 
-  lockMotor(dirRight);
+  if (safety >= MAX_STEPS) lockMotor(dirRight);
   return false;
 }
-
 // ================================================================
 //  STEPPER — POSITIONS
 // ================================================================
@@ -529,11 +578,18 @@ int adcForPosition(Position pos) {
   }
 }
 
+// int clampToRange(int targetADC) {
+//   if (LEFT_ADC == -1 || RIGHT_ADC == -1) return targetADC;
+//   return constrain(targetADC, min(LEFT_ADC, RIGHT_ADC), max(LEFT_ADC, RIGHT_ADC));
+// }
 int clampToRange(int targetADC) {
-  if (LEFT_ADC == -1 || RIGHT_ADC == -1) return targetADC;
+  // ══ الجديد: رفض الحركة كلياً إذا الكاليبريشن ناقص ══
+  if (LEFT_ADC == -1 || RIGHT_ADC == -1 || CENTER_ADC == -1) {
+    Serial.println("[CLAMP] Not calibrated - returning CENTER or 0");
+    return (CENTER_ADC != -1) ? CENTER_ADC : 0;
+  }
   return constrain(targetADC, min(LEFT_ADC, RIGHT_ADC), max(LEFT_ADC, RIGHT_ADC));
 }
-
 void goToPosition(Position pos) {
   if (CENTER_ADC == -1 || LEFT_ADC == -1 || RIGHT_ADC == -1) {
     Serial.println("[STEER] Not calibrated");
@@ -849,7 +905,40 @@ void executeCommand(String cmd, bool fromFlush) {
   }
 
   // ── CMD:ANGLE:<n>  (-100=full left, 0=center, +100=full right) ──────
-  if (cmd.startsWith("CMD:ANGLE:")) {
+  // if (cmd.startsWith("CMD:ANGLE:")) {
+  //   if (!authorized) { Serial.println("[CMD] Not authorized"); return; }
+  //   if (CENTER_ADC == -1 || LEFT_ADC == -1 || RIGHT_ADC == -1) {
+  //     Serial.println("[CMD:ANGLE] Not calibrated");
+  //     Serial1.println("STATUS:NOT_CALIBRATED");
+  //     return;
+  //   }
+  //   if (currentMode == MODE_FREE) setAssistMode(true);
+  //   stopLatched = false;
+  //   brakeRelease();
+
+  //   int angle = cmd.substring(10).toInt();   // handles negatives
+  //   angle = constrain(angle, -100, 100);
+
+  //   int targetADC;
+  //   if (angle == 0) {
+  //     targetADC = CENTER_ADC;
+  //   } else if (angle < 0) {
+  //     targetADC = map(-angle, 0, 100, CENTER_ADC, LEFT_ADC);  // steer left
+  //   } else {
+  //     targetADC = map( angle, 0, 100, CENTER_ADC, RIGHT_ADC); // steer right
+  //   }
+  //   targetADC = clampToRange(targetADC);
+
+  //   Serial.print("[CMD:ANGLE] angle="); Serial.print(angle);
+  //   Serial.print(" -> ADC=");          Serial.println(targetADC);
+  //   moveToADC(targetADC);
+  //   if (!fromFlush) {
+  //     String latest = flushPiBufferKeepLatest();
+  //     if (latest.length() > 0) executeCommand(latest, true);
+  //   }
+  //   return;
+  // }
+if (cmd.startsWith("CMD:ANGLE:")) {
     if (!authorized) { Serial.println("[CMD] Not authorized"); return; }
     if (CENTER_ADC == -1 || LEFT_ADC == -1 || RIGHT_ADC == -1) {
       Serial.println("[CMD:ANGLE] Not calibrated");
@@ -860,29 +949,43 @@ void executeCommand(String cmd, bool fromFlush) {
     stopLatched = false;
     brakeRelease();
 
-    int angle = cmd.substring(10).toInt();   // handles negatives
+    int angle = cmd.substring(10).toInt();
     angle = constrain(angle, -100, 100);
 
     int targetADC;
     if (angle == 0) {
       targetADC = CENTER_ADC;
     } else if (angle < 0) {
-      targetADC = map(-angle, 0, 100, CENTER_ADC, LEFT_ADC);  // steer left
+      targetADC = map(-angle, 0, 100, CENTER_ADC, LEFT_ADC);
     } else {
-      targetADC = map( angle, 0, 100, CENTER_ADC, RIGHT_ADC); // steer right
+      targetADC = map( angle, 0, 100, CENTER_ADC, RIGHT_ADC);
     }
     targetADC = clampToRange(targetADC);
 
+    // ══ الجديد: hard safety check قبل الحركة ══
+    int safeMin = min(LEFT_ADC, RIGHT_ADC);
+    int safeMax = max(LEFT_ADC, RIGHT_ADC);
+    if (targetADC < safeMin || targetADC > safeMax) {
+      Serial.println("[CMD:ANGLE] Target out of range - REJECTED");
+      Serial1.println("STATUS:OUT_OF_RANGE");
+      return;
+    }
+
     Serial.print("[CMD:ANGLE] angle="); Serial.print(angle);
-    Serial.print(" -> ADC=");          Serial.println(targetADC);
+    Serial.print(" -> ADC="); Serial.println(targetADC);
+
     moveToADC(targetADC);
+
+    // ══ الجديد: أرسل READY بعد اكتمال الحركة ══
+    Serial1.println("STATUS:READY");
+
+    // ══ الجديد: flush فقط إذا ما في serial جديد (الـ interrupt في moveToADC يتكفل بالباقي) ══
     if (!fromFlush) {
       String latest = flushPiBufferKeepLatest();
       if (latest.length() > 0) executeCommand(latest, true);
     }
     return;
-  }
-
+}
   // ── CMD:POT  — report current potentiometer ADC ────────────────────
   if (cmd == "CMD:POT" || cmd == "POT") {
     int pot = readPot();
