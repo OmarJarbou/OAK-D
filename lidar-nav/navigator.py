@@ -120,7 +120,7 @@ def decide(scan: dict) -> tuple:
         right_min = _arc_min(scan,  90, SIDE_HALF_W)
         left_min  = _arc_min(scan, 270, SIDE_HALF_W)
 
-        direction = +1 if right_min >= left_min else -1
+        direction = -1 if right_min >= left_min else +1
         return ('STEER', direction * strength)
 
     # ── Path clear ───────────────────────────────────────────────────

@@ -460,58 +460,7 @@ void singleStep(bool dirRight, int delayUs) {
   delayMicroseconds(delayUs);
 }
 
-// bool moveToADC(int targetADC) {
-//   if (!authorized) {
-//     Serial.println("[STEER] Not authorized");
-//     return false;
-//   }
-//   if (currentMode == MODE_FREE) {
-//     Serial.println("[STEER] In FREE mode - send M:ASSIST first");
-//     return false;
-//   }
 
-//   int current = readPot();
-//   if (!sensorOK(current)) return false;
-
-//   int error = targetADC - current;
-//   if (abs(error) <= POT_DEADBAND) {
-//     Serial.println("[STEER] Already at target");
-//     Serial1.println("STATUS:AT_TARGET");
-//     return true;
-//   }
-
-//   bool dirRight = (error < 0);
-//   if (isLocked(dirRight)) return false;
-
-//   int safety = 0;
-//   while (safety < MAX_STEPS) {
-//     current = readPot();
-//     if (!sensorOK(current)) return false;
-
-//     error = targetADC - current;
-//     if (abs(error) <= POT_DEADBAND) {
-//       Serial.print("[STEER] Reached. potADC=");
-//       Serial.print(current);
-//       Serial.print(" target=");
-//       Serial.print(targetADC);
-//       Serial.print(" steps=");
-//       Serial.println(safety);
-//       Serial1.println("STATUS:REACHED");
-//       lockedAtLeft  = false;
-//       lockedAtRight = false;
-//       return true;
-//     }
-
-//     dirRight = (error < 0);
-//     if (isLocked(dirRight)) return false;
-
-//     singleStep(dirRight, speedForError(error, safety));
-//     safety++;
-//   }
-
-//   lockMotor(dirRight);
-//   return false;
-// }
 bool moveToADC(int targetADC) {
   if (!authorized) { Serial.println("[STEER] Not authorized"); return false; }
   if (currentMode == MODE_FREE) { Serial.println("[STEER] In FREE mode"); return false; }
@@ -904,40 +853,7 @@ void executeCommand(String cmd, bool fromFlush) {
     }
   }
 
-  // ── CMD:ANGLE:<n>  (-100=full left, 0=center, +100=full right) ──────
-  // if (cmd.startsWith("CMD:ANGLE:")) {
-  //   if (!authorized) { Serial.println("[CMD] Not authorized"); return; }
-  //   if (CENTER_ADC == -1 || LEFT_ADC == -1 || RIGHT_ADC == -1) {
-  //     Serial.println("[CMD:ANGLE] Not calibrated");
-  //     Serial1.println("STATUS:NOT_CALIBRATED");
-  //     return;
-  //   }
-  //   if (currentMode == MODE_FREE) setAssistMode(true);
-  //   stopLatched = false;
-  //   brakeRelease();
-
-  //   int angle = cmd.substring(10).toInt();   // handles negatives
-  //   angle = constrain(angle, -100, 100);
-
-  //   int targetADC;
-  //   if (angle == 0) {
-  //     targetADC = CENTER_ADC;
-  //   } else if (angle < 0) {
-  //     targetADC = map(-angle, 0, 100, CENTER_ADC, LEFT_ADC);  // steer left
-  //   } else {
-  //     targetADC = map( angle, 0, 100, CENTER_ADC, RIGHT_ADC); // steer right
-  //   }
-  //   targetADC = clampToRange(targetADC);
-
-  //   Serial.print("[CMD:ANGLE] angle="); Serial.print(angle);
-  //   Serial.print(" -> ADC=");          Serial.println(targetADC);
-  //   moveToADC(targetADC);
-  //   if (!fromFlush) {
-  //     String latest = flushPiBufferKeepLatest();
-  //     if (latest.length() > 0) executeCommand(latest, true);
-  //   }
-  //   return;
-  // }
+  
 if (cmd.startsWith("CMD:ANGLE:")) {
     if (!authorized) { Serial.println("[CMD] Not authorized"); return; }
     if (CENTER_ADC == -1 || LEFT_ADC == -1 || RIGHT_ADC == -1) {
@@ -952,16 +868,16 @@ if (cmd.startsWith("CMD:ANGLE:")) {
     int angle = cmd.substring(10).toInt();
     angle = constrain(angle, -100, 100);
 
-    int targetADC;
-    if (angle == 0) {
-      targetADC = CENTER_ADC;
-    } else if (angle < 0) {
-      targetADC = map(-angle, 0, 100, CENTER_ADC, LEFT_ADC);
-    } else {
-      targetADC = map( angle, 0, 100, CENTER_ADC, RIGHT_ADC);
-    }
-    targetADC = clampToRange(targetADC);
-
+ int targetADC;
+if (angle == 0) {
+  targetADC = CENTER_ADC;
+} else if (angle < 0) {
+  // negative = left: interpolate CENTER→LEFT proportionally
+  targetADC = CENTER_ADC + (int)((CENTER_ADC - LEFT_ADC) * (-angle) / 100.0);
+} else {
+  // positive = right: interpolate CENTER→RIGHT proportionally
+  targetADC = CENTER_ADC + (int)((RIGHT_ADC - CENTER_ADC) * angle / 100.0);
+}
     // ══ الجديد: hard safety check قبل الحركة ══
     int safeMin = min(LEFT_ADC, RIGHT_ADC);
     int safeMax = max(LEFT_ADC, RIGHT_ADC);

@@ -10,6 +10,7 @@ Angle convention from the sensor:
   Use FRONT_HEADING in navigator.py to compensate for mounting direction.
 """
 
+from asyncio import timeouts
 import threading
 from rplidar import RPLidar
 
@@ -70,6 +71,7 @@ class LidarScanner:
             if self._lidar:
                 self._lidar.stop()
                 self._lidar.stop_motor()
+                time.sleep(0.5)      # ← أضف هذا
                 self._lidar.disconnect()
                 self._lidar = None
         except Exception:
