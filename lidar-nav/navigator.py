@@ -112,7 +112,7 @@ def decide(scan: dict) -> tuple:
             # Obstacle clearly off-centre: steer directly away from it
             # rel > 0  → obstacle on the right → steer LEFT (negative)
             # rel < 0  → obstacle on the left  → steer RIGHT (positive)
-            direction = -1 if rel > 0 else +1
+            direction = +1 if rel > 0 else -1
             return ('STEER', direction * strength)
 
         # Obstacle roughly centred — consult side arcs for free space
