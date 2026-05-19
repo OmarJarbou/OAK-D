@@ -96,7 +96,7 @@ def decide(scan: dict) -> tuple:
     # positive → to the right of centre, negative → to the left
     center_sensor = (FRONT_HEADING) % 360
     # rel = (front_min_angle - center_sensor + 180) % 360 - 180
-    rel = -((front_min_angle - center_sensor + 180) % 360 - 180)
+    rel = ((front_min_angle - center_sensor + 180) % 360 - 180)
 
     # ── Emergency stop ───────────────────────────────────────────────
     if front_min_dist < STOP_MM:
