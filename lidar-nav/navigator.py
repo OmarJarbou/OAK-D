@@ -29,7 +29,7 @@ Return value of decide():
 FRONT_HEADING  = 0    # sensor angle that points directly FORWARD
 
 # ── Arc widths (half-widths in degrees) ───────────────────────────────
-FRONT_HALF_W   = 35     # ±35° → 70° total front arc
+FRONT_HALF_W   = 60     # ±35° → 70° total front arc
 SIDE_HALF_W    = 40     # ±40° → 80° total side arc (for free-space check)
 
 # ── Distance thresholds (mm) ──────────────────────────────────────────
@@ -112,7 +112,7 @@ def decide(scan: dict) -> tuple:
             # Obstacle clearly off-centre: steer directly away from it
             # rel > 0  → obstacle on the right → steer LEFT (negative)
             # rel < 0  → obstacle on the left  → steer RIGHT (positive)
-            direction = +1 if rel > 0 else -1
+            direction = -1 if rel > 0 else +1
             return ('STEER', direction * strength)
 
         # Obstacle roughly centred — consult side arcs for free space
@@ -120,7 +120,7 @@ def decide(scan: dict) -> tuple:
         right_min = _arc_min(scan,  90, SIDE_HALF_W)
         left_min  = _arc_min(scan, 270, SIDE_HALF_W)
 
-        direction = -1 if right_min >= left_min else +1
+        direction = +1 if right_min >= left_min else -1
         return ('STEER', direction * strength)
 
     # ── Path clear ───────────────────────────────────────────────────
