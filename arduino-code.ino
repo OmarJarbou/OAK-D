@@ -261,7 +261,15 @@ void stopAuthSequence(bool sendFreeStatus = true) {
   authSequenceActive     = false;
   authSequenceOutputOn   = false;
   authSequenceCyclesDone = 0;
-  setFreeMode(false);   // enforce FREE state after auth sequence
+  
+  // ← الجديد: ارجع للمركز قبل تحرير الموتور
+  if (CENTER_ADC != -1) {
+    currentMode = MODE_ASSIST;       // مؤقتاً لتشغيل moveToADC
+    digitalWrite(EN_PIN, LOW);
+    moveToADC(CENTER_ADC);
+  }
+
+  setFreeMode(false);
   Serial.println("[AUTH] Sequence finished");
   if (sendFreeStatus) Serial1.println("STATUS:FREE");
 }
@@ -460,7 +468,58 @@ void singleStep(bool dirRight, int delayUs) {
   delayMicroseconds(delayUs);
 }
 
+// bool moveToADC(int targetADC) {
+//   if (!authorized) {
+//     Serial.println("[STEER] Not authorized");
+//     return false;
+//   }
+//   if (currentMode == MODE_FREE) {
+//     Serial.println("[STEER] In FREE mode - send M:ASSIST first");
+//     return false;
+//   }
 
+//   int current = readPot();
+//   if (!sensorOK(current)) return false;
+
+//   int error = targetADC - current;
+//   if (abs(error) <= POT_DEADBAND) {
+//     Serial.println("[STEER] Already at target");
+//     Serial1.println("STATUS:AT_TARGET");
+//     return true;
+//   }
+
+//   bool dirRight = (error < 0);
+//   if (isLocked(dirRight)) return false;
+
+//   int safety = 0;
+//   while (safety < MAX_STEPS) {
+//     current = readPot();
+//     if (!sensorOK(current)) return false;
+
+//     error = targetADC - current;
+//     if (abs(error) <= POT_DEADBAND) {
+//       Serial.print("[STEER] Reached. potADC=");
+//       Serial.print(current);
+//       Serial.print(" target=");
+//       Serial.print(targetADC);
+//       Serial.print(" steps=");
+//       Serial.println(safety);
+//       Serial1.println("STATUS:REACHED");
+//       lockedAtLeft  = false;
+//       lockedAtRight = false;
+//       return true;
+//     }
+
+//     dirRight = (error < 0);
+//     if (isLocked(dirRight)) return false;
+
+//     singleStep(dirRight, speedForError(error, safety));
+//     safety++;
+//   }
+
+//   lockMotor(dirRight);
+//   return false;
+// }
 bool moveToADC(int targetADC) {
   if (!authorized) { Serial.println("[STEER] Not authorized"); return false; }
   if (currentMode == MODE_FREE) { Serial.println("[STEER] In FREE mode"); return false; }
@@ -746,6 +805,8 @@ void printHelp() {
 void executeCommand(String cmd, bool fromFlush) {
   cmd.trim();
   cmd.toUpperCase();
+  Serial.print("COMMAND AFTER CLEAN:");Serial.print(cmd);
+  Serial.println();
 
   // ── Mode ──────────────────────────────────────────────────────
   if (cmd == "M:FREE"  || cmd == "CMD:FREE")   { setFreeMode();   return; }
@@ -853,55 +914,99 @@ void executeCommand(String cmd, bool fromFlush) {
     }
   }
 
-  
-if (cmd.startsWith("CMD:ANGLE:")) {
-    if (!authorized) { Serial.println("[CMD] Not authorized"); return; }
-    if (CENTER_ADC == -1 || LEFT_ADC == -1 || RIGHT_ADC == -1) {
-      Serial.println("[CMD:ANGLE] Not calibrated");
-      Serial1.println("STATUS:NOT_CALIBRATED");
+  // ── CMD:ANGLE:<n>  (-100=full left, 0=center, +100=full right) ──────
+  // if (cmd.startsWith("CMD:ANGLE:")) {
+  //   if (!authorized) { Serial.println("[CMD] Not authorized"); return; }
+  //   if (CENTER_ADC == -1 || LEFT_ADC == -1 || RIGHT_ADC == -1) {
+  //     Serial.println("[CMD:ANGLE] Not calibrated");
+  //     Serial1.println("STATUS:NOT_CALIBRATED");
+  //     return;
+  //   }
+  //   if (currentMode == MODE_FREE) setAssistMode(true);
+  //   stopLatched = false;
+  //   brakeRelease();
+
+  //   int angle = cmd.substring(10).toInt();   // handles negatives
+  //   angle = constrain(angle, -100, 100);
+
+  //   int targetADC;
+  //   if (angle == 0) {
+  //     targetADC = CENTER_ADC;
+  //   } else if (angle < 0) {
+  //     targetADC = map(-angle, 0, 100, CENTER_ADC, LEFT_ADC);  // steer left
+  //   } else {
+  //     targetADC = map( angle, 0, 100, CENTER_ADC, RIGHT_ADC); // steer right
+  //   }
+  //   targetADC = clampToRange(targetADC);
+
+  //   Serial.print("[CMD:ANGLE] angle="); Serial.print(angle);
+  //   Serial.print(" -> ADC=");          Serial.println(targetADC);
+  //   moveToADC(targetADC);
+  //   if (!fromFlush) {
+  //     String latest = flushPiBufferKeepLatest();
+  //     if (latest.length() > 0) executeCommand(latest, true);
+  //   }
+  //   return;
+  // }
+  if (cmd.startsWith("CMD:ANGLE:")) {
+      if (!authorized) { Serial.println("[CMD] Not authorized"); return; }
+      if (CENTER_ADC == -1 || LEFT_ADC == -1 || RIGHT_ADC == -1) {
+        Serial.println("[CMD:ANGLE] Not calibrated");
+        Serial1.println("STATUS:NOT_CALIBRATED");
+        return;
+      }
+      if (currentMode == MODE_FREE) setAssistMode(true);
+      stopLatched = false;
+      brakeRelease();
+
+      // Extract angle — do this BEFORE toUpperCase corrupts nothing (numbers are fine)
+      String angleStr = cmd.substring(10); // "CMD:ANGLE:" is exactly 10 chars
+      Serial.print("ANGLE AFTER CUT:"); Serial.print(angleStr);
+      Serial.println();
+      angleStr.trim();
+      Serial.print("ANGLE AFTER TRIM:"); Serial.print(angleStr);
+      Serial.println();
+      int angle = angleStr.toInt();
+      Serial.print("ANGLE AFTER INTEGER CONVERSION:");Serial.print(angleStr);
+      Serial.println();
+      angle = constrain(angle, -100, 100);
+
+      int targetADC;
+      if (angle == 0) {
+          targetADC = CENTER_ADC;
+      } else if (angle > 0) {
+          // Positive = RIGHT
+          targetADC = CENTER_ADC + (int)((float)(RIGHT_ADC - CENTER_ADC) * angle / 100.0);
+      } else {
+          // Negative = LEFT
+          targetADC = CENTER_ADC + (int) ((float)(LEFT_ADC - CENTER_ADC) * (-angle) / 100.0);
+      }
+      Serial.print("Target ADC:");Serial.print(targetADC);
+      Serial.println();
+
+      targetADC = clampToRange(targetADC);
+
+      // Safety check
+      int safeMin = min(LEFT_ADC, RIGHT_ADC);
+      int safeMax = max(LEFT_ADC, RIGHT_ADC);
+      if (targetADC < safeMin || targetADC > safeMax) {
+        Serial.println("[CMD:ANGLE] Target out of range - REJECTED");
+        Serial1.println("STATUS:OUT_OF_RANGE");
+        return;
+      }
+
+      Serial.print("[CMD:ANGLE] angle="); Serial.print(angle);
+      Serial.print(" -> ADC="); Serial.println(targetADC);
+
+      moveToADC(targetADC);
+      Serial1.println("STATUS:READY");
+
+      if (!fromFlush) {
+        String latest = flushPiBufferKeepLatest();
+        if (latest.length() > 0) executeCommand(latest, true);
+      }
       return;
-    }
-    if (currentMode == MODE_FREE) setAssistMode(true);
-    stopLatched = false;
-    brakeRelease();
-
-    int angle = cmd.substring(10).toInt();
-    angle = constrain(angle, -100, 100);
-
- int targetADC;
-if (angle == 0) {
-  targetADC = CENTER_ADC;
-} else if (angle < 0) {
-  // negative = left: interpolate CENTER→LEFT proportionally
-  targetADC = CENTER_ADC + (int)((CENTER_ADC - LEFT_ADC) * (-angle) / 100.0);
-} else {
-  // positive = right: interpolate CENTER→RIGHT proportionally
-  targetADC = CENTER_ADC + (int)((RIGHT_ADC - CENTER_ADC) * angle / 100.0);
-}
-    // ══ الجديد: hard safety check قبل الحركة ══
-    int safeMin = min(LEFT_ADC, RIGHT_ADC);
-    int safeMax = max(LEFT_ADC, RIGHT_ADC);
-    if (targetADC < safeMin || targetADC > safeMax) {
-      Serial.println("[CMD:ANGLE] Target out of range - REJECTED");
-      Serial1.println("STATUS:OUT_OF_RANGE");
-      return;
-    }
-
-    Serial.print("[CMD:ANGLE] angle="); Serial.print(angle);
-    Serial.print(" -> ADC="); Serial.println(targetADC);
-
-    moveToADC(targetADC);
-
-    // ══ الجديد: أرسل READY بعد اكتمال الحركة ══
-    Serial1.println("STATUS:READY");
-
-    // ══ الجديد: flush فقط إذا ما في serial جديد (الـ interrupt في moveToADC يتكفل بالباقي) ══
-    if (!fromFlush) {
-      String latest = flushPiBufferKeepLatest();
-      if (latest.length() > 0) executeCommand(latest, true);
-    }
-    return;
-}
+  }
   // ── CMD:POT  — report current potentiometer ADC ────────────────────
   if (cmd == "CMD:POT" || cmd == "POT") {
     int pot = readPot();
@@ -965,7 +1070,7 @@ void handlePiSerial() {
     char c = Serial1.read();
     if (c == '\n' || c == '\r') {
       if (piBuffer.length() > 0) {
-    Serial.print("[Pi] Received: "); Serial.println(piBuffer);
+        Serial.print("[Pi] Received: "); Serial.println(piBuffer);
 
         // Only execute if authorized and auth sequence done
         if (!authorized) {

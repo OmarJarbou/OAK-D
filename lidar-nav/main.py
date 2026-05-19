@@ -42,7 +42,7 @@ LIDAR_BAUD   = 460800
 
 # ── Loop tuning ───────────────────────────────────────────────────────
 LOOP_HZ          = 10    # steering decisions per second
-ANGLE_DEAD_BAND  =  5    # don't resend if angle changed by less than this
+ANGLE_DEAD_BAND  =  10    # don't resend if angle changed by less than this
 STOP_HOLD_SEC    =  0.8  # hold CMD:STOP for this long before re-evaluating
 SMOOTH_ALPHA     =  0.35 # EMA weight for new angle (lower = smoother, 0 = frozen)
 CLEAR_FRAMES_CTR =  4    # consecutive CENTER frames before decaying toward 0
@@ -249,7 +249,7 @@ def main():
     # ══ جديد: متغير لمعرفة إذا الأردوينو جاهز ══
     arduino_ready    = True
     ready_timeout    = 0.0          # وقت إرسال آخر أمر
-    READY_TIMEOUT_SEC = 0.6         # إذا ما جاء READY خلال 0.6 ثانية، نعتبره جاهز
+    READY_TIMEOUT_SEC = 2.0        # إذا ما جاء READY خلال 0.6 ثانية، نعتبره جاهز
 
     print("[MAIN] Navigation running. Press Ctrl+C to stop.\n")
 
