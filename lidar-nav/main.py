@@ -47,6 +47,7 @@ STOP_HOLD_SEC    =  0.8  # hold CMD:STOP for this long before re-evaluating
 SMOOTH_ALPHA     =  0.35 # EMA weight for new angle (lower = smoother, 0 = frozen)
 CLEAR_FRAMES_CTR =  4    # consecutive CENTER frames before decaying toward 0
 LOCK_UNLOCK_DELAY = 1.5  # seconds: auto-send CMD:UNLOCK after a motor lock
+READY_TIMEOUT_SEC = 2.0  # if no ACK arrives within this time, force arduino_ready = True
 
 
 # ── Serial helpers ────────────────────────────────────────────────────
@@ -62,16 +63,16 @@ def send(ser: serial.Serial, cmd: str):
 def drain_rx(ser: serial.Serial) -> str:
     """Read and print any incoming messages from Arduino (non-blocking).
     Returns the last non-empty line received."""
-    last = ""
+    lines = []
     while ser.in_waiting:
         try:
             line = ser.readline().decode(errors='replace').strip()
             if line:
                 print(f"[RX] {line}")
-                last = line
+                lines.append(line)
         except Exception:
             pass
-    return last
+    return ' '.join(lines)   # ← كل الأسطر في string واحد
 
 
 # ── Main ──────────────────────────────────────────────────────────────
@@ -246,21 +247,23 @@ def main():
     lock_time        = 0.0
     interval         = 1.0 / LOOP_HZ
 
-    # ══ جديد: متغير لمعرفة إذا الأردوينو جاهز ══
-    arduino_ready    = True
-    ready_timeout    = 0.0          # وقت إرسال آخر أمر
-    READY_TIMEOUT_SEC = 2.0        # إذا ما جاء READY خلال 0.6 ثانية، نعتبره جاهز
+    # ── ACK-gate state ────────────────────────────────────────────────
+    arduino_ready  = True   # True = OK to send CMD:ANGLE
+    ready_sent_at  = 0.0    # timestamp of last CMD:ANGLE send (for timeout)
+    pending_action = None   # latest decision accumulated while gate is closed
+    pending_angle  = 0      # latest angle accumulated while gate is closed
 
     print("[MAIN] Navigation running. Press Ctrl+C to stop.\n")
 
     while True:
         t0   = time.time()
         scan = scanner.get_scan()
-        rx   = drain_rx(ser)
 
+        # ── Always drain RX — needed to receive ACK ───────────────────
+        rx  = drain_rx(ser)
         now = time.time()
 
-        # ── Parse Arduino feedback ────────────────────────────────────
+        # ── Parse Arduino lock feedback ───────────────────────────────
         if 'LOCKED_LEFT' in rx:
             locked_dir = 'left';  lock_time = now
         elif 'LOCKED_RIGHT' in rx:
@@ -268,67 +271,81 @@ def main():
         elif any(k in rx for k in ('REACHED', 'AT_TARGET', 'UNLOCKED', 'STOPPED', 'FREE')):
             locked_dir = None
 
-        # ══ جديد: اعتبر الأردوينو جاهز إذا أرسل READY أو AT_TARGET أو REACHED ══
-        if any(k in rx for k in ('READY', 'AT_TARGET', 'REACHED', 'INTERRUPTED')):
+        # ── ACK: mark Arduino ready ───────────────────────────────────
+        if any(k in rx for k in ('REACHED', 'AT_TARGET', 'READY', 'INTERRUPTED')):
+            if not arduino_ready:
+                print("[ACK] Arduino ready")
             arduino_ready = True
-            print("[ACK] Arduino ready")
 
-        # ══ جديد: timeout — إذا ما جاء رد خلال READY_TIMEOUT_SEC نعتبره جاهز ══
-        if not arduino_ready and (now - ready_timeout) > READY_TIMEOUT_SEC:
-            arduino_ready = True
+        # ── Timeout: force ready if ACK never arrived ─────────────────
+        if not arduino_ready and (now - ready_sent_at) > READY_TIMEOUT_SEC:
             print("[ACK] Timeout — assuming ready")
+            arduino_ready = True
 
+        # ── Auto-unlock motor after lock delay ────────────────────────
         if locked_dir and (now - lock_time) > LOCK_UNLOCK_DELAY:
             send(ser, "CMD:UNLOCK")
             locked_dir = None
 
+        # ── Run navigation decision every tick ────────────────────────
         action, raw_angle = decide(scan)
 
+        # ── STOP holdoff ──────────────────────────────────────────────
         if action == 'STOP':
             stop_until = now + STOP_HOLD_SEC
         if now < stop_until:
             action, raw_angle = 'STOP', 0
 
+        # ── EMA smoothing + clear-path hysteresis ─────────────────────
         if action == 'STEER':
             clear_count    = 0
             smoothed_angle = SMOOTH_ALPHA * raw_angle + (1 - SMOOTH_ALPHA) * smoothed_angle
         elif action == 'CENTER':
             clear_count += 1
             if clear_count >= CLEAR_FRAMES_CTR:
-                smoothed_angle = (1 - SMOOTH_ALPHA) * smoothed_angle
+                smoothed_angle = (1 - SMOOTH_ALPHA) * smoothed_angle  # decay toward 0
 
         angle = int(round(smoothed_angle)) if action in ('STEER', 'CENTER') else raw_angle
 
+        # ── Respect motor lock direction ──────────────────────────────
         if   locked_dir == 'right' and angle > 0: angle = 0
         elif locked_dir == 'left'  and angle < 0: angle = 0
 
-        cmd_str = None
-
+        # ── STOP bypass: always send immediately, skip gate ───────────
         if action == 'STOP':
             if last_action != 'STOP':
-                cmd_str = "CMD:STOP"
+                send(ser, "CMD:STOP")
+            # STOP does not require an ACK — keep gate open
+            arduino_ready  = True
+            pending_action = None
+            last_action    = 'STOP'
+            elapsed = time.time() - t0
+            spare   = interval - elapsed
+            if spare > 0:
+                time.sleep(spare)
+            continue
 
-        elif action in ('STEER', 'CENTER'):
-            if (last_angle_sent is None or
-                    abs(angle - last_angle_sent) > ANGLE_DEAD_BAND):
-                cmd_str = f"CMD:ANGLE:{angle}"
-                last_angle_sent = angle
+        # ── Accumulate latest decision while gate is closed ───────────
+        pending_action = action
+        pending_angle  = angle
 
-        elif action == 'NODATA':
-            if last_action != 'NODATA':
-                print("[NAV] WARNING: no LiDAR data — holding position")
-
-        # ══ جديد: أرسل فقط إذا الأردوينو جاهز ══
-        # STOP هو استثناء — يُرسل دائماً بغض النظر عن الجاهزية
-        if cmd_str:
-            if action == 'STOP' or arduino_ready:
-                send(ser, cmd_str)
-                if action != 'STOP':
-                    arduino_ready = False    # انتظر READY من الأردوينو
-                    ready_timeout = now      # ابدأ عد الـ timeout
+        # ── On ACK: evaluate pending and send if worthwhile ───────────
+        if arduino_ready and pending_action is not None:
+            if pending_action in ('STEER', 'CENTER'):
+                if (last_angle_sent is None or
+                        abs(pending_angle - last_angle_sent) > ANGLE_DEAD_BAND):
+                    send(ser, f"CMD:ANGLE:{pending_angle}")
+                    last_angle_sent = pending_angle
+                    arduino_ready   = False   # wait for next ACK
+                    ready_sent_at   = now
+            elif pending_action == 'NODATA':
+                if last_action != 'NODATA':
+                    print("[NAV] WARNING: no LiDAR data — holding position")
+            pending_action = None
 
         last_action = action
 
+        # ── Sleep to maintain LOOP_HZ ────────────────────────────────
         elapsed = time.time() - t0
         spare   = interval - elapsed
         if spare > 0:

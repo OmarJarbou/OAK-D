@@ -1,0 +1,37 @@
+Context:
+Smart Walker project. Raspberry Pi runs LiDAR obstacle avoidance (main.py + navigator.py). Arduino Mega controls a stepper motor for steering (arduino-code.ino). They communicate over UART Serial1 at 115200 baud.
+Current problem:
+The Pi sends steering commands at 10Hz continuously. The Arduino interrupts mid-movement when a new command arrives (STATUS:INTERRUPTED). This causes the stepper to never complete a movement, accumulate position errors, and eventually drift to the mechanical limit.
+Desired architecture — implement exactly this:
+Arduino side (no changes needed):
+
+Already sends STATUS:REACHED, STATUS:AT_TARGET, or STATUS:READY when movement completes
+Already sends STATUS:INTERRUPTED when a new command interrupts movement
+Already sends STATUS:STOPPED on emergency stop
+
+Pi side (main.py) — full rewrite of the control loop:
+
+Gate: Pi must NOT send any CMD:ANGLE unless arduino_ready == True
+ACK tracking: Set arduino_ready = False immediately after sending CMD:ANGLE. Set arduino_ready = True only when receiving STATUS:REACHED, STATUS:AT_TARGET, STATUS:READY, or STATUS:INTERRUPTED
+Decision accumulation: While arduino_ready == False, keep running decide(scan) every loop tick and store the result in pending_action and pending_angle — overwrite every tick (keep only the latest)
+Command selection on ACK: When arduino_ready becomes True, evaluate pending_action:
+
+If pending_action == 'STOP' → send CMD:STOP immediately regardless of anything
+If pending_action == 'STEER' or 'CENTER' → send CMD:ANGLE:<pending_angle> only if abs(pending_angle - last_angle_sent) > ANGLE_DEAD_BAND
+If pending_action == 'NODATA' → do nothing, hold position
+
+
+STOP exception: CMD:STOP bypasses the gate entirely — always send immediately when decide() returns 'STOP', regardless of arduino_ready
+Timeout: If arduino_ready has been False for more than READY_TIMEOUT_SEC = 2.0 seconds, force arduino_ready = True and log a warning
+Keep existing EMA smoothing (SMOOTH_ALPHA), lock handling (locked_dir), and stop_until holdoff logic
+Keep drain_rx() running every loop tick regardless of gate state — needed to receive the ACK
+
+Key constants to use:
+pythonLOOP_HZ           = 10
+ANGLE_DEAD_BAND   = 10
+STOP_HOLD_SEC     = 0.8
+SMOOTH_ALPHA      = 0.35
+CLEAR_FRAMES_CTR  = 4
+LOCK_UNLOCK_DELAY = 1.5
+READY_TIMEOUT_SEC = 2.0
+Deliverable: Rewrite only the main() function in main.py. Keep all imports, constants, send(), and drain_rx() unchanged.
