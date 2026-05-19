@@ -10,11 +10,12 @@
 ------------------
 بس نعمل authorization  عالاردوينو بدون ما نشغل كود الرازبري  برجع للسينتر مية بالمية.
 ------------------
-(oak2-env) lama@Lama-pi:~/OAK-D/lidar-nav $ python main.py 
+(oak2-env) lama@Lama-pi:~/OAK-D/lidar-nav $ python main.py
 === Smart Walker Ã¢ LiDAR Navigator ===
 [SERIAL] /dev/serial0 @ 115200 baud  OK
 [LIDAR]  /dev/ttyUSB0 @ 460800 baud  OK
 [AUTH] Waiting for RFID authorization (scan your card)Ã¢Â¦
+[RX] 
 [RX] STATUS:AUTHORIZED
 [AUTH] Authorized Ã¢
 [AUTH] Waiting for motor READYÃ¢Â¦
@@ -26,8 +27,11 @@
 [RX] STATUS:ASSIST
 [AUTH] ASSIST mode active Ã¢
 
-[AUTH] Waiting for stop sequence to completeÃ¢Â¦
-[AUTH] WARNING: sequence timeout Ã¢ starting navigation anyway
+[AUTH] Forcing center positionÃ¢Â¦
+[TX] CMD:GO:CENTER
+[RX] STATUS:MOVING:CENTER
+[RX] STATUS:AT_TARGET
+[AUTH] Centered Ã¢ Ã¢ starting navigation
 
 [MAIN] Navigation running. Press Ctrl+C to stop.
 
@@ -35,8 +39,6 @@
 [RX] STATUS:AT_TARGET
 [RX] STATUS:READY
 [ACK] Arduino ready
-^C
-[MAIN] Shutting downÃ¢Â¦
-[TX] CMD:FREE
---------------------
+----------------------------
 بينما لما اشغل كود الرازبري برجعش للسينتر بل بروح لزاوية يسار شوي.
+لسا نفس المشكلة, اللي بحيرني انو دايما برجع لنفس الزاوية الغريبة (شوية يسار) بس اعمل auth وكود الرازبري شغال.

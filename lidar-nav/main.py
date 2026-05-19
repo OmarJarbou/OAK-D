@@ -44,7 +44,7 @@ LIDAR_BAUD   = 460800
 LOOP_HZ          = 10    # steering decisions per second
 ANGLE_DEAD_BAND  =  10    # don't resend if angle changed by less than this
 STOP_HOLD_SEC    =  0.8  # hold CMD:STOP for this long before re-evaluating
-SMOOTH_ALPHA     =  0.35 # EMA weight for new angle (lower = smoother, 0 = frozen)
+SMOOTH_ALPHA     =  0.45 # EMA weight for new angle (raised: faster recovery from STOP drift)
 CLEAR_FRAMES_CTR =  4    # consecutive CENTER frames before decaying toward 0
 LOCK_UNLOCK_DELAY = 1.5  # seconds: auto-send CMD:UNLOCK after a motor lock
 READY_TIMEOUT_SEC = 2.0  # if no ACK arrives within this time, force arduino_ready = True
@@ -176,6 +176,16 @@ def main():
     pending_action = None   # latest decision accumulated while gate is closed
     pending_angle  = 0      # latest angle accumulated while gate is closed
 
+    # ── LiDAR warmup — let scanner stabilize before first decision ───────
+    WARMUP_SEC = 2.0
+    print(f"[MAIN] LiDAR warmup ({WARMUP_SEC}s)…")
+    warmup_end = time.time() + WARMUP_SEC
+    while time.time() < warmup_end:
+        drain_rx(ser)          # keep RX clear
+        time.sleep(0.05)
+    # Reset smoothed state after warmup so stale noisy scans don't bias us
+    smoothed_angle = 0.0
+    clear_count    = 0
     print("[MAIN] Navigation running. Press Ctrl+C to stop.\n")
 
     while True:
@@ -239,9 +249,10 @@ def main():
             if last_action != 'STOP':
                 send(ser, "CMD:STOP")
             # STOP does not require an ACK — keep gate open
-            arduino_ready  = True
-            pending_action = None
-            last_action    = 'STOP'
+            arduino_ready   = True
+            pending_action  = None
+            last_angle_sent = None   # force re-send after STOP ends (don't trap in deadband)
+            last_action     = 'STOP'
             elapsed = time.time() - t0
             spare   = interval - elapsed
             if spare > 0:
