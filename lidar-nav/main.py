@@ -109,8 +109,37 @@ def main():
     signal.signal(signal.SIGINT,  shutdown)
     signal.signal(signal.SIGTERM, shutdown)
 
+    # ── Wait for RFID authorization ───────────────────────────────────
+    print("[AUTH] Waiting for RFID authorization (scan your card)…")
+    while True:
+        rx = drain_rx(ser)
+        if 'AUTHORIZED' in rx:
+            print("[AUTH] Authorized ✓")
+            break
+        time.sleep(0.05)
+
+    # ── Wait for motor IDLE (STATUS:FREE) ────────────────────────────
+    print("[AUTH] Waiting for motor READY…")
+    while True:
+        rx = drain_rx(ser)
+        if 'FREE' in rx or 'READY' in rx:
+            print("[AUTH] Motor idle ✓")
+            break
+        time.sleep(0.05)
+
+    # ── Engage motor and wait for STATUS:ASSIST ───────────────────────
+    print("[AUTH] Entering ASSIST mode…")
     send(ser, "CMD:ASSIST")
-    time.sleep(0.2)
+    t_assist = time.time()
+    while True:
+        rx = drain_rx(ser)
+        if 'ASSIST' in rx:
+            print("[AUTH] ASSIST mode active ✓\n")
+            break
+        if time.time() - t_assist > 3.0:
+            print("[AUTH] WARNING: no STATUS:ASSIST received — continuing anyway")
+            break
+        time.sleep(0.05)
 
     # ── State variables ───────────────────────────────────────────────
     last_action      = None
