@@ -140,8 +140,24 @@ def main():
             print("[AUTH] WARNING: no STATUS:ASSIST received — continuing anyway")
             break
         time.sleep(0.05)
+    # ── Wait for stopAuthSequence to complete ────────────────────────
+    # Arduino sends STATUS:REACHED + STATUS:READY after centering the stepper.
+    # Must wait for this before entering the nav loop, otherwise CMD:ANGLE
+    # is fired while the motor is still running the center sequence.
+    print("[AUTH] Waiting for stop sequence to complete…")
+    t_seq = time.time()
+    while True:
+        rx = drain_rx(ser)
+        if any(k in rx for k in ('REACHED', 'READY', 'FREE')):
+            print("[AUTH] Sequence complete ✓ — starting navigation\n")
+            break
+        if time.time() - t_seq > 5.0:
+            print("[AUTH] WARNING: sequence timeout — starting navigation anyway\n")
+            break
+        time.sleep(0.05)
 
     # ── State variables ───────────────────────────────────────────────
+
     last_action      = None
     last_angle_sent  = None
     stop_until       = 0.0
