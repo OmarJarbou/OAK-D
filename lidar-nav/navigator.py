@@ -26,7 +26,7 @@ Return value of decide():
 """
 
 # ── Mounting ───────────────────────────────────────────────────────────
-FRONT_HEADING  = 180    # sensor angle that points directly FORWARD
+FRONT_HEADING  = 0    # sensor angle that points directly FORWARD
 
 # ── Arc widths (half-widths in degrees) ───────────────────────────────
 FRONT_HALF_W   = 35     # ±35° → 70° total front arc
