@@ -13,6 +13,7 @@ Angle convention from the sensor:
 from asyncio import timeouts
 import threading
 from rplidar import RPLidar
+import time
 
 # ── Hardware defaults ──────────────────────────────────────────────────
 DEFAULT_PORT     = '/dev/ttyUSB0'   # RPLIDAR C1 on Pi  (adjust if needed)

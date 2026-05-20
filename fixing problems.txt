@@ -1,21 +1,125 @@
---------------------------------------------
-[RFID] UID: D3 60 EA 1A 
-[RFID] Authorized - system unlocked
-[AUTH] Sequence started
-[AUTH] Cycle done: 1
-[AUTH] Cycle done: 2
-[STEER] Reached. potADC=564 target=560 steps=214
-[STEER] FREE MODE - wheel released
-[AUTH] Sequence finished
-------------------
-بس نعمل authorization  عالاردوينو بدون ما نشغل كود الرازبري  برجع للسينتر مية بالمية.
-------------------
+-------------------------------------------- 
+[RFID] UID: D3 60 EA 1A  
+[RFID] Authorized - system unlocked 
+[AUTH] Sequence started 
+[AUTH] Cycle done: 1 
+[AUTH] Cycle done: 2 
+[STEER] Reached. potADC=564 target=560 steps=214 
+[STEER] FREE MODE - wheel released 
+[AUTH] Sequence finished 
+--------------------
+بس نعمل authorization  عالاردوينو بدون ما نشغل كود المشروع على الرازبري  برجع للسينتر فيزيكلي مية بالمية بغض النظر وين كانت الزاوية.
+--------------------
+وكذلك بس نشغل هاد السكريبت على الرازبري بتحرك للزوايا فيزيكلي مية بالمية:
+python3 - <<'PY'
+import serial
+import time
+
+angles = [0, 50, 100, 50, 0, -50, -100, -50, 0]
+
+s = serial.Serial('/dev/serial0', 115200, timeout=0.1)
+
+print("Waiting Arduino boot...")
+time.sleep(2)
+
+# =========================================================
+# WAIT FOR RFID AUTH + READY
+# =========================================================
+
+authorized = False
+ready = False
+
+print("Waiting for STATUS:AUTHORIZED + STATUS:FREE ...")
+
+while True:
+    if s.in_waiting:
+        line = s.readline().decode(errors='ignore').strip()
+
+        if line:
+            print("RX:", line)
+
+        if line == "STATUS:AUTHORIZED":
+            authorized = True
+
+        if authorized and line == "STATUS:FREE":
+            ready = True
+            break
+
+print("\nArduino READY\n")
+
+# =========================================================
+# ENTER ASSIST MODE
+# =========================================================
+
+print("TX: CMD:ASSIST")
+s.write(b'CMD:ASSIST\n')
+
+assist_ok = False
+t0 = time.time()
+
+while time.time() - t0 < 3:
+    if s.in_waiting:
+        line = s.readline().decode(errors='ignore').strip()
+
+        if line:
+            print("RX:", line)
+
+        if line == "STATUS:ASSIST":
+            assist_ok = True
+            break
+
+if not assist_ok:
+    print("Failed to enter ASSIST mode")
+    s.close()
+    raise SystemExit
+
+print("\nASSIST MODE ACTIVE\n")
+
+# =========================================================
+# SEND ANGLES
+# =========================================================
+
+for angle in angles:
+
+    cmd = f'CMD:ANGLE:{angle}\n'
+
+    print("TX:", cmd.strip())
+
+    s.write(cmd.encode())
+
+    t0 = time.time()
+
+    while time.time() - t0 < 3:
+
+        if s.in_waiting:
+
+            line = s.readline().decode(errors='ignore').strip()
+
+            if line:
+                print("RX:", line)
+
+            # stop reading when movement cycle ends
+            if line in [
+                "STATUS:REACHED",
+                "STATUS:AT_TARGET",
+                "STATUS:LOCKED_LEFT",
+                "STATUS:LOCKED_RIGHT",
+                "STATUS:OUT_OF_RANGE"
+            ]:
+                break
+
+    time.sleep(1)
+
+s.close()
+
+print("\nDONE")
+PY
+---------------------------
 (oak2-env) lama@Lama-pi:~/OAK-D/lidar-nav $ python main.py
 === Smart Walker Ã¢ LiDAR Navigator ===
 [SERIAL] /dev/serial0 @ 115200 baud  OK
 [LIDAR]  /dev/ttyUSB0 @ 460800 baud  OK
 [AUTH] Waiting for RFID authorization (scan your card)Ã¢Â¦
-[RX] 
 [RX] STATUS:AUTHORIZED
 [AUTH] Authorized Ã¢
 [AUTH] Waiting for motor READYÃ¢Â¦
@@ -26,19 +130,115 @@
 [TX] CMD:ASSIST
 [RX] STATUS:ASSIST
 [AUTH] ASSIST mode active Ã¢
-
 [AUTH] Forcing center positionÃ¢Â¦
 [TX] CMD:GO:CENTER
 [RX] STATUS:MOVING:CENTER
 [RX] STATUS:AT_TARGET
 [AUTH] Centered Ã¢ Ã¢ starting navigation
-
 [MAIN] Navigation running. Press Ctrl+C to stop.
-
 [TX] CMD:ANGLE:0
+[RX] STATUS:REACHED
+[RX] STATUS:READY
+[ACK] Arduino ready
+[TX] CMD:ANGLE:-18
+[TX] CMD:STOP
+[RX] STATUS:INTERRUPTED
+[RX] STATUS:READY
+[RX] STATUS:REACHED
+[RX] STATUS:READY
+[TX] CMD:ANGLE:-33
+[RX] STATUS:REACHED
+[RX] STATUS:READY
+[ACK] Arduino ready
+[TX] CMD:ANGLE:-20
 [RX] STATUS:AT_TARGET
 [RX] STATUS:READY
 [ACK] Arduino ready
-----------------------------
-بينما لما اشغل كود الرازبري برجعش للسينتر بل بروح لزاوية يسار شوي.
-لسا نفس المشكلة, اللي بحيرني انو دايما برجع لنفس الزاوية الغريبة (شوية يسار) بس اعمل auth وكود الرازبري شغال.
+[TX] CMD:ANGLE:-31
+[RX] STATUS:AT_TARGET
+[RX] STATUS:READY
+[ACK] Arduino ready
+[TX] CMD:ANGLE:-46
+[RX] STATUS:REACHED
+[RX] STATUS:READY
+[ACK] Arduino ready
+[TX] CMD:ANGLE:-6
+[TX] CMD:STOP
+[RX] STATUS:INTERRUPTED
+[RX] STATUS:READY
+[RX] STATUS:REACHED
+[RX] STATUS:READY
+[TX] CMD:ANGLE:-18
+[RX] STATUS:AT_TARGET
+[RX] STATUS:READY
+[ACK] Arduino ready
+[TX] CMD:ANGLE:-35
+[RX] STATUS:REACHED
+[RX] STATUS:READY
+[ACK] Arduino ready
+[TX] CMD:ANGLE:39
+[TX] CMD:STOP
+[RX] STATUS:INTERRUPTED
+[RX] STATUS:READY
+[RX] STATUS:REACHED
+[RX] STATUS:READY
+[TX] CMD:ANGLE:68
+[RX] STATUS:REACHED
+[RX] STATUS:READY
+[ACK] Arduino ready
+[TX] CMD:ANGLE:29
+[RX] STATUS:REACHED
+[RX] STATUS:READY
+[ACK] Arduino ready
+[TX] CMD:ANGLE:5
+[RX] STATUS:REACHED
+[RX] STATUS:READY
+[ACK] Arduino ready
+[TX] CMD:ANGLE:24
+[RX] STATUS:REACHED
+[RX] STATUS:READY
+[ACK] Arduino ready
+[TX] CMD:ANGLE:51
+[TX] CMD:STOP
+[RX] STATUS:INTERRUPTED
+[RX] STATUS:READY
+[RX] STATUS:REACHED
+[RX] STATUS:READY
+[TX] CMD:ANGLE:37
+[RX] STATUS:REACHED
+[RX] STATUS:READY
+[ACK] Arduino ready
+[TX] CMD:ANGLE:24
+[RX] STATUS:REACHED
+[RX] STATUS:READY
+[ACK] Arduino ready
+[TX] CMD:ANGLE:10
+[RX] STATUS:REACHED
+[RX] STATUS:READY
+[ACK] Arduino ready
+[TX] CMD:ANGLE:-5
+[RX] STATUS:REACHED
+[RX] STATUS:READY
+[ACK] Arduino ready
+[TX] CMD:ANGLE:-20
+[RX] STATUS:REACHED
+[RX] STATUS:READY
+[ACK] Arduino ready
+[TX] CMD:ANGLE:-32
+[RX] STATUS:REACHED
+[RX] STATUS:READY
+[ACK] Arduino ready
+[TX] CMD:ANGLE:-43
+[RX] STATUS:REACHED
+[RX] STATUS:READY
+[ACK] Arduino ready
+[RX] Ã¯Â¿Â½0
+[TX] CMD:ANGLE:-32
+[ACK] Timeout Ã¢ assuming ready
+[TX] CMD:ANGLE:-5
+^C
+[MAIN] Shutting downÃ¢Â¦
+[TX] CMD:FREE
+(oak2-env) lama@Lama-pi:~/OAK-D/lidar-nav $ python main.py
+------------------------
+ بينما لما اشغل كود المشروع على الرازبري برجعش للسينتر بل داااايما بروح لزاوية ثابتة يسار شوي بغض النظر وين كانت العجلة مبدأيا. جربت اكثر من حل ولسا نفس المشكلة, اللي بحيرني انو دايما برجع لنفس الزاوية الغريبة (شوية يسار) بس اعمل auth وكود الرازبري شغال.

@@ -188,6 +188,11 @@ def main():
     clear_count    = 0
     print("[MAIN] Navigation running. Press Ctrl+C to stop.\n")
 
+    scan = scanner.get_scan()
+    if scan:
+        min_angle = min(scan, key=scan.get)
+        print(f"Closest point: angle={min_angle}, distance={scan[min_angle]}mm")
+
     while True:
         t0   = time.time()
         scan = scanner.get_scan()
