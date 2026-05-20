@@ -75,6 +75,21 @@ def drain_rx(ser: serial.Serial) -> str:
     return ' '.join(lines)   # ← كل الأسطر في string واحد
 
 
+def query_pot(ser: serial.Serial, timeout: float = 2.0):
+    send(ser, "CMD:POT")
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        rx = drain_rx(ser)
+        for token in rx.split():
+            if token.startswith("STATUS:POT:"):
+                try:
+                    return int(token.split(":", 2)[2])
+                except ValueError:
+                    pass
+        time.sleep(0.05)
+    return None
+
+
 def main():
     print("=== Smart Walker — LiDAR Navigator ===")
 
@@ -110,68 +125,41 @@ def main():
     signal.signal(signal.SIGTERM, shutdown)
 
     # ── Wait for RFID authorization ───────────────────────────────────
-    print("[AUTH] Waiting for RFID authorization (scan your card)…")
+    print("[AUTH] Waiting for RFID authorization…")
     while True:
         rx = drain_rx(ser)
         if 'AUTHORIZED' in rx:
-            print("[AUTH] Authorized ✓")
+            print("[AUTH] Card accepted ✓")
             break
         time.sleep(0.05)
 
-    # ── Wait for motor IDLE (STATUS:FREE) ────────────────────────────
-    print("[AUTH] Waiting for motor READY…")
+    # ── Wait for AUTH_DONE (Arduino finished brake sequence + centered) ─
+    print("[AUTH] Waiting for auth sequence to finish…")
     while True:
         rx = drain_rx(ser)
-        if 'FREE' in rx or 'READY' in rx:
-            print("[AUTH] Motor idle ✓")
+        if 'AUTH_DONE' in rx:
+            print("[AUTH] Arduino at center in ASSIST ✓")
             break
         time.sleep(0.05)
 
-    # ── Engage motor and wait for STATUS:ASSIST ───────────────────────
-    print("[AUTH] Entering ASSIST mode…")
-    send(ser, "CMD:ASSIST")
-    t_assist = time.time()
+    # ── Arduino is already in ASSIST at CENTER — just confirm ─────────
+    # No need to send CMD:ASSIST again, Arduino is already there.
+    # Send CMD:ANGLE:0 to lock position before navigation starts.
+    print("[AUTH] Confirming center position…")
+    time.sleep(0.3)
+    send(ser, "CMD:ANGLE:0")
+    t_confirm = time.time()
     while True:
         rx = drain_rx(ser)
-        if 'ASSIST' in rx:
-            print("[AUTH] ASSIST mode active ✓\n")
+        if any(k in rx for k in ('READY', 'AT_TARGET', 'REACHED')):
+            print("[AUTH] Center confirmed ✓ — starting navigation\n")
             break
-        if time.time() - t_assist > 3.0:
-            print("[AUTH] WARNING: no STATUS:ASSIST received — continuing anyway")
-            break
-        time.sleep(0.05)
-    # ── Force re-center after ASSIST ─────────────────────────────────
-    # After FREE mode the wheel may have drifted slightly.
-    # CMD:ASSIST engages the motor but does NOT re-center.
-    # Send CMD:GO:CENTER explicitly so the Arduino runs a pot-based
-    # centering move (identical to stopAuthSequence) and confirms with
-    # STATUS:REACHED or STATUS:AT_TARGET before we start navigation.
-    print("[AUTH] Forcing center position…")
-    send(ser, "CMD:GO:CENTER")
-    t_center = time.time()
-    while True:
-        rx = drain_rx(ser)
-        if any(k in rx for k in ('REACHED', 'AT_TARGET')):
-            print("[AUTH] Centered ✓ — starting navigation\n")
-            # Re-affirm center using the Arduino's stored center position.
-            # This prevents the first navigation cycle from drifting before
-            # the system has a stable reference.
-            for _ in range(3):
-                send(ser, "CMD:ANGLE:0")
-                time.sleep(0.05)
-            t_ready = time.time()
-            while time.time() - t_ready < 2.0:
-                rx2 = drain_rx(ser)
-                if any(k in rx2 for k in ('READY', 'AT_TARGET', 'REACHED')):
-                    print("[AUTH] Arduino ready after center")
-                    break
-                time.sleep(0.05)
-            drain_rx(ser)
-            break
-        if time.time() - t_center > 5.0:
-            print("[AUTH] WARNING: center timeout — starting navigation anyway\n")
+        if time.time() - t_confirm > 3.0:
+            print("[AUTH] WARNING: no confirm — starting anyway\n")
             break
         time.sleep(0.05)
+
+    drain_rx(ser)
 
     # ── State variables ───────────────────────────────────────────────
 
