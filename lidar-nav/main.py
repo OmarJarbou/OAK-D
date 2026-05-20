@@ -95,6 +95,8 @@ def main():
 
     try:
         ser = serial.Serial(SERIAL_PORT, SERIAL_BAUD, timeout=0.05)
+        ser.dtr = False  
+        ser.rts = False   
         time.sleep(2)
         print(f"[SERIAL] {SERIAL_PORT} @ {SERIAL_BAUD} baud  OK")
     except serial.SerialException as exc:
@@ -134,28 +136,38 @@ def main():
         time.sleep(0.05)
 
     # ── Wait for AUTH_DONE (Arduino finished brake sequence + centered) ─
-    print("[AUTH] Waiting for auth sequence to finish…")
+    print("[AUTH] Waiting for auth sequence to finish...")
     while True:
         rx = drain_rx(ser)
-        if 'AUTH_DONE' in rx:
-            print("[AUTH] Arduino at center in ASSIST ✓")
+        if 'AUTHORIZED_READY' in rx or 'AUTH_DONE' in rx:
+            print("[AUTH] Auth sequence complete")
             break
-        time.sleep(0.05)
+        time.sleep(0.1)
 
-    # ── Arduino is already in ASSIST at CENTER — just confirm ─────────
-    # No need to send CMD:ASSIST again, Arduino is already there.
-    # Send CMD:ANGLE:0 to lock position before navigation starts.
-    print("[AUTH] Confirming center position…")
-    time.sleep(0.3)
+    time.sleep(0.5)
+    print("[AUTH] Confirming center position...")
     send(ser, "CMD:ANGLE:0")
     t_confirm = time.time()
     while True:
         rx = drain_rx(ser)
         if any(k in rx for k in ('READY', 'AT_TARGET', 'REACHED')):
-            print("[AUTH] Center confirmed ✓ — starting navigation\n")
+            print("[AUTH] Center confirmed - starting navigation\n")
             break
-        if time.time() - t_confirm > 3.0:
-            print("[AUTH] WARNING: no confirm — starting anyway\n")
+        if time.time() - t_confirm > 5.0:
+            print("[AUTH] WARNING: no confirm - starting anyway\n")
+            break
+        time.sleep(0.05)
+
+    print("[AUTH] Confirming center position...")
+    send(ser, "CMD:ANGLE:0")
+    t_confirm = time.time()
+    while True:
+        rx = drain_rx(ser)
+        if any(k in rx for k in ('READY', 'AT_TARGET', 'REACHED')):
+            print("[AUTH] Center confirmed - starting navigation\n")
+            break
+        if time.time() - t_confirm > 5.0:
+            print("[AUTH] WARNING: no confirm - starting anyway\n")
             break
         time.sleep(0.05)
 
@@ -179,7 +191,7 @@ def main():
     pending_angle  = 0      # latest angle accumulated while gate is closed
 
     # ── LiDAR warmup — let scanner stabilize before first decision ───────
-    WARMUP_SEC = 2.0
+    WARMUP_SEC = 5.0
     print(f"[MAIN] LiDAR warmup ({WARMUP_SEC}s)…")
     warmup_end = time.time() + WARMUP_SEC
     while time.time() < warmup_end:
@@ -193,7 +205,7 @@ def main():
     while True:
         t0   = time.time()
         scan = scanner.get_scan()
-
+        print(f"[DEBUG] scan size: {len(scan)}")
         # ── Always drain RX — needed to receive ACK ───────────────────
         rx  = drain_rx(ser)
         now = time.time()
@@ -223,7 +235,10 @@ def main():
             locked_dir = None
 
         # ── Run navigation decision every tick ────────────────────────
-        action, raw_angle = decide(scan)
+        if not arduino_ready or last_angle_sent is None:
+           action, raw_angle = 'CENTER', 0
+        else:
+           action, raw_angle = decide(scan)
 
         # ── STOP holdoff ──────────────────────────────────────────────
         if action == 'STOP':

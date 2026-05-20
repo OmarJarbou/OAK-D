@@ -33,8 +33,8 @@ FRONT_HALF_W   = 60     # ±35° → 70° total front arc
 SIDE_HALF_W    = 40     # ±40° → 80° total side arc (for free-space check)
 
 # ── Distance thresholds (mm) ──────────────────────────────────────────
-STOP_MM        = 350    # < 35 cm  → emergency stop
-DANGER_MM      = 750    # < 75 cm  → start steering away
+STOP_MM        = 250    # < 35 cm  → emergency stop
+DANGER_MM      = 1200    # < 75 cm  → start steering away
 
 # ── Steering output ───────────────────────────────────────────────────
 MAX_STEER      = 90     # maximum |angle| sent (out of 100)
@@ -74,20 +74,23 @@ def _arc_points(scan: dict, logical_center_deg: int, half_width: int) -> list:
 
 
 # ── Main decision function ─────────────────────────────────────────────
-
 def decide(scan: dict) -> tuple:
-    """
-    Returns (action, angle):
-      action : 'STOP' | 'STEER' | 'CENTER' | 'NODATA'
-      angle  : int  -100..+100   (negative=steer left, positive=steer right)
-    """
     if not scan:
+        print("[DEBUG] scan empty - NODATA")
         return ('NODATA', 0)
 
-    front_points = _arc_points(scan, 0, FRONT_HALF_W)
+    angles = sorted(scan.keys())
+    print(f"[DEBUG] total points: {len(scan)}")
+    print(f"[DEBUG] angle range: {angles[0]} to {angles[-1]} deg")
+    print(f"[DEBUG] closest overall: angle={min(scan, key=scan.get)} deg, dist={min(scan.values()):.0f}mm")
 
-    if not front_points:
-        return ('CENTER', 0)
+    front_points = _arc_points(scan, 0, FRONT_HALF_W)
+    print(f"[DEBUG] front arc points (+-{FRONT_HALF_W} around {FRONT_HEADING}): {len(front_points)}")
+
+    if front_points:
+        closest = min(front_points, key=lambda x: x[1])
+        print(f"[DEBUG] closest in front: angle={closest[0]} deg, dist={closest[1]:.0f}mm")
+
 
     front_min_dist  = min(d for _, d in front_points)
     front_min_angle = min(front_points, key=lambda x: x[1])[0]

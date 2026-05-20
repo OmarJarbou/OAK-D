@@ -9,10 +9,10 @@ Angle convention from the sensor:
   Angles increase clockwise when viewed from above.
   Use FRONT_HEADING in navigator.py to compensate for mounting direction.
 """
-
-from asyncio import timeouts
 import threading
+import time
 from rplidar import RPLidar
+
 
 # ── Hardware defaults ──────────────────────────────────────────────────
 DEFAULT_PORT     = '/dev/ttyUSB0'   # RPLIDAR C1 on Pi  (adjust if needed)
