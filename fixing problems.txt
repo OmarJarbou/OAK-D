@@ -42,3 +42,8 @@
 ----------------------------
 بينما لما اشغل كود الرازبري برجعش للسينتر بل بروح لزاوية يسار شوي.
 لسا نفس المشكلة, اللي بحيرني انو دايما برجع لنفس الزاوية الغريبة (شوية يسار) بس اعمل auth وكود الرازبري شغال.
+
+when we test Arduino code from the serial to test center left right :it run well 
+but in the lidar-nav project ,we need when the system autharized the angle goes to center ,but it goes to the angle to the left ,why?
+what is the problem?
+please find the isuue 

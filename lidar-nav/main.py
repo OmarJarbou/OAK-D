@@ -153,6 +153,13 @@ def main():
         rx = drain_rx(ser)
         if any(k in rx for k in ('REACHED', 'AT_TARGET')):
             print("[AUTH] Centered ✓ — starting navigation\n")
+            # Re-affirm center using the Arduino's stored center position.
+            # This prevents the first navigation cycle from drifting before
+            # the system has a stable reference.
+            for _ in range(3):
+                send(ser, "CMD:ANGLE:0")
+                time.sleep(0.05)
+            drain_rx(ser)
             break
         if time.time() - t_center > 5.0:
             print("[AUTH] WARNING: center timeout — starting navigation anyway\n")
@@ -162,7 +169,7 @@ def main():
     # ── State variables ───────────────────────────────────────────────
 
     last_action      = None
-    last_angle_sent  = None
+    last_angle_sent  = 0
     stop_until       = 0.0
     smoothed_angle   = 0.0
     clear_count      = 0
