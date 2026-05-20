@@ -1,15 +1,3 @@
---------------------------------------------
-[RFID] UID: D3 60 EA 1A 
-[RFID] Authorized - system unlocked
-[AUTH] Sequence started
-[AUTH] Cycle done: 1
-[AUTH] Cycle done: 2
-[STEER] Reached. potADC=564 target=560 steps=214
-[STEER] FREE MODE - wheel released
-[AUTH] Sequence finished
-------------------
-بس نعمل authorization  عالاردوينو بدون ما نشغل كود الرازبري  برجع للسينتر مية بالمية.
-------------------
 (oak2-env) lama@Lama-pi:~/OAK-D/lidar-nav $ python main.py
 === Smart Walker Ã¢ LiDAR Navigator ===
 [SERIAL] /dev/serial0 @ 115200 baud  OK
@@ -19,11 +7,15 @@
 [RX] STATUS:AUTHORIZED
 [AUTH] Authorized Ã¢
 [AUTH] Waiting for motor READYÃ¢Â¦
+[RX] BANK:50 ILS
+[RX] BANK:REMOVED
+[RX] BANK:50 ILS
 [RX] STATUS:REACHED
 [RX] STATUS:FREE
 [AUTH] Motor idle Ã¢
 [AUTH] Entering ASSIST modeÃ¢Â¦
 [TX] CMD:ASSIST
+[RX] BANK:REMOVED
 [RX] STATUS:ASSIST
 [AUTH] ASSIST mode active Ã¢
 
@@ -33,12 +25,19 @@
 [RX] STATUS:AT_TARGET
 [AUTH] Centered Ã¢ Ã¢ starting navigation
 
+[MAIN] LiDAR warmup (2.0s)Ã¢Â¦
 [MAIN] Navigation running. Press Ctrl+C to stop.
 
-[TX] CMD:ANGLE:0
-[RX] STATUS:AT_TARGET
-[RX] STATUS:READY
-[ACK] Arduino ready
+Closest point: angle=253, distance=107.0mm
+[TX] CMD:STOP
+[RX] BANK:50 ILS
+[RX] STATUS:STOPPED
+[RX] BANK:REMOVED
+^C
+[MAIN] Shutting downÃ¢Â¦
+[LIDAR] Scan loop error: [Errno 9] Bad file descriptor
+[TX] CMD:FREE
+(oak2-env) lama@Lama-pi:~/OAK-D/lidar-nav $
 ----------------------------
 بينما لما اشغل كود الرازبري برجعش للسينتر بل بروح لزاوية يسار شوي.
 لسا نفس المشكلة, اللي بحيرني انو دايما برجع لنفس الزاوية الغريبة (شوية يسار) بس اعمل auth وكود الرازبري شغال.
@@ -47,3 +46,6 @@ when we test Arduino code from the serial to test center left right :it run well
 but in the lidar-nav project ,we need when the system autharized the angle goes to center ,but it goes to the angle to the left ,why?
 what is the problem?
 please find the isuue 
+
+كيف ممكن اخليه يوخد نفس الزاوية المخزنة في EEPROM Arduino?
+اوجد الحل 
