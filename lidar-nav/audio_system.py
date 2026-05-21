@@ -135,9 +135,9 @@ def pregenerate_sounds(force: bool = False):
             "-s", ESPEAK_SPEED,
             "-a", ESPEAK_AMP,
             "-w", str(out),
-            text,
         ]
-        result = subprocess.run(cmd, capture_output=True)
+        # مرّر النص عبر stdin لتجنب مشكلة encoding مع العربية
+        result = subprocess.run(cmd, input=text.encode("utf-8"), capture_output=True)
         if result.returncode == 0:
             print(f"[AUDIO] Generated: {out.name}  \"{text}\"")
             generated += 1
@@ -181,9 +181,9 @@ def _play_wav(path: Path):
 
 def _play_espeak_fallback(text: str):
     """Fallback: ينطق النص مباشرة إذا الملف غير موجود."""
-    cmd = ["espeak-ng", "-v", ESPEAK_VOICE, "-s", ESPEAK_SPEED, text]
+    cmd = ["espeak-ng", "-v", ESPEAK_VOICE, "-s", ESPEAK_SPEED]
     threading.Thread(
-        target=lambda: subprocess.run(cmd, capture_output=True),
+        target=lambda: subprocess.run(cmd, input=text.encode("utf-8"), capture_output=True),
         daemon=True
     ).start()
 
