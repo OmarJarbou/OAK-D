@@ -257,57 +257,21 @@ void startAuthSequence() {
   Serial.println("[AUTH] Sequence started");
 }
 
-// void stopAuthSequence(bool sendFreeStatus = true) {
-//   authSequenceActive     = false;
-//   authSequenceOutputOn   = false;
-//   authSequenceCyclesDone = 0;
-
-//   if (CENTER_ADC != -1) {
-//     currentMode = MODE_ASSIST;
-//     digitalWrite(EN_PIN, LOW);
-//     moveToADC(CENTER_ADC);
-//   }
-
-//   if (!authorized) {
-//     // Abort case (wrong card / de-auth): release motor fully
-//     setFreeMode(false);
-//   } else {
-//     // Normal completion: keep motor engaged in ASSIST so the Pi's upcoming
-//     // CMD:ASSIST is a no-op (EN_PIN already LOW). This prevents the stepper
-//     // detent snap that occurs when the motor is released then immediately
-//     // re-engaged, which was causing a consistent left offset within POT_DEADBAND.
-//     stopLatched   = false;
-//     lockedAtLeft  = false;
-//     lockedAtRight = false;
-//     brakeRelease();
-//     // currentMode stays MODE_ASSIST, EN_PIN stays LOW
-//     Serial.println("[STEER] Auth done — motor staying ASSIST (no detent snap)");
-//   }
-
-//   Serial.println("[AUTH] Sequence finished");
-//   if (sendFreeStatus) Serial1.println("STATUS:FREE");
-// }
 void stopAuthSequence(bool sendFreeStatus = true) {
   authSequenceActive     = false;
   authSequenceOutputOn   = false;
   authSequenceCyclesDone = 0;
   
+  // ← الجديد: ارجع للمركز قبل تحرير الموتور
   if (CENTER_ADC != -1) {
-    currentMode = MODE_ASSIST;
+    currentMode = MODE_ASSIST;       // مؤقتاً لتشغيل moveToADC
     digitalWrite(EN_PIN, LOW);
     moveToADC(CENTER_ADC);
   }
 
-  // ← لا تدخل FREE mode بعد auth — ابق في ASSIST وأرسل AUTHORIZED_READY
-  currentMode = MODE_ASSIST;
-  stopLatched = false;
-  lockedAtLeft  = false;
-  lockedAtRight = false;
-  brakeRelease();
-  
-  Serial.println("[AUTH] Sequence finished - staying ASSIST at CENTER");
-  // أرسل رسالة خاصة تخبر Pi أن يعيد إرسال CMD:ASSIST ويبدأ من CENTER
-  Serial1.println("STATUS:AUTHORIZED_READY");
+  setFreeMode(false);
+  Serial.println("[AUTH] Sequence finished");
+  if (sendFreeStatus) Serial1.println("STATUS:FREE");
 }
 
 void handleAuthSequence() {
