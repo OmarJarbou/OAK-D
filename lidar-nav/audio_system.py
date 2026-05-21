@@ -31,7 +31,7 @@ DEFAULT_DANGER_MM = 1200
 # ── Cooldown بين إعلانَين ─────────────────────────────────────────────
 ANNOUNCE_COOLDOWN_SEC = 3.0
 SAME_OBJECT_DELTA_MM  = 200
-
+ALSA_DEVICE = "plughw:2,0"
 # ── espeak-ng: صوت عربي ───────────────────────────────────────────────
 ESPEAK_VOICE = "ar"       # الصوت العربي
 ESPEAK_SPEED = "130"      # كلمة/دقيقة — واضح وغير سريع
@@ -167,8 +167,9 @@ def _play_wav(path: Path):
                 # أوقف أي صوت حالي
                 if _current_proc and _current_proc.poll() is None:
                     _current_proc.terminate()
+            # ?? audio_system.py � ???? _play_wav
                 _current_proc = subprocess.Popen(
-                    ["aplay", "-q", str(path)],
+                    ["aplay", "-q", "-D", "plughw:2,0", str(path)],
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                 )
