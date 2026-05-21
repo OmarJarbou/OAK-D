@@ -23,7 +23,7 @@ from pathlib import Path
 
 # ── مجلد تخزين الأصوات على SD card ──────────────────────────────────
 # غيّر المسار إذا كانت الـ SD card mounted في مكان مختلف
-SOUNDS_DIR = Path("/home/pi/walker_sounds/objects")
+SOUNDS_DIR = Path("/home/lama/walker_sounds/objects")
 
 # ── حد الخطر (يطابق DANGER_MM في navigator.py) ───────────────────────
 DEFAULT_DANGER_MM = 1200
