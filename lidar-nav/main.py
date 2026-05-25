@@ -1,4 +1,4 @@
-# #!/usr/bin/env python3
+
 # """
 # Smart Walker — LiDAR-Only Navigator
 # ====================================
@@ -32,8 +32,7 @@
 # from navigator     import decide
 
 # # ── Serial (Pi → Arduino) ─────────────────────────────────────────────
-# SERIAL_PORT  = '/dev/serial0'    # Pi UART → Arduino Serial1 (TX1/RX1)
-#                                   # use '/dev/ttyUSB0' if connected via USB cable
+# SERIAL_PORT  = '/dev/serial0'
 # SERIAL_BAUD  = 115200
 
 # # ── RPLIDAR C1 ────────────────────────────────────────────────────────
@@ -41,19 +40,19 @@
 # LIDAR_BAUD   = 460800
 
 # # ── Loop tuning ───────────────────────────────────────────────────────
-# LOOP_HZ          = 10    # steering decisions per second
-# ANGLE_DEAD_BAND  =  10    # don't resend if angle changed by less than this
-# STOP_HOLD_SEC    =  0.8  # hold CMD:STOP for this long before re-evaluating
-# SMOOTH_ALPHA     =  0.45 # EMA weight for new angle (raised: faster recovery from STOP drift)
-# CLEAR_FRAMES_CTR =  4    # consecutive CENTER frames before decaying toward 0
-# LOCK_UNLOCK_DELAY = 1.5  # seconds: auto-send CMD:UNLOCK after a motor lock
-# READY_TIMEOUT_SEC = 2.0  # if no ACK arrives within this time, force arduino_ready = True
+# LOOP_HZ           = 10
+# ANGLE_DEAD_BAND   = 10
+# STOP_HOLD_SEC     = 0.8
+# SMOOTH_ALPHA      = 0.45
+# CLEAR_FRAMES_CTR  = 4
+# LOCK_UNLOCK_DELAY = 1.5
+# READY_TIMEOUT_SEC = 2.0
 
 
 # # ── Serial helpers ────────────────────────────────────────────────────
 
 # def send(ser: serial.Serial, cmd: str):
-#     ser.reset_output_buffer()   # امسح أي أوامر متراكمة ← أضف هذا
+#     ser.reset_output_buffer()
 #     line = cmd.strip() + '\n'
 #     ser.write(line.encode())
 #     ser.flush()
@@ -61,8 +60,6 @@
 
 
 # def drain_rx(ser: serial.Serial) -> str:
-#     """Read and print any incoming messages from Arduino (non-blocking).
-#     Returns the last non-empty line received."""
 #     lines = []
 #     while ser.in_waiting:
 #         try:
@@ -72,7 +69,7 @@
 #                 lines.append(line)
 #         except Exception:
 #             pass
-#     return ' '.join(lines)   # ← كل الأسطر في string واحد
+#     return ' '.join(lines)
 
 
 # def query_pot(ser: serial.Serial, timeout: float = 2.0):
@@ -95,8 +92,8 @@
 
 #     try:
 #         ser = serial.Serial(SERIAL_PORT, SERIAL_BAUD, timeout=0.05)
-#         ser.dtr = False  
-#         ser.rts = False   
+#         ser.dtr = False
+#         ser.rts = False
 #         time.sleep(2)
 #         print(f"[SERIAL] {SERIAL_PORT} @ {SERIAL_BAUD} baud  OK")
 #     except serial.SerialException as exc:
@@ -135,48 +132,35 @@
 #             break
 #         time.sleep(0.05)
 
-#     # ── Wait for AUTH_DONE (Arduino finished brake sequence + centered) ─
+#     # ── Wait for auth sequence to finish ─────────────────────────────
 #     print("[AUTH] Waiting for auth sequence to finish...")
 #     while True:
 #         rx = drain_rx(ser)
-#         if 'AUTHORIZED_READY' in rx or 'AUTH_DONE' in rx:
+#         if any(k in rx for k in ('AUTHORIZED_READY', 'AUTH_DONE', 'STATUS:FREE', 'STATUS:REACHED')):
 #             print("[AUTH] Auth sequence complete")
 #             break
 #         time.sleep(0.1)
 
-#     time.sleep(0.5)
+#     # ── Confirm center position ───────────────────────────────────────
+#     time.sleep(1.0)
 #     print("[AUTH] Confirming center position...")
 #     send(ser, "CMD:ANGLE:0")
 #     t_confirm = time.time()
 #     while True:
 #         rx = drain_rx(ser)
 #         if any(k in rx for k in ('READY', 'AT_TARGET', 'REACHED')):
-#             print("[AUTH] Center confirmed - starting navigation\n")
+#             print("[AUTH] Center confirmed — starting navigation\n")
 #             break
 #         if time.time() - t_confirm > 5.0:
-#             print("[AUTH] WARNING: no confirm - starting anyway\n")
+#             print("[AUTH] WARNING: no confirm — starting anyway\n")
 #             break
 #         time.sleep(0.05)
-
-#     # print("[AUTH] Confirming center position...")
-#     # send(ser, "CMD:ANGLE:0")
-#     # t_confirm = time.time()
-#     # while True:
-#     #     rx = drain_rx(ser)
-#     #     if any(k in rx for k in ('READY', 'AT_TARGET', 'REACHED')):
-#     #         print("[AUTH] Center confirmed - starting navigation\n")
-#     #         break
-#     #     if time.time() - t_confirm > 5.0:
-#     #         print("[AUTH] WARNING: no confirm - starting anyway\n")
-#     #         break
-#     #     time.sleep(0.05)
 
 #     drain_rx(ser)
 
 #     # ── State variables ───────────────────────────────────────────────
-
 #     last_action      = None
-#     last_angle_sent  = None    # force first navigation angle send
+#     last_angle_sent  = None
 #     stop_until       = 0.0
 #     smoothed_angle   = 0.0
 #     clear_count      = 0
@@ -185,19 +169,18 @@
 #     interval         = 1.0 / LOOP_HZ
 
 #     # ── ACK-gate state ────────────────────────────────────────────────
-#     arduino_ready  = True   # True = OK to send CMD:ANGLE
-#     ready_sent_at  = 0.0    # timestamp of last CMD:ANGLE send (for timeout)
-#     pending_action = None   # latest decision accumulated while gate is closed
-#     pending_angle  = 0      # latest angle accumulated while gate is closed
+#     arduino_ready  = True
+#     ready_sent_at  = 0.0
+#     pending_action = None
+#     pending_angle  = 0
 
-#     # ── LiDAR warmup — let scanner stabilize before first decision ───────
-#     WARMUP_SEC = 5.0
+#     # ── LiDAR warmup ─────────────────────────────────────────────────
+#     WARMUP_SEC = 2.0
 #     print(f"[MAIN] LiDAR warmup ({WARMUP_SEC}s)…")
 #     warmup_end = time.time() + WARMUP_SEC
 #     while time.time() < warmup_end:
-#         drain_rx(ser)          # keep RX clear
+#         drain_rx(ser)
 #         time.sleep(0.05)
-#     # Reset smoothed state after warmup so stale noisy scans don't bias us
 #     smoothed_angle = 0.0
 #     clear_count    = 0
 #     print("[MAIN] Navigation running. Press Ctrl+C to stop.\n")
@@ -205,8 +188,8 @@
 #     while True:
 #         t0   = time.time()
 #         scan = scanner.get_scan()
-#         print(f"[DEBUG] scan size: {len(scan)}")
-#         # ── Always drain RX — needed to receive ACK ───────────────────
+
+#         # ── Drain RX ─────────────────────────────────────────────────
 #         rx  = drain_rx(ser)
 #         now = time.time()
 
@@ -234,11 +217,8 @@
 #             send(ser, "CMD:UNLOCK")
 #             locked_dir = None
 
-#         # ── Run navigation decision every tick ────────────────────────
-#         if not arduino_ready or last_angle_sent is None:
-#            action, raw_angle = 'CENTER', 0
-#         else:
-#            action, raw_angle = decide(scan)
+#         # ── Navigation decision ───────────────────────────────────────
+#         action, raw_angle = decide(scan)
 
 #         # ── STOP holdoff ──────────────────────────────────────────────
 #         if action == 'STOP':
@@ -253,7 +233,7 @@
 #         elif action == 'CENTER':
 #             clear_count += 1
 #             if clear_count >= CLEAR_FRAMES_CTR:
-#                 smoothed_angle = (1 - SMOOTH_ALPHA) * smoothed_angle  # decay toward 0
+#                 smoothed_angle = (1 - SMOOTH_ALPHA) * smoothed_angle
 
 #         angle = int(round(smoothed_angle)) if action in ('STEER', 'CENTER') else raw_angle
 
@@ -261,14 +241,13 @@
 #         if   locked_dir == 'right' and angle > 0: angle = 0
 #         elif locked_dir == 'left'  and angle < 0: angle = 0
 
-#         # ── STOP bypass: always send immediately, skip gate ───────────
+#         # ── STOP bypass ───────────────────────────────────────────────
 #         if action == 'STOP':
 #             if last_action != 'STOP':
 #                 send(ser, "CMD:STOP")
-#             # STOP does not require an ACK — keep gate open
 #             arduino_ready   = True
 #             pending_action  = None
-#             last_angle_sent = None   # force re-send after STOP ends (don't trap in deadband)
+#             last_angle_sent = None
 #             last_action     = 'STOP'
 #             elapsed = time.time() - t0
 #             spare   = interval - elapsed
@@ -280,14 +259,14 @@
 #         pending_action = action
 #         pending_angle  = angle
 
-#         # ── On ACK: evaluate pending and send if worthwhile ───────────
+#         # ── On ACK: send if worthwhile ────────────────────────────────
 #         if arduino_ready and pending_action is not None:
 #             if pending_action in ('STEER', 'CENTER'):
 #                 if (last_angle_sent is None or
 #                         abs(pending_angle - last_angle_sent) > ANGLE_DEAD_BAND):
 #                     send(ser, f"CMD:ANGLE:{pending_angle}")
 #                     last_angle_sent = pending_angle
-#                     arduino_ready   = False   # wait for next ACK
+#                     arduino_ready   = False
 #                     ready_sent_at   = now
 #             elif pending_action == 'NODATA':
 #                 if last_action != 'NODATA':
@@ -296,7 +275,7 @@
 
 #         last_action = action
 
-#         # ── Sleep to maintain LOOP_HZ ────────────────────────────────
+#         # ── Sleep to maintain LOOP_HZ ─────────────────────────────────
 #         elapsed = time.time() - t0
 #         spare   = interval - elapsed
 #         if spare > 0:
@@ -305,7 +284,9 @@
 
 # if __name__ == '__main__':
 #     main()
-#!/usr/bin/env python3
+
+
+
 #!/usr/bin/env python3
 """
 Smart Walker — LiDAR-Only Navigator
@@ -340,7 +321,8 @@ from lidar_scanner import LidarScanner
 from navigator     import decide
 
 # ── Serial (Pi → Arduino) ─────────────────────────────────────────────
-SERIAL_PORT  = '/dev/serial0'
+SERIAL_PORT  = '/dev/serial0'    # Pi UART → Arduino Serial1 (TX1/RX1)
+                                  # use '/dev/ttyUSB0' if connected via USB cable
 SERIAL_BAUD  = 115200
 
 # ── RPLIDAR C1 ────────────────────────────────────────────────────────
@@ -348,19 +330,19 @@ LIDAR_PORT   = '/dev/ttyUSB0'
 LIDAR_BAUD   = 460800
 
 # ── Loop tuning ───────────────────────────────────────────────────────
-LOOP_HZ           = 10
-ANGLE_DEAD_BAND   = 10
-STOP_HOLD_SEC     = 0.8
-SMOOTH_ALPHA      = 0.45
-CLEAR_FRAMES_CTR  = 4
-LOCK_UNLOCK_DELAY = 1.5
-READY_TIMEOUT_SEC = 2.0
+LOOP_HZ          = 10    # steering decisions per second
+ANGLE_DEAD_BAND  =  10    # don't resend if angle changed by less than this
+STOP_HOLD_SEC    =  0.8  # hold CMD:STOP for this long before re-evaluating
+SMOOTH_ALPHA     =  0.45 # EMA weight for new angle (raised: faster recovery from STOP drift)
+CLEAR_FRAMES_CTR =  4    # consecutive CENTER frames before decaying toward 0
+LOCK_UNLOCK_DELAY = 1.5  # seconds: auto-send CMD:UNLOCK after a motor lock
+READY_TIMEOUT_SEC = 2.0  # if no ACK arrives within this time, force arduino_ready = True
 
 
 # ── Serial helpers ────────────────────────────────────────────────────
 
 def send(ser: serial.Serial, cmd: str):
-    ser.reset_output_buffer()
+    ser.reset_output_buffer()   # امسح أي أوامر متراكمة ← أضف هذا
     line = cmd.strip() + '\n'
     ser.write(line.encode())
     ser.flush()
@@ -368,6 +350,8 @@ def send(ser: serial.Serial, cmd: str):
 
 
 def drain_rx(ser: serial.Serial) -> str:
+    """Read and print any incoming messages from Arduino (non-blocking).
+    Returns the last non-empty line received."""
     lines = []
     while ser.in_waiting:
         try:
@@ -377,7 +361,7 @@ def drain_rx(ser: serial.Serial) -> str:
                 lines.append(line)
         except Exception:
             pass
-    return ' '.join(lines)
+    return ' '.join(lines)   # ← كل الأسطر في string واحد
 
 
 def query_pot(ser: serial.Serial, timeout: float = 2.0):
@@ -400,8 +384,8 @@ def main():
 
     try:
         ser = serial.Serial(SERIAL_PORT, SERIAL_BAUD, timeout=0.05)
-        ser.dtr = False
-        ser.rts = False
+        ser.dtr = False  
+        ser.rts = False   
         time.sleep(2)
         print(f"[SERIAL] {SERIAL_PORT} @ {SERIAL_BAUD} baud  OK")
     except serial.SerialException as exc:
@@ -440,35 +424,48 @@ def main():
             break
         time.sleep(0.05)
 
-    # ── Wait for auth sequence to finish ─────────────────────────────
+    # ── Wait for AUTH_DONE (Arduino finished brake sequence + centered) ─
     print("[AUTH] Waiting for auth sequence to finish...")
     while True:
         rx = drain_rx(ser)
-        if any(k in rx for k in ('AUTHORIZED_READY', 'AUTH_DONE', 'STATUS:FREE', 'STATUS:REACHED')):
+        if 'AUTHORIZED_READY' in rx or 'AUTH_DONE' in rx:
             print("[AUTH] Auth sequence complete")
             break
         time.sleep(0.1)
 
-    # ── Confirm center position ───────────────────────────────────────
-    time.sleep(1.0)
+    time.sleep(0.5)
     print("[AUTH] Confirming center position...")
     send(ser, "CMD:ANGLE:0")
     t_confirm = time.time()
     while True:
         rx = drain_rx(ser)
         if any(k in rx for k in ('READY', 'AT_TARGET', 'REACHED')):
-            print("[AUTH] Center confirmed — starting navigation\n")
+            print("[AUTH] Center confirmed - starting navigation\n")
             break
         if time.time() - t_confirm > 5.0:
-            print("[AUTH] WARNING: no confirm — starting anyway\n")
+            print("[AUTH] WARNING: no confirm - starting anyway\n")
+            break
+        time.sleep(0.05)
+
+    print("[AUTH] Confirming center position...")
+    send(ser, "CMD:ANGLE:0")
+    t_confirm = time.time()
+    while True:
+        rx = drain_rx(ser)
+        if any(k in rx for k in ('READY', 'AT_TARGET', 'REACHED')):
+            print("[AUTH] Center confirmed - starting navigation\n")
+            break
+        if time.time() - t_confirm > 5.0:
+            print("[AUTH] WARNING: no confirm - starting anyway\n")
             break
         time.sleep(0.05)
 
     drain_rx(ser)
 
     # ── State variables ───────────────────────────────────────────────
+
     last_action      = None
-    last_angle_sent  = None
+    last_angle_sent  = None    # force first navigation angle send
     stop_until       = 0.0
     smoothed_angle   = 0.0
     clear_count      = 0
@@ -477,18 +474,19 @@ def main():
     interval         = 1.0 / LOOP_HZ
 
     # ── ACK-gate state ────────────────────────────────────────────────
-    arduino_ready  = True
-    ready_sent_at  = 0.0
-    pending_action = None
-    pending_angle  = 0
+    arduino_ready  = True   # True = OK to send CMD:ANGLE
+    ready_sent_at  = 0.0    # timestamp of last CMD:ANGLE send (for timeout)
+    pending_action = None   # latest decision accumulated while gate is closed
+    pending_angle  = 0      # latest angle accumulated while gate is closed
 
-    # ── LiDAR warmup ─────────────────────────────────────────────────
-    WARMUP_SEC = 2.0
+    # ── LiDAR warmup — let scanner stabilize before first decision ───────
+    WARMUP_SEC = 5.0
     print(f"[MAIN] LiDAR warmup ({WARMUP_SEC}s)…")
     warmup_end = time.time() + WARMUP_SEC
     while time.time() < warmup_end:
-        drain_rx(ser)
+        drain_rx(ser)          # keep RX clear
         time.sleep(0.05)
+    # Reset smoothed state after warmup so stale noisy scans don't bias us
     smoothed_angle = 0.0
     clear_count    = 0
     print("[MAIN] Navigation running. Press Ctrl+C to stop.\n")
@@ -496,8 +494,8 @@ def main():
     while True:
         t0   = time.time()
         scan = scanner.get_scan()
-
-        # ── Drain RX ─────────────────────────────────────────────────
+        print(f"[DEBUG] scan size: {len(scan)}")
+        # ── Always drain RX — needed to receive ACK ───────────────────
         rx  = drain_rx(ser)
         now = time.time()
 
@@ -525,8 +523,11 @@ def main():
             send(ser, "CMD:UNLOCK")
             locked_dir = None
 
-        # ── Navigation decision ───────────────────────────────────────
-        action, raw_angle = decide(scan)
+        # ── Run navigation decision every tick ────────────────────────
+        if not arduino_ready or last_angle_sent is None:
+           action, raw_angle = 'CENTER', 0
+        else:
+           action, raw_angle = decide(scan)
 
         # ── STOP holdoff ──────────────────────────────────────────────
         if action == 'STOP':
@@ -541,7 +542,7 @@ def main():
         elif action == 'CENTER':
             clear_count += 1
             if clear_count >= CLEAR_FRAMES_CTR:
-                smoothed_angle = (1 - SMOOTH_ALPHA) * smoothed_angle
+                smoothed_angle = (1 - SMOOTH_ALPHA) * smoothed_angle  # decay toward 0
 
         angle = int(round(smoothed_angle)) if action in ('STEER', 'CENTER') else raw_angle
 
@@ -549,13 +550,14 @@ def main():
         if   locked_dir == 'right' and angle > 0: angle = 0
         elif locked_dir == 'left'  and angle < 0: angle = 0
 
-        # ── STOP bypass ───────────────────────────────────────────────
+        # ── STOP bypass: always send immediately, skip gate ───────────
         if action == 'STOP':
             if last_action != 'STOP':
                 send(ser, "CMD:STOP")
+            # STOP does not require an ACK — keep gate open
             arduino_ready   = True
             pending_action  = None
-            last_angle_sent = None
+            last_angle_sent = None   # force re-send after STOP ends (don't trap in deadband)
             last_action     = 'STOP'
             elapsed = time.time() - t0
             spare   = interval - elapsed
@@ -567,14 +569,14 @@ def main():
         pending_action = action
         pending_angle  = angle
 
-        # ── On ACK: send if worthwhile ────────────────────────────────
+        # ── On ACK: evaluate pending and send if worthwhile ───────────
         if arduino_ready and pending_action is not None:
             if pending_action in ('STEER', 'CENTER'):
                 if (last_angle_sent is None or
                         abs(pending_angle - last_angle_sent) > ANGLE_DEAD_BAND):
                     send(ser, f"CMD:ANGLE:{pending_angle}")
                     last_angle_sent = pending_angle
-                    arduino_ready   = False
+                    arduino_ready   = False   # wait for next ACK
                     ready_sent_at   = now
             elif pending_action == 'NODATA':
                 if last_action != 'NODATA':
@@ -583,7 +585,7 @@ def main():
 
         last_action = action
 
-        # ── Sleep to maintain LOOP_HZ ─────────────────────────────────
+        # ── Sleep to maintain LOOP_HZ ────────────────────────────────
         elapsed = time.time() - t0
         spare   = interval - elapsed
         if spare > 0:
