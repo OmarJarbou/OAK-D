@@ -306,10 +306,29 @@
 # if __name__ == '__main__':
 #     main()
 #!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 Smart Walker — LiDAR-Only Navigator
 ====================================
 Raspberry Pi  ←Serial1→  Arduino Mega  (115200 baud, pins 18/19 on Mega)
+
+Flow
+----
+  LidarScanner thread  →  latest full-rotation scan dict
+  Main loop (LOOP_HZ)  →  decide()  →  CMD:ANGLE:<n> / CMD:STOP / CMD:FREE
+
+Commands sent to Arduino
+------------------------
+  CMD:ASSIST         engage stepper motor (sent once at startup)
+  CMD:ANGLE:<n>      steer to n  (-100=full left, 0=straight, +100=full right)
+  CMD:STOP           emergency stop (brake + vibration on Arduino side)
+  CMD:FREE           release motor (sent on clean exit)
+
+Configuration checklist (edit the CAPS constants below)
+---------------------------------------------------------
+  SERIAL_PORT   — UART connected to Arduino Serial1 (TX1/RX1)
+  LIDAR_PORT    — USB port of the RPLIDAR C1
+  FRONT_HEADING — angle in navigator.py matching "forward" direction
 """
 
 import serial
@@ -425,13 +444,13 @@ def main():
     print("[AUTH] Waiting for auth sequence to finish...")
     while True:
         rx = drain_rx(ser)
-        if 'AUTHORIZED_READY' in rx or 'AUTH_DONE' in rx:
+        if any(k in rx for k in ('AUTHORIZED_READY', 'AUTH_DONE', 'STATUS:FREE', 'STATUS:REACHED')):
             print("[AUTH] Auth sequence complete")
             break
         time.sleep(0.1)
 
     # ── Confirm center position ───────────────────────────────────────
-    time.sleep(0.5)
+    time.sleep(1.0)
     print("[AUTH] Confirming center position...")
     send(ser, "CMD:ANGLE:0")
     t_confirm = time.time()
