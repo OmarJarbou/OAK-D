@@ -379,8 +379,7 @@ import time
 from pathlib import Path
 
 # ── مجلد ملفاتك الصوتية ───────────────────────────────────────────────
-SOUNDS = Path("/home/lama/walker_sounds/objects")
-
+SOUNDS = Path(__file__).parent / "sounds"
 # ── Mapping مباشر: key → ملف WAV ─────────────────────────────────────
 # المفتاح: f"{label}_{position}"  (كلها lowercase)
 # القيمة: مسار الملف الصوتي الجاهز
@@ -455,20 +454,22 @@ _play_lock = threading.Lock()
 
 
 def _play_wav(path: Path):
-    """شغّل WAV في thread منفصل، أوقف السابق تلقائياً."""
-    global _current_proc
-
     def _run():
         global _current_proc
-        with _play_lock:
-            if _current_proc and _current_proc.poll() is None:
-                _current_proc.terminate()
-            _current_proc = subprocess.Popen(
-                ["aplay", "-q", "-D", ALSA_DEVICE, str(path)],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-        _current_proc.wait()
+        try:
+            with _play_lock:
+                if _current_proc and _current_proc.poll() is None:
+                    _current_proc.terminate()
+                proc = subprocess.Popen(
+                    ["mpg123", "-q", str(path)],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+                _current_proc = proc
+            if proc is not None:
+                proc.wait()
+        except Exception as e:
+            print(f"[AUDIO] playback error: {e}")
 
     threading.Thread(target=_run, daemon=True).start()
 
