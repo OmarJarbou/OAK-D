@@ -578,7 +578,7 @@ from pathlib import Path
 #  إعدادات
 # ══════════════════════════════════════════════════════════════════════
 
-GPS_PORT  = '/dev/ttyAMA0'
+GPS_PORT = '/dev/ttyAMA2'   # ← غيري هذا فقط
 GPS_BAUD  = 9600
 
 ARRIVAL_RADIUS_M  = 15     # متر — للوصول لكل waypoint
