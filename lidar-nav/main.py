@@ -366,21 +366,21 @@ def drain_rx(ser: serial.Serial) -> str:
 # ══════════════════════════════════════════════════════════════════════
 #  Main
 # ══════════════════════════════════════════════════════════════════════
-def handle_arduino_line(line: str):
-    """معالجة الرسائل الصادرة من الأردوينو (BANK، STATUS، إلخ)"""
-    if line.startswith("BANK:"):
-        note = line[5:]          # استخراج "20 ILS" مثلاً
-        # نتجاهل رسالة REMOVED
-        if note == "REMOVED":
-            print("[BANK] Note removed - no sound")
-            return
-        print(f"[BANK] Detected: {note} → playing sound")
-        play_banknote(note)
-    else:
-        # يمكنك إضافة معالجة لرسائل STATUS أخرى إن أردت
-        print(f"[RX] {line}")
+# def handle_arduino_line(line: str):
+#     """معالجة الرسائل الصادرة من الأردوينو (BANK، STATUS، إلخ)"""
+#     if line.startswith("BANK:"):
+#         note = line[5:]          # استخراج "20 ILS" مثلاً
+#         # نتجاهل رسالة REMOVED
+#         if note == "REMOVED":
+#             print("[BANK] Note removed - no sound")
+#             return
+#         print(f"[BANK] Detected: {note} → playing sound")
+#         play_banknote(note)
+#     else:
+#         # يمكنك إضافة معالجة لرسائل STATUS أخرى إن أردت
+#         print(f"[RX] {line}")
 
-        
+
 def main():
     print("=== Smart Walker — Full System ===")
 
