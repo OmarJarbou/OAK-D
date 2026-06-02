@@ -1035,6 +1035,23 @@ SOUND_MAP: dict[str, Path] = {
 
     # Ø£Ø¶Ù Ø£ÙŠ label Ø¬Ø¯ÙŠØ¯ Ù‡Ù†Ø§...
 }
+BANKNOTE_SOUNDS = {
+    "20 ILS":   SOUNDS / "20.wav",
+    "50 ILS":   SOUNDS / "50.wav",
+    "100 ILS":  SOUNDS / "100.wav",
+    "200 ILS":  SOUNDS / "200.wav",
+    "Unknown":  SOUNDS / "replace.wav",
+    "Ambiguous": SOUNDS / "ambiguous.wav",
+}
+
+def play_banknote(banknote_name: str) -> bool:
+    """تشغيل صوت لفئة العملة (مثل '20 ILS')"""
+    wav = BANKNOTE_SOUNDS.get(banknote_name)
+    if wav is None or not wav.exists():
+        print(f"[AUDIO] Banknote sound missing: {banknote_name}")
+        return False
+    _play_wav(wav)
+    return true
 
 # â”€â”€ Ø¥Ø¹Ø¯Ø§Ø¯Ø§Øª â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 ALSA_DEVICE           = "plughw:2,0"
