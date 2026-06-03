@@ -48,7 +48,7 @@ ALSA_DEVICE = "plughw:2,0"
 DESTINATIONS = {
     # بعد تسجيل النقاط باستخدام record_waypoints.py، يمكنك وضعها هكذا:
     "البيت": [
-        (32.227240, 35.223481),   # نقطة وسيطة (قبل المنعطف)
+        #(32.227240, 35.223481),   # نقطة وسيطة (قبل المنعطف)
         (32.227108, 35.223462),   # الوجهة النهائية
     ],
     # يمكنك إضافة وجهات أخرى
@@ -590,9 +590,12 @@ class GpsRelayHandler:
 #  اختبار مستقل
 # ══════════════════════════════════════════════════════════════════════
 
+#!/usr/bin/env python3
+# ... (?? ????? ?????? ??? ?? ??? ??? "if __name__ == '__main__':" ?? ??????)
+
 if __name__ == "__main__":
     import sys
-    print("=== GPS Navigator — Enhanced Waypoints Test ===")
+    print("=== GPS Navigator -- Enhanced Waypoints Test ===")
     print(f"Destinations: {list(DESTINATIONS.keys())}")
     for name, wps in DESTINATIONS.items():
         print(f"  {name}: {len(wps)} waypoint(s)")
@@ -611,8 +614,11 @@ if __name__ == "__main__":
     try:
         while True:
             s = nav.get_status()
+            # ???? None ?? ???????
+            dist_str = f"{s['distance_m']:.0f}" if s['distance_m'] is not None else "?"
+            heading_str = f"{s['heading']:.0f}" if s['heading'] is not None else "?"
             print(f"  WP[{s['waypoint_index']+1}/{s['total_waypoints']}] "
-                  f"dist={s['distance_m']:.0f}m heading={s['heading']}°")
+                  f"dist={dist_str}m heading={heading_str}--")
             time.sleep(3)
     except KeyboardInterrupt:
         pass

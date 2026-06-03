@@ -1035,23 +1035,29 @@ SOUND_MAP: dict[str, Path] = {
 
     # Ø£Ø¶Ù Ø£ÙŠ label Ø¬Ø¯ÙŠØ¯ Ù‡Ù†Ø§...
 }
-BANKNOTE_SOUNDS = {
-    "20 ILS":   SOUNDS / "20.wav",
-    "50 ILS":   SOUNDS / "50.wav",
-    "100 ILS":  SOUNDS / "100.wav",
-    "200 ILS":  SOUNDS / "200.wav",
-    "Unknown":  SOUNDS / "replace.wav",
-    "Ambiguous": SOUNDS / "ambiguous.wav",
-}
+# ------------------------------------------------------
+#  BANKNOTE SOUNDS
+# ------------------------------------------------------
 
-def play_banknote(banknote_name: str) -> bool:
-    """تشغيل صوت لفئة العملة (مثل '20 ILS')"""
-    wav = BANKNOTE_SOUNDS.get(banknote_name)
-    if wav is None or not wav.exists():
-        print(f"[AUDIO] Banknote sound missing: {banknote_name}")
-        return False
-    _play_wav(wav)
-    return true
+# ------------------------------------------------------
+#  BANKNOTE SOUNDS
+# ------------------------------------------------------
+BANKNOTE_MAP = {
+    "20 ILS":  SOUNDS / "20.wav",
+    "50 ILS":  SOUNDS / "50.wav",
+    "100 ILS": SOUNDS / "100.wav",
+    "200 ILS": SOUNDS / "200.wav",
+}
+BANKNOTE_UNKNOWN = SOUNDS / "replace.wav"
+
+
+def play_banknote(note: str):
+    wav = BANKNOTE_MAP.get(note, BANKNOTE_UNKNOWN)
+    print(f"[BANK-AUDIO] Playing: {wav.name}  (note='{note}')")
+    if wav.exists():
+        _play_wav(wav)
+    else:
+        print(f"[BANK-AUDIO] File missing: {wav}")
 
 # â”€â”€ Ø¥Ø¹Ø¯Ø§Ø¯Ø§Øª â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 ALSA_DEVICE           = "plughw:2,0"

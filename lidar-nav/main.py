@@ -300,7 +300,6 @@ Threads:
   5. GpsRelayHandler— يرد على GET:GPS من الأردوينو
   6. Main loop      — قرارات التوجيه (LiDAR)
 """
-
 import serial
 import time
 import signal
@@ -316,13 +315,14 @@ from button_handler import ButtonHandler
 #  إعدادات Hardware
 # ══════════════════════════════════════════════════════════════════════
 
-SERIAL_PORT  = '/dev/serial0'   # Pi UART → Arduino Serial1
+#SERIAL_PORT  = '/dev/serial0'   # Pi UART → Arduino Serial1
 SERIAL_BAUD  = 115200
+SERIAL_PORT  = '/dev/ttyAMA0'   # Pi UART → Arduino Serial1
 
-LIDAR_PORT   = '/dev/ttyUSB0'
+LIDAR_PORT   = '/dev/ttyUSB1'
 LIDAR_BAUD   = 460800
 
-GPS_PORT     = '/dev/ttyAMA0'   # NEO-6M
+GPS_PORT     = '/dev/ttyAMA2'   # NEO-6M
 GPS_BAUD     = 9600
 
 # ══════════════════════════════════════════════════════════════════════
@@ -357,6 +357,8 @@ def drain_rx(ser: serial.Serial) -> str:
             line = ser.readline().decode(errors='replace').strip()
             if line:
                 print(f"[RX] {line}")
+                if line.startswith("BANK:") and line[5:] != "REMOVED":
+                    play_banknote(line[5:])   # ? ??? ????? ??
                 lines.append(line)
         except Exception:
             pass
@@ -454,23 +456,17 @@ def main():
     # ══════════════════════════════════════════════════════════════════
     #  انتظار RFID
     # ══════════════════════════════════════════════════════════════════
-    print("[AUTH] Waiting for RFID authorization…")
+    print("[AUTH] Waiting for RFID authorization...")
     while True:
         rx = drain_rx(ser)
-        if 'AUTHORIZED' in rx:
-            print("[AUTH] Card accepted ✓")
+        if rx:
+            print(f"[AUTH-DEBUG] Got: '{rx}'")
+        if any(k in rx for k in ('AUTHORIZED', 'STATUS:FREE', 'STATUS:AT_TARGET')):
+            print("[AUTH] System ready")
             break
         time.sleep(0.05)
 
-    print("[AUTH] Waiting for auth sequence to finish...")
-    while True:
-        rx = drain_rx(ser)
-        if any(k in rx for k in ('AUTHORIZED_READY', 'AUTH_DONE', 'STATUS:FREE', 'STATUS:REACHED')):
-            print("[AUTH] Auth sequence complete")
-            break
-        time.sleep(0.1)
-
-    time.sleep(1.0)
+  
     print("[AUTH] Confirming center position...")
     send(ser, "CMD:ANGLE:0")
     t_confirm = time.time()
