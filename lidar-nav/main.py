@@ -30,6 +30,7 @@ import sys
 
 from lidar_scanner import LidarScanner
 from navigator     import decide
+from audio_system  import play_banknote
 
 # ── Serial (Pi → Arduino) ─────────────────────────────────────────────
 SERIAL_PORT  = '/dev/serial0'
@@ -66,6 +67,8 @@ def drain_rx(ser: serial.Serial) -> str:
             line = ser.readline().decode(errors='replace').strip()
             if line:
                 print(f"[RX] {line}")
+                if line.startswith("BANK:") and line[5:] != "REMOVED":
+                    play_banknote(line[5:])
                 lines.append(line)
         except Exception:
             pass

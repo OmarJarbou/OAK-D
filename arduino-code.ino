@@ -26,6 +26,20 @@
 // │ Banknote     │ runs silently, sends BANK:result  │
 // └──────────────┴───────────────────────────────────┘
 
+// ================================================================
+//  Smart Walker — Full Integration v2.0
+//  Arduino Mega
+//
+//  Merged subsystems:
+//    CODE1 — RFID gate, brake servos, stepper steering,
+//             banknote detection, FREE/ASSIST mode
+//    CODE2 — LDR ambient light → LED auto control
+//    CODE3 — Dual battery voltage monitor (LCD I2C)
+//
+//  Serial  (USB, 115200) = debug monitor
+//  Serial1 (pins 18/19)  = Pi / LiDAR-nav communication
+// ================================================================
+
 // 🔹 Pi → Arduino Commands
 // | Pi Sends        | Arduino Does                            |
 // | --------------- | --------------------------------------- |
@@ -60,7 +74,6 @@
 // | `BANK:20 ILS`         | Banknote detected and identified     |
 // | `BANK:REMOVED`        | Banknote removed                     |
 
-
 #include <SPI.h>
 #include <MFRC522.h>
 #include <Servo.h>
@@ -68,6 +81,7 @@
 #include "Adafruit_TCS34725.h"
 #include <EEPROM.h>
 #include <math.h>
+#include <LiquidCrystal_I2C.h>   // ← CODE3
 
 // ================================================================
 //  PIN DEFINITIONS
@@ -84,13 +98,21 @@
 #define POT_PIN  A0
 
 // Brake + Vibration
-#define MOTOR_PIN     7
+#define MOTOR_PIN       7
 #define RIGHT_SERVO_PIN 22
 #define LEFT_SERVO_PIN  23
 
 // Banknote
 #define IR_PIN   10
 #define LED_PIN  6
+
+// ── CODE2: LDR + LED MOSFET ──────────────────────────────────────
+#define LDR_PIN          A7
+#define LED_MOSFET_PIN   41
+
+// ── CODE3: Battery monitor ───────────────────────────────────────
+#define BATTERY_1_PIN    A1
+#define BATTERY_2_PIN    A2
 
 // ================================================================
 //  EEPROM
@@ -132,32 +154,53 @@ const float MATCH_THRESHOLD = 0.085;
 // ================================================================
 //  AUTH SEQUENCE TUNING
 // ================================================================
-const unsigned long ACTION_ON_TIME    = 2000;
-const unsigned long ACTION_OFF_TIME   = 2000;
+const unsigned long ACTION_ON_TIME      = 2000;
+const unsigned long ACTION_OFF_TIME     = 2000;
 const int           ACTION_TOTAL_CYCLES = 2;
 const unsigned long STARTUP_IGNORE_TIME = 1500;
 
 // ================================================================
+//  CODE3: BATTERY CONFIG
+// ================================================================
+const float VOLTAGE_DIVIDER_RATIO = 5.303;
+const float ARDUINO_REF_VOLT      = 5.0;
+const float MAX_VOLTAGE           = 12.6;
+const float MIN_VOLTAGE           = 9.0;
+
+// ================================================================
+//  CODE2: LDR THRESHOLDS
+// ================================================================
+const int LDR_ON_THRESHOLD  = 550;   // أظلم من هذا → LED يشتغل
+const int LDR_OFF_THRESHOLD = 450;   // أضوأ من هذا → LED يطفي
+
+// ================================================================
+//  TIMING INTERVALS (non-blocking)
+// ================================================================
+const unsigned long LDR_INTERVAL     =  100;   // ms — كانت delay(100)
+const unsigned long BATTERY_INTERVAL = 1000;   // ms — كانت delay(1000)
+const unsigned long BATTERY_LCD_STARTUP_DELAY = 2000; // عرض "Battery Monitor"
+
+// ================================================================
 //  OBJECTS
 // ================================================================
-MFRC522 mfrc522(SS_PIN, RST_PIN);
-Servo   RightArmServo;
-Servo   LeftArmServo;
-Adafruit_TCS34725 tcs =
+MFRC522            mfrc522(SS_PIN, RST_PIN);
+Servo              RightArmServo;
+Servo              LeftArmServo;
+Adafruit_TCS34725  tcs =
   Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_154MS, TCS34725_GAIN_4X);
+LiquidCrystal_I2C  lcd(0x27, 16, 2);    // ← CODE3
 
 // ================================================================
-//  SYSTEM STATE
+//  SYSTEM STATE  (CODE1)
 // ================================================================
-// Bypass mode for testing (ignore RFID)
-bool bypassRFID       = false;
-bool authorized       = false;
-bool tcsFound         = false;
-unsigned long startupTime = 0;
+bool bypassRFID            = false;
+bool authorized            = false;
+bool tcsFound              = false;
+unsigned long startupTime  = 0;
 
 // Auth sequence
-bool  authSequenceActive    = false;
-bool  authSequenceOutputOn  = false;
+bool  authSequenceActive     = false;
+bool  authSequenceOutputOn   = false;
 int   authSequenceCyclesDone = 0;
 unsigned long authSequenceLastChange = 0;
 
@@ -168,7 +211,7 @@ bool objectDetected = false;
 byte allowedUID[4] = {0xD3, 0x60, 0xEA, 0x1A};
 
 // ================================================================
-//  STEPPER STATE
+//  STEPPER STATE  (CODE1)
 // ================================================================
 int  CENTER_ADC = -1;
 int  LEFT_ADC   = -1;
@@ -177,12 +220,12 @@ int  RIGHT_ADC  = -1;
 bool lockedAtLeft  = false;
 bool lockedAtRight = false;
 
-enum Mode     { MODE_FREE, MODE_ASSIST };
+enum Mode { MODE_FREE, MODE_ASSIST };
 Mode currentMode = MODE_FREE;
 bool stopLatched = false;
 
 // ================================================================
-//  POSITION ENUM
+//  POSITION ENUM  (CODE1)
 // ================================================================
 enum Position {
   POS_LEFT, POS_L2, POS_L1,
@@ -190,15 +233,10 @@ enum Position {
   POS_R1, POS_R2, POS_RIGHT,
   POS_UNKNOWN
 };
-
-const char* posNames[] = {
-  "LEFT", "L2", "L1",
-  "CENTER",
-  "R1", "R2", "RIGHT"
-};
+const char* posNames[] = {"LEFT","L2","L1","CENTER","R1","R2","RIGHT"};
 
 // ================================================================
-//  BANKNOTE PROFILES
+//  BANKNOTE PROFILES  (CODE1)
 // ================================================================
 struct NoteProfile { const char* name; float r, g, b; };
 NoteProfile notes[] = {
@@ -210,19 +248,33 @@ NoteProfile notes[] = {
 const int NUM_NOTES = sizeof(notes) / sizeof(notes[0]);
 
 // ================================================================
-//  Pi SERIAL BUFFER
+//  SERIAL BUFFERS  (CODE1)
 // ================================================================
-String piBuffer   = "";
+String piBuffer    = "";
 String localBuffer = "";
 
-// Forward declarations used before function definitions
+// ================================================================
+//  CODE2: LDR STATE
+// ================================================================
+bool          ledState          = false;
+unsigned long lastLdrCheck      = 0;
+
+// ================================================================
+//  CODE3: BATTERY STATE
+// ================================================================
+unsigned long lastBatteryUpdate = 0;
+bool          lcdStartupDone    = false;  // عشان نعرض الشاشة البداية مرة واحدة
+
+// ================================================================
+//  FORWARD DECLARATIONS
+// ================================================================
 void setFreeMode(bool sendStatus = true);
 void setAssistMode(bool sendStatus = true);
 void executeCommand(String cmd, bool fromFlush = false);
 String flushPiBufferKeepLatest();
 
 // ================================================================
-//  BRAKE / VIBRATION
+//  BRAKE / VIBRATION  (CODE1)
 // ================================================================
 void brakeRelease() {
   RightArmServo.write(RIGHT_RELEASE);
@@ -235,18 +287,18 @@ void brakePush() {
 }
 
 void vibrationPulse(unsigned long durationMs = 1000) {
-  digitalWrite(MOTOR_PIN, HIGH); // vibration ON
-  delay(durationMs);             // durationMs ms pulse
-  digitalWrite(MOTOR_PIN, LOW);  // vibration OFF - brake stays ON
+  digitalWrite(MOTOR_PIN, HIGH);
+  delay(durationMs);
+  digitalWrite(MOTOR_PIN, LOW);
 }
 
 void outputsOn() {
-  brakePush();                      // brake arms engage
+  brakePush();
   vibrationPulse(1000);
 }
 
 // ================================================================
-//  AUTH SEQUENCE
+//  AUTH SEQUENCE  (CODE1)
 // ================================================================
 void startAuthSequence() {
   authSequenceActive     = true;
@@ -261,10 +313,9 @@ void stopAuthSequence(bool sendFreeStatus = true) {
   authSequenceActive     = false;
   authSequenceOutputOn   = false;
   authSequenceCyclesDone = 0;
-  
-  // ← الجديد: ارجع للمركز قبل تحرير الموتور
+
   if (CENTER_ADC != -1) {
-    currentMode = MODE_ASSIST;       // مؤقتاً لتشغيل moveToADC
+    currentMode = MODE_ASSIST;
     digitalWrite(EN_PIN, LOW);
     moveToADC(CENTER_ADC);
   }
@@ -280,11 +331,9 @@ void handleAuthSequence() {
     else brakeRelease();
     return;
   }
-
   if (!authSequenceActive) return;
 
   unsigned long now = millis();
-
   if (authSequenceOutputOn) {
     if (now - authSequenceLastChange >= ACTION_ON_TIME) {
       brakeRelease();
@@ -306,7 +355,7 @@ void handleAuthSequence() {
 }
 
 // ================================================================
-//  RFID
+//  RFID  (CODE1)
 // ================================================================
 bool checkUID(byte* readUID, byte* validUID, byte size) {
   for (byte i = 0; i < size; i++)
@@ -314,10 +363,7 @@ bool checkUID(byte* readUID, byte* validUID, byte size) {
   return true;
 }
 
-// static unsigned long lastRFID = 0;
-
 void handleRFID() {
-  // إذا كان وضع التجاوز مفعلاً، نعطي صلاحية تلقائية دون انتظار بطاقة
   if (bypassRFID) {
     if (!authorized) {
       authorized = true;
@@ -326,18 +372,17 @@ void handleRFID() {
       Serial1.println("STATUS:AUTHORIZED");
       startAuthSequence();
     }
-    return;  // لا نقرأ الوحدة الفعلية
+    return;
   }
 
-  // الوضع العادي: قراءة البطاقة كما كانت (مع التحسينات التي أضفتها)
   if (!mfrc522.PICC_IsNewCardPresent()) return;
-  
+
   int retry = 0;
   while (!mfrc522.PICC_ReadCardSerial() && retry < 3) {
     delay(20);
     retry++;
   }
-  if (retry == 3) return; // فشل حقيقي
+  if (retry == 3) return;
 
   Serial.print("[RFID] UID: ");
   for (byte i = 0; i < mfrc522.uid.size; i++) {
@@ -348,21 +393,20 @@ void handleRFID() {
   Serial.println();
 
   if (checkUID(mfrc522.uid.uidByte, allowedUID, 4)) {
-    authorized      = true;
-    objectDetected  = false;
+    authorized     = true;
+    objectDetected = false;
     Serial.println("[RFID] Authorized - system unlocked");
     Serial1.println("STATUS:AUTHORIZED");
     startAuthSequence();
   } else {
-    authorized      = false;
-    objectDetected  = false;
+    authorized     = false;
+    objectDetected = false;
     Serial.println("[RFID] Denied - system locked");
     Serial1.println("STATUS:UNAUTHORIZED");
-    if (authSequenceActive || authSequenceOutputOn) {
+    if (authSequenceActive || authSequenceOutputOn)
       stopAuthSequence(false);
-    } else {
+    else
       setFreeMode(false);
-    }
   }
 
   mfrc522.PICC_HaltA();
@@ -371,7 +415,7 @@ void handleRFID() {
 }
 
 // ================================================================
-//  STEPPER — SENSOR
+//  STEPPER — SENSOR  (CODE1)
 // ================================================================
 bool sensorValueValid(int val) {
   return val >= POT_MIN_VALID && val <= POT_MAX_VALID;
@@ -379,8 +423,7 @@ bool sensorValueValid(int val) {
 
 bool sensorOK(int val) {
   if (!sensorValueValid(val)) {
-    Serial.print("[POT] SENSOR ERROR: ");
-    Serial.println(val);
+    Serial.print("[POT] SENSOR ERROR: "); Serial.println(val);
     Serial1.println("STATUS:SENSOR_ERROR");
     setFreeMode(false);
     return false;
@@ -398,7 +441,7 @@ int readPot() {
 }
 
 // ================================================================
-//  STEPPER — MODE
+//  STEPPER — MODE  (CODE1)
 // ================================================================
 void setFreeMode(bool sendStatus) {
   currentMode   = MODE_FREE;
@@ -406,32 +449,26 @@ void setFreeMode(bool sendStatus) {
   lockedAtLeft  = false;
   lockedAtRight = false;
   brakeRelease();
-  digitalWrite(EN_PIN, HIGH);   // release motor
+  digitalWrite(EN_PIN, HIGH);
   Serial.println("[STEER] FREE MODE - wheel released");
   if (sendStatus) Serial1.println("STATUS:FREE");
 }
 
 void setAssistMode(bool sendStatus) {
-  if (!authorized) {
-    Serial.println("[STEER] Cannot enter ASSIST - not authorized");
-    return;
-  }
+  if (!authorized) { Serial.println("[STEER] Cannot enter ASSIST - not authorized"); return; }
   currentMode = MODE_ASSIST;
-  digitalWrite(EN_PIN, LOW);    // engage motor
+  digitalWrite(EN_PIN, LOW);
   Serial.println("[STEER] ASSIST MODE - system steering");
   if (sendStatus) Serial1.println("STATUS:ASSIST");
 }
 
 // ================================================================
-//  STEPPER — MOTION
+//  STEPPER — MOTION  (CODE1)
 // ================================================================
 int speedForError(int error, int stepIndex) {
-  int baseDelay;
-  if (abs(error) > SPEED_THRESHOLD) {
-    baseDelay = STEP_FAST;
-  } else {
-    baseDelay = map(abs(error), 0, SPEED_THRESHOLD, STEP_SLOW, STEP_FAST);
-  }
+  int baseDelay = (abs(error) > SPEED_THRESHOLD)
+                  ? STEP_FAST
+                  : map(abs(error), 0, SPEED_THRESHOLD, STEP_SLOW, STEP_FAST);
   if (stepIndex < RAMP_STEPS) {
     int rd = STEP_SLOW - (STEP_SLOW - baseDelay) * stepIndex / RAMP_STEPS;
     return constrain(rd, STEP_FAST, STEP_SLOW);
@@ -468,58 +505,6 @@ void singleStep(bool dirRight, int delayUs) {
   delayMicroseconds(delayUs);
 }
 
-// bool moveToADC(int targetADC) {
-//   if (!authorized) {
-//     Serial.println("[STEER] Not authorized");
-//     return false;
-//   }
-//   if (currentMode == MODE_FREE) {
-//     Serial.println("[STEER] In FREE mode - send M:ASSIST first");
-//     return false;
-//   }
-
-//   int current = readPot();
-//   if (!sensorOK(current)) return false;
-
-//   int error = targetADC - current;
-//   if (abs(error) <= POT_DEADBAND) {
-//     Serial.println("[STEER] Already at target");
-//     Serial1.println("STATUS:AT_TARGET");
-//     return true;
-//   }
-
-//   bool dirRight = (error < 0);
-//   if (isLocked(dirRight)) return false;
-
-//   int safety = 0;
-//   while (safety < MAX_STEPS) {
-//     current = readPot();
-//     if (!sensorOK(current)) return false;
-
-//     error = targetADC - current;
-//     if (abs(error) <= POT_DEADBAND) {
-//       Serial.print("[STEER] Reached. potADC=");
-//       Serial.print(current);
-//       Serial.print(" target=");
-//       Serial.print(targetADC);
-//       Serial.print(" steps=");
-//       Serial.println(safety);
-//       Serial1.println("STATUS:REACHED");
-//       lockedAtLeft  = false;
-//       lockedAtRight = false;
-//       return true;
-//     }
-
-//     dirRight = (error < 0);
-//     if (isLocked(dirRight)) return false;
-
-//     singleStep(dirRight, speedForError(error, safety));
-//     safety++;
-//   }
-
-//   lockMotor(dirRight);
-//   return false;
-// }
 bool moveToADC(int targetADC) {
   if (!authorized) { Serial.println("[STEER] Not authorized"); return false; }
   if (currentMode == MODE_FREE) { Serial.println("[STEER] In FREE mode"); return false; }
@@ -542,11 +527,10 @@ bool moveToADC(int targetADC) {
     current = readPot();
     if (!sensorOK(current)) return false;
 
-    // ══ الجديد: تحقق من أوامر جديدة وافق عليها فوراً ══
     if (Serial1.available()) {
       Serial.println("[STEER] Interrupted by new command");
       Serial1.println("STATUS:INTERRUPTED");
-      break;   // اخرج من الحركة الحالية، handlePiSerial سيأخذ الأمر الجديد
+      break;
     }
 
     error = targetADC - current;
@@ -570,8 +554,9 @@ bool moveToADC(int targetADC) {
   if (safety >= MAX_STEPS) lockMotor(dirRight);
   return false;
 }
+
 // ================================================================
-//  STEPPER — POSITIONS
+//  STEPPER — POSITIONS  (CODE1)
 // ================================================================
 int adcForPosition(Position pos) {
   switch (pos) {
@@ -586,18 +571,14 @@ int adcForPosition(Position pos) {
   }
 }
 
-// int clampToRange(int targetADC) {
-//   if (LEFT_ADC == -1 || RIGHT_ADC == -1) return targetADC;
-//   return constrain(targetADC, min(LEFT_ADC, RIGHT_ADC), max(LEFT_ADC, RIGHT_ADC));
-// }
 int clampToRange(int targetADC) {
-  // ══ الجديد: رفض الحركة كلياً إذا الكاليبريشن ناقص ══
   if (LEFT_ADC == -1 || RIGHT_ADC == -1 || CENTER_ADC == -1) {
-    Serial.println("[CLAMP] Not calibrated - returning CENTER or 0");
+    Serial.println("[CLAMP] Not calibrated");
     return (CENTER_ADC != -1) ? CENTER_ADC : 0;
   }
   return constrain(targetADC, min(LEFT_ADC, RIGHT_ADC), max(LEFT_ADC, RIGHT_ADC));
 }
+
 void goToPosition(Position pos) {
   if (CENTER_ADC == -1 || LEFT_ADC == -1 || RIGHT_ADC == -1) {
     Serial.println("[STEER] Not calibrated");
@@ -609,20 +590,11 @@ void goToPosition(Position pos) {
   moveToADC(adcForPosition(pos));
 }
 
-void jogLeft() {
-  int target = clampToRange(readPot() + JOG_ADC);
-  Serial.print("[STEER] Jog LEFT -> "); Serial.println(target);
-  moveToADC(target);
-}
-
-void jogRight() {
-  int target = clampToRange(readPot() - JOG_ADC);
-  Serial.print("[STEER] Jog RIGHT -> "); Serial.println(target);
-  moveToADC(target);
-}
+void jogLeft()  { moveToADC(clampToRange(readPot() + JOG_ADC)); }
+void jogRight() { moveToADC(clampToRange(readPot() - JOG_ADC)); }
 
 // ================================================================
-//  EEPROM
+//  EEPROM  (CODE1)
 // ================================================================
 void saveToEEPROM() {
   EEPROM.write(EEPROM_VALID_ADDR, EEPROM_MAGIC);
@@ -641,64 +613,46 @@ bool loadFromEEPROM() {
 }
 
 // ================================================================
-//  BANKNOTE DETECTION
+//  BANKNOTE DETECTION  (CODE1)
 // ================================================================
-float colorDistanceWeighted(float r1, float g1, float b1,
-                             float r2, float g2, float b2) {
-  float dr = r1-r2, dg = g1-g2, db = b1-b2;
+float colorDistanceWeighted(float r1,float g1,float b1,
+                             float r2,float g2,float b2) {
+  float dr=r1-r2, dg=g1-g2, db=b1-b2;
   return sqrt((1.3*dr*dr) + (1.0*dg*dg) + (1.3*db*db));
 }
 
 bool readAverageColor(float &red, float &green, float &blue,
                       uint16_t &avgR, uint16_t &avgG,
                       uint16_t &avgB, uint16_t &avgC) {
-  unsigned long sumR=0, sumG=0, sumB=0, sumC=0;
+  unsigned long sumR=0,sumG=0,sumB=0,sumC=0;
   int validSamples = 0;
-
   digitalWrite(LED_PIN, HIGH);
   delay(120);
-
   for (int i = 0; i < NUM_SAMPLES; i++) {
-    uint16_t r, g, b, c;
-    tcs.getRawData(&r, &g, &b, &c);
+    uint16_t r,g,b,c;
+    tcs.getRawData(&r,&g,&b,&c);
     if (c > 0) { sumR+=r; sumG+=g; sumB+=b; sumC+=c; validSamples++; }
     delay(40);
   }
   digitalWrite(LED_PIN, LOW);
-
   if (validSamples == 0) return false;
-
-  avgR = sumR/validSamples;
-  avgG = sumG/validSamples;
-  avgB = sumB/validSamples;
-  avgC = sumC/validSamples;
-
+  avgR=sumR/validSamples; avgG=sumG/validSamples;
+  avgB=sumB/validSamples; avgC=sumC/validSamples;
   if (avgC == 0) return false;
-
-  red   = (float)avgR / avgC;
-  green = (float)avgG / avgC;
-  blue  = (float)avgB / avgC;
+  red=((float)avgR/avgC); green=((float)avgG/avgC); blue=((float)avgB/avgC);
   return true;
 }
 
 const char* classifyBanknote(float red, float green, float blue,
                               float &bestDistance) {
   int   bestIndex = -1;
-  float smallest  = 999.0;
-  float secondSmallest = 999.0;
-
+  float smallest  = 999.0, secondSmallest = 999.0;
   for (int i = 0; i < NUM_NOTES; i++) {
-    float d = colorDistanceWeighted(red, green, blue,
-                                    notes[i].r, notes[i].g, notes[i].b);
-    if (d < smallest) {
-      secondSmallest = smallest;
-      smallest  = d;
-      bestIndex = i;
-    } else if (d < secondSmallest) {
-      secondSmallest = d;
-    }
+    float d = colorDistanceWeighted(red,green,blue,
+                                    notes[i].r,notes[i].g,notes[i].b);
+    if (d < smallest) { secondSmallest=smallest; smallest=d; bestIndex=i; }
+    else if (d < secondSmallest) secondSmallest = d;
   }
-
   bestDistance = smallest;
   if (bestIndex == -1 || smallest > MATCH_THRESHOLD) return "Unknown";
   if ((secondSmallest - smallest) < 0.015)           return "Ambiguous";
@@ -712,7 +666,6 @@ void handleBanknoteDetection() {
   int irValue = digitalRead(IR_PIN);
 
   if (!objectDetected && irValue == LOW) {
-    // Confirm object present
     int lowCount = 0;
     for (int i = 0; i < 5; i++) {
       if (digitalRead(IR_PIN) == LOW) lowCount++;
@@ -725,20 +678,15 @@ void handleBanknoteDetection() {
 
     float red, green, blue;
     uint16_t avgR, avgG, avgB, avgC;
-
-    if (!readAverageColor(red, green, blue, avgR, avgG, avgB, avgC)) {
+    if (!readAverageColor(red,green,blue,avgR,avgG,avgB,avgC)) {
       Serial.println("[BANK] Color read failed");
       Serial1.println("BANK:ERROR");
       return;
     }
-
     float bestDistance;
-    const char* result = classifyBanknote(red, green, blue, bestDistance);
-
+    const char* result = classifyBanknote(red,green,blue,bestDistance);
     Serial.print("[BANK] Detected: "); Serial.println(result);
-    Serial.print("[BANK] Distance: "); Serial.println(bestDistance, 4);
-
-    // Send result to Pi
+    Serial.print("[BANK] Distance: "); Serial.println(bestDistance,4);
     Serial1.print("BANK:"); Serial1.println(result);
   }
 
@@ -756,7 +704,80 @@ void handleBanknoteDetection() {
 }
 
 // ================================================================
-//  PRINT HELPERS (USB debug only)
+//  CODE2: LDR HANDLER  (non-blocking, replaces delay(100))
+// ================================================================
+void handleLDR() {
+  unsigned long now = millis();
+  if (now - lastLdrCheck < LDR_INTERVAL) return;
+  lastLdrCheck = now;
+
+  int lightValue = analogRead(LDR_PIN);
+
+  if (lightValue > LDR_ON_THRESHOLD && !ledState) {
+    digitalWrite(LED_MOSFET_PIN, HIGH);
+    ledState = true;
+    Serial.print("[LDR] Value="); Serial.print(lightValue);
+    Serial.println(" → LED ON");
+  }
+  if (lightValue < LDR_OFF_THRESHOLD && ledState) {
+    digitalWrite(LED_MOSFET_PIN, LOW);
+    ledState = false;
+    Serial.print("[LDR] Value="); Serial.print(lightValue);
+    Serial.println(" → LED OFF");
+  }
+}
+
+// ================================================================
+//  CODE3: BATTERY HELPERS
+// ================================================================
+float readBatteryVoltage(int pin) {
+  long sum = 0;
+  for (int i = 0; i < 20; i++) {
+    sum += analogRead(pin);
+    delayMicroseconds(2000);   // 2ms بدون delay() كامل لتقليل التأثير
+  }
+  float raw            = sum / 20.0;
+  float sensorVoltage  = raw * (ARDUINO_REF_VOLT / 1023.0);
+  return sensorVoltage * VOLTAGE_DIVIDER_RATIO;
+}
+
+float voltageToPercentage(float voltage) {
+  float p = (voltage - MIN_VOLTAGE) / (MAX_VOLTAGE - MIN_VOLTAGE) * 100.0;
+  return constrain(p, 0.0, 100.0);
+}
+
+// ================================================================
+//  CODE3: BATTERY HANDLER  (non-blocking, replaces delay(1000))
+// ================================================================
+void handleBatteryMonitor() {
+  unsigned long now = millis();
+  if (now - lastBatteryUpdate < BATTERY_INTERVAL) return;
+  lastBatteryUpdate = now;
+
+  float v1 = readBatteryVoltage(BATTERY_1_PIN);
+  float v2 = readBatteryVoltage(BATTERY_2_PIN);
+  int   p1 = (int)voltageToPercentage(v1);
+  int   p2 = (int)voltageToPercentage(v2);
+
+  // Serial
+  Serial.print("[BAT] B1: "); Serial.print(v1,2);
+  Serial.print("V | ");       Serial.print(p1);
+  Serial.println("%");
+  Serial.print("[BAT] B2: "); Serial.print(v2,2);
+  Serial.print("V | ");       Serial.print(p2);
+  Serial.println("%");
+  Serial.println("----------------");
+
+  // LCD
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("B1:"); lcd.print(p1); lcd.print("% "); lcd.print(v1,1); lcd.print("V");
+  lcd.setCursor(0, 1);
+  lcd.print("B2:"); lcd.print(p2); lcd.print("% "); lcd.print(v2,1); lcd.print("V");
+}
+
+// ================================================================
+//  PRINT HELPERS  (CODE1 — USB debug)
 // ================================================================
 void printStatus() {
   int current = readPot();
@@ -771,8 +792,7 @@ void printStatus() {
   } else {
     for (int i = POS_LEFT; i <= POS_RIGHT; i++) {
       Serial.print("  "); Serial.print(posNames[i]);
-      Serial.print("\t= ADC ");
-      Serial.println(adcForPosition((Position)i));
+      Serial.print("\t= ADC "); Serial.println(adcForPosition((Position)i));
     }
   }
   Serial.println("-------------------------------------");
@@ -789,76 +809,55 @@ void printHelp() {
   Serial.println("Unlock : u");
   Serial.println("Status : p            h=help");
   Serial.println("-- Pi COMMANDS (Serial1) -------------------");
-  Serial.println("CMD:STOP");
-  Serial.println("CMD:FREE");
-  Serial.println("CMD:ASSIST");
+  Serial.println("CMD:STOP / CMD:FREE / CMD:ASSIST");
   Serial.println("CMD:GO:LEFT/L2/L1/CENTER/R1/R2/RIGHT");
   Serial.println("CMD:BRAKE:ON / CMD:BRAKE:OFF");
-  Serial.println("CMD:UNLOCK");
+  Serial.println("CMD:UNLOCK / CMD:ANGLE:<n> / CMD:POT");
   Serial.println("--------------------------------------------");
 }
 
 // ================================================================
-//  COMMAND EXECUTOR
-//  Used by both USB and Pi — single source of truth
+//  COMMAND EXECUTOR  (CODE1)
 // ================================================================
 void executeCommand(String cmd, bool fromFlush) {
   cmd.trim();
   cmd.toUpperCase();
-  Serial.print("COMMAND AFTER CLEAN:");Serial.print(cmd);
-  Serial.println();
+  Serial.print("COMMAND: "); Serial.println(cmd);
 
-  // ── Mode ──────────────────────────────────────────────────────
-  if (cmd == "M:FREE"  || cmd == "CMD:FREE")   { setFreeMode();   return; }
-  if (cmd == "M:ASSIST"|| cmd == "CMD:ASSIST") { setAssistMode(); return; }
+  if (cmd == "M:FREE"   || cmd == "CMD:FREE")   { setFreeMode();   return; }
+  if (cmd == "M:ASSIST" || cmd == "CMD:ASSIST") { setAssistMode(); return; }
 
-  // ── Emergency stop ────────────────────────────────────────────
   if (cmd == "CMD:STOP") {
-    setAssistMode(false);     // engage motor to hold, avoid extra STATUS:ASSIST
-    brakePush();              // keep brake ON while stopped
+    setAssistMode(false);
+    brakePush();
     if (!stopLatched) {
-      vibrationPulse(1000);   // pulse only on STOP transition
+      vibrationPulse(1000);
       stopLatched = true;
-      Serial.println("[CMD] STOP - brake and vibration engaged");
+      Serial.println("[CMD] STOP");
       Serial1.println("STATUS:STOPPED");
     } else {
-      Serial.println("[CMD] STOP already latched - skipping vibration");
+      Serial.println("[CMD] STOP already latched");
     }
     return;
   }
 
-  // ── Brake manual control ──────────────────────────────────────
-  if (cmd == "BRAKE:ON"  || cmd == "CMD:BRAKE:ON")  {
+  if (cmd == "BRAKE:ON"  || cmd == "CMD:BRAKE:ON") {
     if (!authorized) { Serial.println("[CMD] Not authorized"); return; }
-    brakePush();
-    Serial.println("[CMD] Brake ON");
-    return;
+    brakePush(); Serial.println("[CMD] Brake ON"); return;
   }
   if (cmd == "BRAKE:OFF" || cmd == "CMD:BRAKE:OFF") {
     if (!authorized) { Serial.println("[CMD] Not authorized"); return; }
-    stopLatched = false;
-    brakeRelease();
-    Serial.println("[CMD] Brake OFF");
-    return;
+    stopLatched = false; brakeRelease(); Serial.println("[CMD] Brake OFF"); return;
   }
 
-  // ── Unlock ────────────────────────────────────────────────────
   if (cmd == "U" || cmd == "CMD:UNLOCK") { unlock(); return; }
 
-  // ── GO commands ───────────────────────────────────────────────
-  // Accepts both GO:LEFT and CMD:GO:LEFT
   String goCmd = cmd;
-  if (goCmd.startsWith("CMD:GO:")) {
-    goCmd = goCmd.substring(4); // strip CMD:
-  }
-
+  if (goCmd.startsWith("CMD:GO:")) goCmd = goCmd.substring(4);
   if (goCmd.startsWith("GO:")) {
     if (!authorized) { Serial.println("[CMD] Not authorized"); return; }
-    if (currentMode == MODE_FREE) {
-      setAssistMode(true);   // enter ASSIST for steering and report mode change
-    }
-    stopLatched = false;
-    brakeRelease();
+    if (currentMode == MODE_FREE) setAssistMode(true);
+    stopLatched = false; brakeRelease();
     String pos = goCmd.substring(3);
     if      (pos == "LEFT")   goToPosition(POS_LEFT);
     else if (pos == "L2")     goToPosition(POS_L2);
@@ -871,42 +870,28 @@ void executeCommand(String cmd, bool fromFlush) {
     return;
   }
 
-  // ── Jog (USB debug only) ──────────────────────────────────────
   if (cmd.length() == 1) {
     switch (cmd[0]) {
       case 'A': jogLeft();  return;
       case 'D': jogRight(); return;
       case 'F': goToPosition(POS_CENTER); return;
-      case 'C':
-        CENTER_ADC = readPot();
-        Serial.print("[CALIB] CENTER = "); Serial.println(CENTER_ADC);
-        return;
-      case 'Z':
-        LEFT_ADC = readPot();
-        Serial.print("[CALIB] LEFT = "); Serial.println(LEFT_ADC);
-        return;
-      case 'X':
-        RIGHT_ADC = readPot();
-        Serial.print("[CALIB] RIGHT = "); Serial.println(RIGHT_ADC);
-        return;
+      case 'C': CENTER_ADC = readPot(); Serial.print("[CALIB] CENTER="); Serial.println(CENTER_ADC); return;
+      case 'Z': LEFT_ADC   = readPot(); Serial.print("[CALIB] LEFT=");   Serial.println(LEFT_ADC);   return;
+      case 'X': RIGHT_ADC  = readPot(); Serial.print("[CALIB] RIGHT=");  Serial.println(RIGHT_ADC);  return;
       case 'E':
-        if (CENTER_ADC==-1 || LEFT_ADC==-1 || RIGHT_ADC==-1)
-          Serial.println("[EEPROM] Calibrate first");
+        if (CENTER_ADC==-1||LEFT_ADC==-1||RIGHT_ADC==-1) Serial.println("[EEPROM] Calibrate first");
         else saveToEEPROM();
         return;
       case 'P': printStatus(); return;
       case 'H': printHelp();   return;
-      case 'B':  // toggle bypass mode
+      case 'B':
         bypassRFID = !bypassRFID;
-        Serial.print("[BYPASS] Mode = ");
-        Serial.println(bypassRFID ? "ON (always authorized)" : "OFF (RFID required)");
+        Serial.print("[BYPASS] "); Serial.println(bypassRFID ? "ON" : "OFF");
         if (bypassRFID) {
-          // نجبر الترخيص على الفور
           authorized = true;
-          Serial1.println("STATUS:AUTHORIZED");  // notify Pi immediately
+          Serial1.println("STATUS:AUTHORIZED");
           startAuthSequence();
         } else {
-          // نعيد ضبط الحالة
           authorized = false;
           stopAuthSequence(false);
         }
@@ -914,100 +899,42 @@ void executeCommand(String cmd, bool fromFlush) {
     }
   }
 
-  // ── CMD:ANGLE:<n>  (-100=full left, 0=center, +100=full right) ──────
-  // if (cmd.startsWith("CMD:ANGLE:")) {
-  //   if (!authorized) { Serial.println("[CMD] Not authorized"); return; }
-  //   if (CENTER_ADC == -1 || LEFT_ADC == -1 || RIGHT_ADC == -1) {
-  //     Serial.println("[CMD:ANGLE] Not calibrated");
-  //     Serial1.println("STATUS:NOT_CALIBRATED");
-  //     return;
-  //   }
-  //   if (currentMode == MODE_FREE) setAssistMode(true);
-  //   stopLatched = false;
-  //   brakeRelease();
-
-  //   int angle = cmd.substring(10).toInt();   // handles negatives
-  //   angle = constrain(angle, -100, 100);
-
-  //   int targetADC;
-  //   if (angle == 0) {
-  //     targetADC = CENTER_ADC;
-  //   } else if (angle < 0) {
-  //     targetADC = map(-angle, 0, 100, CENTER_ADC, LEFT_ADC);  // steer left
-  //   } else {
-  //     targetADC = map( angle, 0, 100, CENTER_ADC, RIGHT_ADC); // steer right
-  //   }
-  //   targetADC = clampToRange(targetADC);
-
-  //   Serial.print("[CMD:ANGLE] angle="); Serial.print(angle);
-  //   Serial.print(" -> ADC=");          Serial.println(targetADC);
-  //   moveToADC(targetADC);
-  //   if (!fromFlush) {
-  //     String latest = flushPiBufferKeepLatest();
-  //     if (latest.length() > 0) executeCommand(latest, true);
-  //   }
-  //   return;
-  // }
   if (cmd.startsWith("CMD:ANGLE:")) {
-      if (!authorized) { Serial.println("[CMD] Not authorized"); return; }
-      if (CENTER_ADC == -1 || LEFT_ADC == -1 || RIGHT_ADC == -1) {
-        Serial.println("[CMD:ANGLE] Not calibrated");
-        Serial1.println("STATUS:NOT_CALIBRATED");
-        return;
-      }
-      if (currentMode == MODE_FREE) setAssistMode(true);
-      stopLatched = false;
-      brakeRelease();
+    if (!authorized) { Serial.println("[CMD] Not authorized"); return; }
+    if (CENTER_ADC==-1||LEFT_ADC==-1||RIGHT_ADC==-1) {
+      Serial.println("[CMD:ANGLE] Not calibrated");
+      Serial1.println("STATUS:NOT_CALIBRATED"); return;
+    }
+    if (currentMode == MODE_FREE) setAssistMode(true);
+    stopLatched = false; brakeRelease();
 
-      // Extract angle — do this BEFORE toUpperCase corrupts nothing (numbers are fine)
-      String angleStr = cmd.substring(10); // "CMD:ANGLE:" is exactly 10 chars
-      Serial.print("ANGLE AFTER CUT:"); Serial.print(angleStr);
-      Serial.println();
-      angleStr.trim();
-      Serial.print("ANGLE AFTER TRIM:"); Serial.print(angleStr);
-      Serial.println();
-      int angle = angleStr.toInt();
-      Serial.print("ANGLE AFTER INTEGER CONVERSION:");Serial.print(angleStr);
-      Serial.println();
-      angle = constrain(angle, -100, 100);
+    String angleStr = cmd.substring(10); angleStr.trim();
+    int angle = constrain(angleStr.toInt(), -100, 100);
 
-      int targetADC;
-      if (angle == 0) {
-          targetADC = CENTER_ADC;
-      } else if (angle > 0) {
-          // Positive = RIGHT
-          targetADC = CENTER_ADC + (int)((float)(RIGHT_ADC - CENTER_ADC) * angle / 100.0);
-      } else {
-          // Negative = LEFT
-          targetADC = CENTER_ADC + (int) ((float)(LEFT_ADC - CENTER_ADC) * (-angle) / 100.0);
-      }
-      Serial.print("Target ADC:");Serial.print(targetADC);
-      Serial.println();
+    int targetADC;
+    if      (angle == 0) targetADC = CENTER_ADC;
+    else if (angle >  0) targetADC = CENTER_ADC + (int)((float)(RIGHT_ADC - CENTER_ADC) *  angle / 100.0);
+    else                 targetADC = CENTER_ADC + (int)((float)(LEFT_ADC  - CENTER_ADC) * -angle / 100.0);
 
-      targetADC = clampToRange(targetADC);
+    targetADC = clampToRange(targetADC);
+    int safeMin = min(LEFT_ADC, RIGHT_ADC), safeMax = max(LEFT_ADC, RIGHT_ADC);
+    if (targetADC < safeMin || targetADC > safeMax) {
+      Serial.println("[CMD:ANGLE] Out of range - REJECTED");
+      Serial1.println("STATUS:OUT_OF_RANGE"); return;
+    }
 
-      // Safety check
-      int safeMin = min(LEFT_ADC, RIGHT_ADC);
-      int safeMax = max(LEFT_ADC, RIGHT_ADC);
-      if (targetADC < safeMin || targetADC > safeMax) {
-        Serial.println("[CMD:ANGLE] Target out of range - REJECTED");
-        Serial1.println("STATUS:OUT_OF_RANGE");
-        return;
-      }
+    Serial.print("[CMD:ANGLE] angle="); Serial.print(angle);
+    Serial.print(" -> ADC="); Serial.println(targetADC);
+    moveToADC(targetADC);
+    Serial1.println("STATUS:READY");
 
-      Serial.print("[CMD:ANGLE] angle="); Serial.print(angle);
-      Serial.print(" -> ADC="); Serial.println(targetADC);
-
-      moveToADC(targetADC);
-      Serial1.println("STATUS:READY");
-
-      if (!fromFlush) {
-        String latest = flushPiBufferKeepLatest();
-        if (latest.length() > 0) executeCommand(latest, true);
-      }
-      return;
+    if (!fromFlush) {
+      String latest = flushPiBufferKeepLatest();
+      if (latest.length() > 0) executeCommand(latest, true);
+    }
+    return;
   }
-  // ── CMD:POT  — report current potentiometer ADC ────────────────────
+
   if (cmd == "CMD:POT" || cmd == "POT") {
     int pot = readPot();
     Serial.print("[CMD:POT] ADC="); Serial.println(pot);
@@ -1019,79 +946,54 @@ void executeCommand(String cmd, bool fromFlush) {
 }
 
 // ================================================================
-//  SERIAL HANDLERS
+//  SERIAL HANDLERS  (CODE1)
 // ================================================================
-
-// USB (Serial) — debug/calibration
 void handleLocalSerial() {
   while (Serial.available()) {
     char c = Serial.read();
     if (c == '\n' || c == '\r') {
-      if (localBuffer.length() > 0) {
-        executeCommand(localBuffer);
-        localBuffer = "";
-      }
-    } else {
-      localBuffer += c;
-    }
+      if (localBuffer.length() > 0) { executeCommand(localBuffer); localBuffer = ""; }
+    } else { localBuffer += c; }
   }
 }
 
-// ================================================================
-//  SERIAL BUFFER FLUSH — discard stale commands, keep only latest
-// ================================================================
 String flushPiBufferKeepLatest() {
-  String buf = piBuffer;
-  piBuffer = "";
+  String buf = piBuffer; piBuffer = "";
   while (Serial1.available()) buf += (char)Serial1.read();
   if (buf.length() == 0) return "";
 
-  String lastCmd = "";
-  String partial  = "";
+  String lastCmd = "", partial = "";
   for (int i = 0; i < (int)buf.length(); i++) {
     char c = buf[i];
     if (c == '\n' || c == '\r') {
       if (partial.length() > 0) { lastCmd = partial; partial = ""; }
-    } else {
-      partial += c;
-    }
+    } else { partial += c; }
   }
-  if (partial.length() > 0) piBuffer = partial;  // preserve trailing partial
-
-  if (lastCmd.length() > 0) {
-    Serial.print("[FLUSH] Latest cmd: "); Serial.println(lastCmd);
-  }
+  if (partial.length() > 0) piBuffer = partial;
+  if (lastCmd.length() > 0) { Serial.print("[FLUSH] Latest: "); Serial.println(lastCmd); }
   return lastCmd;
 }
 
-// Pi (Serial1) — camera commands
 void handlePiSerial() {
   while (Serial1.available()) {
     char c = Serial1.read();
     if (c == '\n' || c == '\r') {
       if (piBuffer.length() > 0) {
         Serial.print("[Pi] Received: "); Serial.println(piBuffer);
-
-        // Only execute if authorized and auth sequence done
         if (!authorized) {
           Serial.println("[Pi] Ignored - unauthorized");
           Serial1.println("STATUS:UNAUTHORIZED");
-          piBuffer = "";
-          return;
+          piBuffer = ""; return;
         }
         if (authSequenceActive) {
           Serial.println("[Pi] Ignored - not ready");
           Serial1.println("STATUS:NOT_READY");
-          piBuffer = "";
-          return;
+          piBuffer = ""; return;
         }
-
         executeCommand(piBuffer);
         piBuffer = "";
       }
-    } else {
-      piBuffer += c;
-    }
+    } else { piBuffer += c; }
   }
 }
 
@@ -1099,48 +1001,45 @@ void handlePiSerial() {
 //  SETUP
 // ================================================================
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(115200);    // موحّد 115200 (كان 9600 في CODE3)
   Serial1.begin(115200);
   delay(200);
 
   startupTime = millis();
 
-  // Stepper
+  // ── CODE1: Stepper ──────────────────────────────────────────────
   pinMode(STEP_PIN, OUTPUT);
   pinMode(DIR_PIN,  OUTPUT);
   pinMode(EN_PIN,   OUTPUT);
   pinMode(POT_PIN,  INPUT);
 
-  // Brake + vibration
+  // ── CODE1: Brake + vibration ────────────────────────────────────
   pinMode(MOTOR_PIN, OUTPUT);
   digitalWrite(MOTOR_PIN, LOW);
 
-  // Banknote
+  // ── CODE1: Banknote ─────────────────────────────────────────────
   pinMode(IR_PIN,  INPUT);
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, LOW);
 
-  // Servos
+  // ── CODE1: Servos ───────────────────────────────────────────────
   RightArmServo.attach(RIGHT_SERVO_PIN);
   LeftArmServo.attach(LEFT_SERVO_PIN);
-  setFreeMode(false);   // safe default on boot (no protocol status before RFID)
+  setFreeMode(false);
 
-  // RFID (Mega SPI fix)
+  // ── CODE1: RFID ─────────────────────────────────────────────────
   pinMode(53, OUTPUT);
   digitalWrite(53, HIGH);
   SPI.begin();
   mfrc522.PCD_Init();
   mfrc522.PCD_AntennaOn();
   delay(100);
-
   byte v = mfrc522.PCD_ReadRegister(mfrc522.VersionReg);
   Serial.print("[RFID] Version: 0x"); Serial.println(v, HEX);
-  if (v == 0x00 || v == 0xFF)
-    Serial.println("[RFID] WARNING: Module not detected");
-  else
-    Serial.println("[RFID] Module OK");
+  Serial.println((v == 0x00 || v == 0xFF) ? "[RFID] WARNING: Module not detected"
+                                          : "[RFID] Module OK");
 
-  // TCS34725
+  // ── CODE1: TCS34725 ─────────────────────────────────────────────
   if (tcs.begin()) {
     tcsFound = true;
     tcs.setInterrupt(true);
@@ -1150,7 +1049,7 @@ void setup() {
     Serial.println("[TCS] Sensor NOT found");
   }
 
-  // EEPROM
+  // ── CODE1: EEPROM ───────────────────────────────────────────────
   if (loadFromEEPROM()) {
     Serial.println("[EEPROM] Calibration loaded");
     printStatus();
@@ -1158,14 +1057,29 @@ void setup() {
     Serial.println("[EEPROM] No calibration - run calibration first");
   }
 
-  authorized             = false;
-  authSequenceActive     = false;
-  authSequenceOutputOn   = false;
-  authSequenceCyclesDone = 0;
+  authorized = false; authSequenceActive = false;
+  authSequenceOutputOn = false; authSequenceCyclesDone = 0;
   brakeRelease();
 
-  Serial.println("=== Smart Walker v1.0 Ready ===");
-  Serial.println("Waiting for RFID authorization...");
+  // ── CODE2: LDR + LED MOSFET ─────────────────────────────────────
+  pinMode(LDR_PIN,        INPUT);
+  pinMode(LED_MOSFET_PIN, OUTPUT);
+  digitalWrite(LED_MOSFET_PIN, LOW);
+  lastLdrCheck = millis();
+  Serial.println("[LDR] Module ready");
+
+  // ── CODE3: LCD + Battery ─────────────────────────────────────────
+  lcd.init();
+  lcd.backlight();
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Battery Monitor");
+  delay(BATTERY_LCD_STARTUP_DELAY);  // 2s عرض العنوان — مرة واحدة في setup فقط
+  lcd.clear();
+  lastBatteryUpdate = millis();
+  Serial.println("[BAT] Battery monitor ready");
+
+  Serial.println("=== Smart Walker v2.0 Ready ===");
   printHelp();
 }
 
@@ -1173,9 +1087,12 @@ void setup() {
 //  LOOP
 // ================================================================
 void loop() {
-  handleRFID();             // always listen for card
-  handleLocalSerial();      // USB debug commands
-  handlePiSerial();         // Pi/camera commands
-  handleAuthSequence();     // non-blocking brake/motor sequence
-  handleBanknoteDetection();// runs after auth, independent
+  handleRFID();               // CODE1 — RFID gate
+  handleLocalSerial();        // CODE1 — USB debug commands
+  handlePiSerial();           // CODE1 — Pi commands
+  handleAuthSequence();       // CODE1 — non-blocking auth sequence
+  handleBanknoteDetection();  // CODE1 — TCS34725 + IR
+
+  handleLDR();                // CODE2 — ambient light → LED (non-blocking)
+  handleBatteryMonitor();     // CODE3 — battery voltage → LCD (non-blocking)
 }

@@ -442,6 +442,17 @@ SOUND_MAP: dict[str, Path] = {
     # أضف أي label جديد هنا...
 }
 
+# ------------------------------------------------------
+#  BANKNOTE SOUNDS
+# ------------------------------------------------------
+BANKNOTE_MAP = {
+    "20 ILS":  SOUNDS / "20.wav",
+    "50 ILS":  SOUNDS / "50.wav",
+    "100 ILS": SOUNDS / "100.wav",
+    "200 ILS": SOUNDS / "200.wav",
+}
+BANKNOTE_UNKNOWN = SOUNDS / "replace.wav"
+
 # ── إعدادات ───────────────────────────────────────────────────────────
 ALSA_DEVICE           = "plughw:2,0"
 DEFAULT_DANGER_MM     = 1200
@@ -473,6 +484,13 @@ def _play_wav(path: Path):
 
     threading.Thread(target=_run, daemon=True).start()
 
+def play_banknote(note: str):
+    wav = BANKNOTE_MAP.get(note, BANKNOTE_UNKNOWN)
+    print(f"[BANK-AUDIO] Playing: {wav.name}  (note='{note}')")
+    if wav.exists():
+        _play_wav(wav)
+    else:
+        print(f"[BANK-AUDIO] File missing: {wav}")
 
 def play_object(label: str, position: str) -> bool:
     """
